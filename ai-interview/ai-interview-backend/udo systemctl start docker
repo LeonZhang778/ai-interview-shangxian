@@ -1,0 +1,15 @@
+[0;1;31m●[0m docker.service - Docker Application Container Engine
+   Loaded: loaded (/lib/systemd/system/docker.service; enabled; vendor preset: enabled)
+   Active: [0;1;31mfailed[0m (Result: exit-code) since Sat 2026-03-21 23:46:22 CST; 17s ago
+     Docs: https://docs.docker.com
+  Process: 15055 ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock [0;1;31m(code=exited, status=1/FAILURE)[0m
+ Main PID: 15055 (code=exited, status=1/FAILURE)
+
+3月 21 23:46:20 rwkkyyds-virtual-machine systemd[1]: [0;1;39m[0;1;31m[0;1;39mdocker.service: Failed with result 'exit-code'.[0m
+3月 21 23:46:20 rwkkyyds-virtual-machine systemd[1]: [0;1;31m[0;1;39m[0;1;31mFailed to start Docker Application Container Engine.[0m
+3月 21 23:46:22 rwkkyyds-virtual-machine systemd[1]: docker.service: Service hold-off time over, scheduling restart.
+3月 21 23:46:22 rwkkyyds-virtual-machine systemd[1]: docker.service: Scheduled restart job, restart counter is at 3.
+3月 21 23:46:22 rwkkyyds-virtual-machine systemd[1]: Stopped Docker Application Container Engine.
+3月 21 23:46:22 rwkkyyds-virtual-machine systemd[1]: [0;1;39m[0;1;31m[0;1;39mdocker.service: Start request repeated too quickly.[0m
+3月 21 23:46:22 rwkkyyds-virtual-machine systemd[1]: [0;1;39m[0;1;31m[0;1;39mdocker.service: Failed with result 'exit-code'.[0m
+3月 21 23:46:22 rwkkyyds-virtual-machine systemd[1]: [0;1;31m[0;1;39m[0;1;31mFailed to start Docker Application Container Engine.[0m

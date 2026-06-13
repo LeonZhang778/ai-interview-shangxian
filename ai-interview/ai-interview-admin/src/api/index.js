@@ -1,0 +1,34 @@
+import api from './request'
+
+export const authApi = {
+  login: (email, password) => api.post('/auth/login', { email, password }),
+  me: () => api.get('/auth/me'),
+  refresh: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
+  logout: (refreshToken) => api.post('/auth/logout', { refresh_token: refreshToken })
+}
+
+export const userApi = {
+  list: (params) => api.get('/users', { params }),
+  stats: () => api.get('/users/stats'),
+  toggleActive: (id) => api.put(`/users/${id}/toggle-active`)
+}
+
+export const interviewApi = {
+  list: (params) => api.get('/interviews', { params }),
+  detail: (id) => api.get(`/interviews/${id}`),
+  delete: (id) => api.delete(`/interviews/${id}`)
+}
+
+export const adminApi = {
+  list: (params) => api.get('/admins', { params }),
+  detail: (id) => api.get(`/admins/${id}`),
+  create: (data) => api.post('/admins', data),
+  update: (id, data) => api.put(`/admins/${id}`, data),
+  delete: (id) => api.delete(`/admins/${id}`),
+  changePassword: (id, data) => api.post(`/admins/${id}/change-password`, data),
+  resetPassword: (id, data) => api.post(`/admins/${id}/reset-password`, data)
+}
+
+export const waitingListApi = {
+  list: (params) => api.get('/waiting-list', { params })
+}
