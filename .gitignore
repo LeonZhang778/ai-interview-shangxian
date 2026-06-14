@@ -1,15 +1,15 @@
 # ===== AI-Interview 项目 .gitignore =====
 
-# ---------- 学习/笔记文件 (不上传) ----------
+# ---------- 学习/笔记文件 ----------
 memory.md
-ai-interview/ai-interview学习记录/
-ai-interview/ai-interview学习记录.md
-ai-interview/Python后端实习-项目学习流程.md
-ai-interview/ai-interview-script-md-pdf/
-ai-interview/txt.txt
-ai-interview/命令文件.md
+ai-interview学习记录/
+ai-interview学习记录.md
+Python后端实习-项目学习流程.md
+ai-interview-script-md-pdf/
+txt.txt
+命令文件.md
 
-# ---------- 启动/停止脚本 (本地用) ----------
+# ---------- 启动/停止脚本 ----------
 start.ps1
 stop.ps1
 启动.bat
@@ -18,58 +18,41 @@ stop.ps1
 # ---------- IDE ----------
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
 # ---------- Python ----------
 __pycache__/
 *.py[cod]
-*$py.class
-*.egg-info/
-*.egg
 .venv/
 venv/
-env/
 .pytest_cache/
 .mypy_cache/
-.coverage
-htmlcov/
 
 # ---------- Node.js ----------
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# ---------- 前端构建产物 (服务器上重新构建) ----------
-ai-interview/ai-interview-frontend/dist/
-ai-interview/ai-interview-admin/dist/
+# ---------- 前端构建产物 ----------
+ai-interview-frontend/dist/
+ai-interview-admin/dist/
 
-# ---------- 后端运行时文件 ----------
-ai-interview/ai-interview-backend/logs/
-ai-interview/ai-interview-backend/__pycache__/
-ai-interview/ai-interview-backend/celerybeat-schedule.db/
-ai-interview/ai-interview-backend/celerybeat-schedule.db
+# ---------- 后端运行时 ----------
+ai-interview-backend/logs/
+ai-interview-backend/__pycache__/
+ai-interview-backend/celerybeat-schedule.db/
 
-# ---------- 上传文件 (用户数据, 不上传) ----------
-ai-interview/ai-interview-backend/uploads/avatars/*
-ai-interview/ai-interview-backend/uploads/resumes/*
-!ai-interview/ai-interview-backend/uploads/avatars/.gitkeep
-!ai-interview/ai-interview-backend/uploads/resumes/.gitkeep
+# ---------- 上传文件 ----------
+ai-interview-backend/uploads/avatars/*
+ai-interview-backend/uploads/resumes/*
+!ai-interview-backend/uploads/avatars/.gitkeep
+!ai-interview-backend/uploads/resumes/.gitkeep
 
 # ---------- Docker 大文件 ----------
-ai-interview/ai-interview-backend/docker-compose-linux-x86_64
+ai-interview-backend/docker-compose-linux-x86_64
 
 # ---------- 系统文件 ----------
 .DS_Store
 Thumbs.db
-desktop.ini
 
 # ---------- 其他 ----------
 *.log
 *.bak
 *.tmp
-D:\ai-interview\AI-Interview-服务器部署流程.md
-
-CLAUDE.md
