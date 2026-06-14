@@ -11,7 +11,7 @@ const routes = [
   { path: '/waiting-list', name: 'WaitingList', component: () => import('../views/WaitingList.vue'), meta: { auth: true } }
 ]
 
-const router = createRouter({ history: createWebHistory(), routes })
+const router = createRouter({ history: createWebHistory('/admin/'), routes })
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
