@@ -36,7 +36,9 @@ class AIService:
                     return reasoning.strip()
                 logger.error(f"AI API 返回空响应: {response}")
                 raise ValueError("AI API 返回了空响应，请稍后重试")
-            return content.strip()
+            result = content.strip()
+            logger.info(f"AI 响应前 200 字: {result[:200]}")
+            return result
         except Exception as e:
             logger.error(f"AI API 调用失败: {e}")
             raise
@@ -61,37 +63,37 @@ class AIService:
 
     @staticmethod
     def _extract_json(text: str) -> dict:
-        """从 AI 响应中提取 JSON，处理 markdown 代码块包裹的情况"""
+        """从 AI 响应中提取 JSON，处理各种非标准格式"""
+        import re
         text = text.strip()
         if not text:
             raise ValueError("AI 返回了空内容，无法解析为 JSON")
-        # 处理 markdown 代码块包裹
-        if text.startswith("```"):
+        # 1. 处理 markdown 代码块
+        code_block = re.search(r'```(?:json)?\s*\n?([\s\S]*?)```', text)
+        if code_block:
+            text = code_block.group(1).strip()
+        elif text.startswith("```"):
             lines = text.split("\n")
             lines = lines[1:]
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             text = "\n".join(lines).strip()
-        # 尝试直接解析
+        # 2. 尝试直接解析
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             pass
-        # 用 raw_decode 提取第一个完整的 JSON 对象或数组
+        # 3. 用 raw_decode 从第一个 { 或 [ 提取
         decoder = json.JSONDecoder()
-        try:
-            obj, _ = decoder.raw_decode(text)
-            return obj
-        except json.JSONDecodeError:
-            # 尝试从第一个 { 或 [ 开始解析
-            for i, ch in enumerate(text):
-                if ch in ('{', '['):
-                    try:
-                        obj, _ = decoder.raw_decode(text, i)
-                        return obj
-                    except json.JSONDecodeError:
-                        continue
-            raise ValueError(f"无法从 AI 响应中提取 JSON: {text[:200]}")
+        for i, ch in enumerate(text):
+            if ch in ('{', '['):
+                try:
+                    obj, end = decoder.raw_decode(text, i)
+                    return obj
+                except json.JSONDecodeError:
+                    continue
+        logger.error(f"JSON 提取失败，AI 响应前 300 字: {text[:300]}")
+        raise ValueError(f"无法从 AI 响应中提取 JSON")
 
     @staticmethod
     async def parse_resume(resume_text: str) -> dict:
