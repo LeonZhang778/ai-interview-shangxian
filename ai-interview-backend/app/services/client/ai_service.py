@@ -68,7 +68,7 @@ class AIService:
         # 处理 markdown 代码块包裹
         if text.startswith("```"):
             lines = text.split("\n")
-            lines = lines[1:]  # 移除开头的 ```json 行
+            lines = lines[1:]
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             text = "\n".join(lines).strip()
@@ -76,12 +76,22 @@ class AIService:
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            # 尝试从文本中提取第一个 JSON 对象或数组
-            import re
-            match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', text)
-            if match:
-                return json.loads(match.group(1))
-            raise
+            pass
+        # 用 raw_decode 提取第一个完整的 JSON 对象或数组
+        decoder = json.JSONDecoder()
+        try:
+            obj, _ = decoder.raw_decode(text)
+            return obj
+        except json.JSONDecodeError:
+            # 尝试从第一个 { 或 [ 开始解析
+            for i, ch in enumerate(text):
+                if ch in ('{', '['):
+                    try:
+                        obj, _ = decoder.raw_decode(text, i)
+                        return obj
+                    except json.JSONDecodeError:
+                        continue
+            raise ValueError(f"无法从 AI 响应中提取 JSON: {text[:200]}")
 
     @staticmethod
     async def parse_resume(resume_text: str) -> dict:
