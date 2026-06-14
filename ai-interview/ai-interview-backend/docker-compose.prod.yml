@@ -1,50 +1,32 @@
-# 生产环境专用配置
-# 使用方式: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# 生产环境配置 - 覆盖基础配置
+# 使用方式: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 services:
-  # FastAPI应用 - 本地构建
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    image: ai-interview:prod
     ports:
       - "127.0.0.1:${API_PORT:-8001}:${API_PORT:-8001}"
     environment:
       - ENV=production
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${API_PORT:-8001}/api/v1/config/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  # Celery Worker - 使用相同的镜像
   celery-worker:
-    image: ai-interview:prod
-    command: celery -A app.core.celery_app worker --loglevel=info
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  # Celery Beat - 使用相同的镜像
   celery-beat:
-    image: ai-interview:prod
-    command: celery -A app.core.celery_app beat --loglevel=info
     logging:
       driver: "json-file"
       options:
         max-size: "5m"
         max-file: "2"
 
-  # Redis - 生产环境不暴露端口, 设置密码
   redis:
     ports: []
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
@@ -54,29 +36,13 @@ services:
         max-size: "5m"
         max-file: "2"
 
-  # PostgreSQL - 生产环境不暴露端口
   postgres:
     ports: []
 
-  # Nginx - 生产环境暴露 80 和 443
   nginx:
     ports:
       - "80:80"
       - "443:443"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-
-  # Flower 监控 - 仅在需要时启动
-  flower:
-    image: ai-interview:prod
-    command: celery -A app.core.celery_app flower --port=5555
-    ports:
-      - "127.0.0.1:${FLOWER_PORT:-5555}:5555"
-    profiles:
-      - monitoring
     logging:
       driver: "json-file"
       options:

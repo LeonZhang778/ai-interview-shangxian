@@ -1,53 +1,14 @@
-# 开发环境专用配置
-# 使用方式: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+# 开发环境覆盖配置
+# 启动: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+# 作用: 开启热重载, 暴露数据库端口, 使用 host 网络
 
 services:
-  # Redis（开发环境）
-  redis:
-    image: redis:7-alpine
-    container_name: ai-interview-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # PostgreSQL数据库（开发环境本地运行）
-  postgres:
-    image: postgres:16-alpine
-    container_name: ai-interview-postgres
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    ports:
-      - "${POSTGRES_EXTERNAL_PORT:-5434}:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   app:
     build:
       context: .
       dockerfile: Dockerfile.dev
     image: ai-interview:dev
     network_mode: host
-    env_file:
-      - .env
     environment:
       - ENV=development
       - POSTGRES_HOST=localhost
@@ -57,17 +18,24 @@ services:
       - ./app:/app/app
       - ./logs:/app/logs
       - ./uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  # Celery Worker - 复用开发环境镜像
+  postgres:
+    ports:
+      - "5434:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  nginx:
+    profiles:
+      - donotstart
+
   celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     image: ai-interview:dev
-    env_file:
-      - .env
     environment:
       - ENV=development
       - POSTGRES_HOST=postgres
@@ -76,33 +44,14 @@ services:
     volumes:
       - ./app:/app/app
       - ./logs:/app/logs
-    networks:
-      - app-network
-    depends_on:
-      - postgres
 
-  # Celery Beat - 复用开发环境镜像
   celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     image: ai-interview:dev
-    env_file:
-      - .env
     environment:
       - ENV=development
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - REDIS_HOST=redis
-    depends_on:
-      - app
-
-  # 在开发环境中禁用Nginx服务
-  nginx:
-    profiles:
-      - donotstart
-
-volumes:
-  postgres-data:
-    driver: local
-
-networks:
-  app-network:
-    driver: bridge
+    volumes:
+      - ./app:/app/app
+      - ./logs:/app/logs
