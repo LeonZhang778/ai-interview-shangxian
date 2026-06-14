@@ -24,10 +24,16 @@ class AIService:
                 model=settings.AI_MODEL,
                 messages=messages,
                 temperature=temperature,
-                max_tokens=2000
+                max_tokens=4096
             )
-            content = response.choices[0].message.content
+            msg = response.choices[0].message
+            content = msg.content
+            # GLM 推理模型可能把内容放在 reasoning_content 里
             if not content or not content.strip():
+                reasoning = getattr(msg, 'reasoning_content', None)
+                if reasoning and reasoning.strip():
+                    logger.warning("content 为空，使用 reasoning_content")
+                    return reasoning.strip()
                 logger.error(f"AI API 返回空响应: {response}")
                 raise ValueError("AI API 返回了空响应，请稍后重试")
             return content.strip()
@@ -43,7 +49,7 @@ class AIService:
                 model=settings.AI_MODEL,
                 messages=messages,
                 temperature=temperature,
-                max_tokens=2000,
+                max_tokens=4096,
                 stream=True
             )
             async for chunk in stream:
