@@ -26,7 +26,11 @@ class AIService:
                 temperature=temperature,
                 max_tokens=2000
             )
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            if not content or not content.strip():
+                logger.error(f"AI API 返回空响应: {response}")
+                raise ValueError("AI API 返回了空响应，请稍后重试")
+            return content.strip()
         except Exception as e:
             logger.error(f"AI API 调用失败: {e}")
             raise
@@ -53,13 +57,25 @@ class AIService:
     def _extract_json(text: str) -> dict:
         """从 AI 响应中提取 JSON，处理 markdown 代码块包裹的情况"""
         text = text.strip()
+        if not text:
+            raise ValueError("AI 返回了空内容，无法解析为 JSON")
+        # 处理 markdown 代码块包裹
         if text.startswith("```"):
             lines = text.split("\n")
             lines = lines[1:]  # 移除开头的 ```json 行
             if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]    #[:-1] 右边的不包括最后一个元素
-            text = "\n".join(lines)
-        return json.loads(text)
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+        # 尝试直接解析
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # 尝试从文本中提取第一个 JSON 对象或数组
+            import re
+            match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', text)
+            if match:
+                return json.loads(match.group(1))
+            raise
 
     @staticmethod
     async def parse_resume(resume_text: str) -> dict:
