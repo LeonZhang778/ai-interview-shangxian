@@ -60,4 +60,16 @@ onMounted(async () => {
 .stat-icon { font-size: 32px; margin-bottom: 8px; }
 .stat-num { font-size: 40px; font-weight: 700; color: var(--accent); }
 .stat-label { font-size: 14px; color: #6b7280; margin-top: 4px; }
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat-card { padding: 20px 16px; }
+  .stat-num { font-size: 32px !important; }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; gap: 10px; }
+  .stat-card { padding: 16px; }
+  .stat-num { font-size: 28px !important; }
+}
 </style>

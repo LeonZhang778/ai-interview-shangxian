@@ -24,6 +24,7 @@ class User(BaseModel):
     career_goal = Column(String(255), nullable=True)
     contract_types = Column(JSON, nullable=True)
     location = Column(String(255), nullable=True)
+    is_guest = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False)
     email_verified_at = Column(TIMESTAMP(timezone=True), nullable=True)

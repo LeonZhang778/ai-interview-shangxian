@@ -180,11 +180,21 @@ def create_app():
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         logger.warning(f"Validation Error: {exc.errors()}",
                     extra={"request": f"{request.method} {request.url}"})
+        errors = exc.errors()
+        if errors:
+            first = errors[0]
+            msg = first.get('msg', '')
+            if msg.startswith('Value error, '):
+                msg = msg[len('Value error, '):]
+            if not msg:
+                msg = '参数验证错误'
+        else:
+            msg = '参数验证错误'
         return ApiResponse.failed(
-            message="参数验证错误",
+            message=msg,
             body_code=1001,
             http_code=status.HTTP_400_BAD_REQUEST,
-            data=exc.errors()
+            data=errors
         )
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):

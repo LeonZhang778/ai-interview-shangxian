@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userId = ref(localStorage.getItem('userId') || '')
   const userName = ref(localStorage.getItem('userName') || '')
   const userAvatar = ref(localStorage.getItem('userAvatar') || '')
+  const isGuest = ref(localStorage.getItem('isGuest') === 'true')
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -27,6 +28,8 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('userId', userId.value)
     localStorage.setItem('userName', userName.value)
     localStorage.setItem('userAvatar', userAvatar.value)
+    isGuest.value = !!data.user?.is_guest
+    localStorage.setItem('isGuest', isGuest.value ? 'true' : 'false')
   }
 
   function setUserInfo(info) {
@@ -63,7 +66,9 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('userId')
     localStorage.removeItem('userName')
     localStorage.removeItem('userAvatar')
+    localStorage.removeItem('isGuest')
+    isGuest.value = false
   }
 
-  return { token, refreshToken: refreshTokenValue, userEmail, userId, userName, userAvatar, isLoggedIn, setAuth, setUserInfo, updateToken, logout }
+  return { token, refreshToken: refreshTokenValue, userEmail, userId, userName, userAvatar, isGuest, isLoggedIn, setAuth, setUserInfo, updateToken, logout }
 })

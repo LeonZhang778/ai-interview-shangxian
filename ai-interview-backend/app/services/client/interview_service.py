@@ -130,16 +130,23 @@ class InterviewService:
         )
         db.add(candidate_msg)
 
-        # 调用 AI 评估回答
-        evaluation = await AIService.evaluate_answer(
-            question=current_question,
-            answer=answer,
-            resume_context=parsed_resume,
-            chat_history=chat_history
-        )
-
-        score = float(evaluation.get("score", 5.0))
-        feedback = evaluation.get("feedback", "")
+        # 预判断：低质量回答直接给分，不调用 AI
+        pre_score = AIService.pre_score(answer)
+        if pre_score is not None:
+            score = pre_score
+            feedback = "回答内容过短或未尝试回答，请尽量给出自己的理解和思路。"
+        else:
+            # 调用 AI 评估回答
+            evaluation = await AIService.evaluate_answer(
+                question=current_question,
+                answer=answer,
+                resume_context=parsed_resume,
+                chat_history=chat_history
+            )
+            score = float(evaluation.get("score", 1.0))
+            feedback = evaluation.get("feedback", "")
+            # 分数后处理
+            score = AIService.post_process_score(score, answer)
 
         # 更新候选人消息的评分
         candidate_msg.score = Decimal(str(score))
@@ -174,7 +181,9 @@ class InterviewService:
             all_scores = [float(m.score) for m in scored_msgs]
             all_scores.append(score)  # 加上当前评分
 
-            overall = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
+            # 加权平均：低分项权重更大
+            weights = [max(1, 11 - s) for s in all_scores]
+            overall = round(sum(s * w for s, w in zip(all_scores, weights)) / sum(weights), 1) if all_scores else 0
             interview.overall_score = Decimal(str(overall))
 
             # 生成评估报告
@@ -274,29 +283,38 @@ class InterviewService:
         db.add(candidate_msg)
         await db.flush()
 
-        # 流式评估回答
-        full_text = ""
-        async for chunk in AIService.evaluate_answer_stream(
-            question=current_question,
-            answer=answer,
-            resume_context=parsed_resume,
-            chat_history=chat_history
-        ):
-            full_text += chunk
-            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk}, ensure_ascii=False)}\n\n"
+        # 预判断：低质量回答直接给分，不调用 AI
+        pre_score = AIService.pre_score(answer)
+        if pre_score is not None:
+            score = pre_score
+            feedback = "回答内容过短或未尝试回答，请尽量给出自己的理解和思路。"
+            yield f"data: {json.dumps({'type': 'chunk', 'content': feedback}, ensure_ascii=False)}\n\n"
+        else:
+            # 流式评估回答
+            full_text = ""
+            async for chunk in AIService.evaluate_answer_stream(
+                question=current_question,
+                answer=answer,
+                resume_context=parsed_resume,
+                chat_history=chat_history
+            ):
+                full_text += chunk
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk}, ensure_ascii=False)}\n\n"
 
-        # 从流式文本中提取评分
-        score = 5.0
-        feedback = full_text.strip()
-        json_match = re.search(r'\{[^}]*"score"\s*:\s*([\d.]+)[^}]*\}', full_text)
-        if json_match:
-            try:
-                score = float(json_match.group(1))
-                # 从反馈中移除 JSON 块
-                feedback = re.sub(r'```json\s*\{[^}]*\}\s*```', '', feedback).strip()
-                feedback = re.sub(r'\{[^}]*"score"[^}]*\}', '', feedback).strip()
-            except (ValueError, IndexError):
-                pass
+            # 从流式文本中提取评分
+            score = 1.0
+            feedback = full_text.strip()
+            json_match = re.search(r'\{[^}]*"score"\s*:\s*([\d.]+)[^}]*\}', full_text)
+            if json_match:
+                try:
+                    score = float(json_match.group(1))
+                    # 从反馈中移除 JSON 块
+                    feedback = re.sub(r'```json\s*\{[^}]*\}\s*```', '', feedback).strip()
+                    feedback = re.sub(r'\{[^}]*"score"[^}]*\}', '', feedback).strip()
+                except (ValueError, IndexError):
+                    pass
+            # 分数后处理
+            score = AIService.post_process_score(score, answer)
 
         candidate_msg.score = Decimal(str(score))
         candidate_msg.feedback = feedback[:200]
@@ -321,7 +339,9 @@ class InterviewService:
             all_scores = [float(m.score) for m in scored_msgs]
             if candidate_msg.score:
                 all_scores.append(float(candidate_msg.score))
-            overall = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
+            # 加权平均：低分项权重更大
+            weights = [max(1, 11 - s) for s in all_scores]
+            overall = round(sum(s * w for s, w in zip(all_scores, weights)) / sum(weights), 1) if all_scores else 0
             interview.overall_score = Decimal(str(overall))
 
             # 生成评估报告

@@ -31,6 +31,13 @@ async def register(
     return ApiResponse.success(data=result)
 
 
+@router.post("/guest", response_model=AuthToken)
+async def guest_login(db: AsyncSession = Depends(get_db)):
+    """游客模式，无需注册即可体验"""
+    result = await client_auth_service.create_guest_user(db)
+    return ApiResponse.success(data=result)
+
+
 @router.post("/send-verification-code", response_model=SendCodeResponse)
 async def send_verification_code(
     request: SendVerificationCode,
@@ -144,6 +151,7 @@ async def get_current_user_info(
         "contract_types": current_user.contract_types,
         "location": current_user.location,
         "gender": current_user.gender,
+        "is_guest": current_user.is_guest,
         "is_verified": current_user.is_verified,
         "email_verified_at": current_user.email_verified_at.isoformat() if current_user.email_verified_at else None,
         "last_active_at": current_user.last_active_at.isoformat() if current_user.last_active_at else None

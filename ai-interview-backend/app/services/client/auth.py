@@ -11,6 +11,7 @@ from app.exceptions.http_exceptions import APIException
 from app.services.client.redis_verification import redis_verification_service
 from app.schedule.jobs.email_tasks import send_verification_email_task, dispatch_email_task
 import re
+import uuid
 
 
 class ClientAuthService(AuthBase):
@@ -30,6 +31,56 @@ class ClientAuthService(AuthBase):
             raise APIException(status_code=400, message="密码必须包含至少一个特殊字符")
 
         return True
+
+    @staticmethod
+    async def create_guest_user(db: AsyncSession) -> Dict:
+        """创建游客用户，无需注册即可使用"""
+        async with transaction(db):
+            guest_id = uuid.uuid4().hex[:8]
+            email = f"guest_{guest_id}@guest.local"
+            random_password = uuid.uuid4().hex
+
+            user = User(
+                email=email,
+                hashed_password=User.get_password_hash(random_password),
+                first_name="游客",
+                last_name="",
+                is_guest=True,
+                is_active=True,
+                is_verified=False,
+            )
+            db.add(user)
+            await db.flush()
+
+            access_token = AuthBase.create_access_token(
+                str(user.id),
+                scope="client",
+                expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            )
+            refresh_token = AuthBase.create_refresh_token(str(user.id))
+
+            hashed_token = AuthBase.hash_token(refresh_token)
+            token_record = Token(
+                user_id=user.id,
+                token=hashed_token,
+                expires_at=datetime.now(UTC) + timedelta(days=7),
+                is_active=True
+            )
+            db.add(token_record)
+
+            return {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": "",
+                    "is_guest": True,
+                    "is_verified": False,
+                }
+            }
 
     @staticmethod
     async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:

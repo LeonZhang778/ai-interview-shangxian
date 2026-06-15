@@ -12,7 +12,7 @@
           <label>密码</label>
           <input v-model="password" type="password" placeholder="请输入密码" required />
         </div>
-        <p v-if="error" class="error">{{ error }}</p>
+        <p v-if="error" class="error">{{ error }}，若确认无误请反馈至 <a href="mailto:1448203623@qq.com" style="color:#4f46e5">1448203623@qq.com</a></p>
         <button type="submit" class="btn-glow" :disabled="loading">
           {{ loading ? '登录中...' : '登录' }}
         </button>
@@ -24,6 +24,11 @@
       <p class="auth-link" style="margin-top:8px">
         <router-link to="/waiting-list">加入等候名单</router-link>
       </p>
+      <p class="guest-link">
+        <button @click="handleGuest" :disabled="guestLoading" class="btn-guest">
+          {{ guestLoading ? '进入中...' : '先体验一下？游客模式' }}
+        </button>
+      </p>
     </div>
   </div>
 </template>
@@ -32,7 +37,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { login } from '../api/auth'
+import { login, guestLogin } from '../api/auth'
 import { getProfile } from '../api/user'
 
 const router = useRouter()
@@ -41,6 +46,7 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const guestLoading = ref(false)
 
 async function handleLogin() {
   error.value = ''
@@ -58,6 +64,19 @@ async function handleLogin() {
     error.value = e.message
   } finally {
     loading.value = false
+  }
+}
+
+async function handleGuest() {
+  guestLoading.value = true
+  try {
+    const data = await guestLogin()
+    authStore.setAuth(data)
+    router.push('/dashboard')
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    guestLoading.value = false
   }
 }
 </script>
@@ -156,5 +175,28 @@ async function handleLogin() {
 .auth-link a {
   color: #4f46e5;
   font-weight: 500;
+}
+.guest-link {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+.btn-guest {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 20px;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-guest:hover:not(:disabled) {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+.btn-guest:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

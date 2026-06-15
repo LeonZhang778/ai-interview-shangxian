@@ -52,6 +52,11 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/interviews",
         tags=["client-interview"]
     ),
+    RouteConfig(
+        module_path="app.api.client.v1.experience",
+        prefix=f"{settings.API_V1_STR}/experiences",
+        tags=["client-experience"]
+    ),
 ]
 
 # 后台路由配置

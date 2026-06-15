@@ -32,7 +32,7 @@
           <label>密码</label>
           <input v-model="form.password" type="password" placeholder="至少8位，含字母+数字+特殊字符" required />
         </div>
-        <p v-if="error" class="error">{{ error }}</p>
+        <p v-if="error" class="error">{{ error }}<span v-if="error.includes('验证码') || error.includes('参数')">，若确认无误请反馈至 <a href="mailto:1448203623@qq.com" style="color:#4f46e5">1448203623@qq.com</a></span></p>
         <p v-if="success" class="success">{{ success }}</p>
         <button type="submit" class="btn-glow" :disabled="loading">
           {{ loading ? '注册中...' : '注册' }}

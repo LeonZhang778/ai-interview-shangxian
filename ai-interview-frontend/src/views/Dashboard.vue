@@ -7,6 +7,10 @@
       </router-link>
     </div>
 
+    <div v-if="authStore.isGuest" class="guest-hint" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#1e40af">
+      游客模式下数据临时保存，<router-link to="/register" style="color:#4f46e5;font-weight:600">注册账号</router-link>后永久保留
+    </div>
+
     <div v-if="loading" class="loading">加载中...</div>
 
     <div v-else-if="interviews.length === 0" class="empty card">
@@ -46,6 +50,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getInterviews, deleteInterview } from '../api/interview'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
 
 const interviews = ref([])
 const loading = ref(true)

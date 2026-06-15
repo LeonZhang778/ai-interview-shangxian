@@ -16,6 +16,37 @@ client = AsyncOpenAI(
 class AIService:
     """智谱 GLM AI 服务 - 面试模拟核心"""
 
+    # 低质量回答关键词
+    LOW_QUALITY_KEYWORDS = ["不知道", "不会", "不清楚", "没了解", "没学过", "跳过", "下一题", "不会答", "答不上", "不会说", "不记得"]
+    LOW_QUALITY_THRESHOLD = 5  # 低于此字数视为低质量
+
+    @staticmethod
+    def pre_score(answer: str) -> Optional[float]:
+        """预判断：明显的低质量回答直接返回低分，不调用 AI"""
+        text = answer.strip()
+        if not text:
+            return 1.0
+        if len(text) < AIService.LOW_QUALITY_THRESHOLD:
+            return 1.0
+        for kw in AIService.LOW_QUALITY_KEYWORDS:
+            if kw in text:
+                return 1.0
+        return None
+
+    @staticmethod
+    def post_process_score(score: float, answer: str) -> float:
+        """对 AI 返回的分数做合理性校验"""
+        text = answer.strip()
+        # 回答很短但分数很高 → 降分
+        if len(text) < 10 and score > 5:
+            score = min(score, 3.0)
+        # 包含"不知道"等关键词但分数 > 3 → 降到 2
+        for kw in AIService.LOW_QUALITY_KEYWORDS:
+            if kw in text and score > 3:
+                score = 2.0
+                break
+        return max(1.0, min(10.0, round(score, 1)))
+
     @staticmethod
     async def _chat(messages: list, temperature: float = 0.7) -> str:
         """基础对话补全调用"""
@@ -250,11 +281,17 @@ class AIService:
                     '{"score": 7.5, "feedback": "简短反馈50字以内", '
                     '"follow_up": false}\n'
                     "评分标准：\n"
-                    "- 9-10: 回答非常出色，有深度有见解\n"
-                    "- 7-8: 回答良好，基本正确\n"
-                    "- 5-6: 回答一般，有明显不足\n"
-                    "- 3-4: 回答较差，理解有误\n"
-                    "- 1-2: 基本没有回答到点上"
+                    "- 9-10: 回答非常出色，有深度有见解，能举一反三\n"
+                    "- 7-8: 回答良好，基本正确，覆盖了核心要点\n"
+                    "- 5-6: 回答一般，有明显不足，但至少尝试回答了\n"
+                    "- 3-4: 回答较差，理解有误，只回答了部分内容\n"
+                    "- 1-2: 基本没有回答到点上，或答非所问\n\n"
+                    "【重要规则】以下情况必须给 1-2 分：\n"
+                    "- 候选人明确表示'不知道'、'不会'、'没了解过'、'不清楚'\n"
+                    "- 回答内容为空或只有几个字（如'嗯'、'对'、'是的'）\n"
+                    "- 回答与问题完全无关\n"
+                    "- 候选人要求跳过该题目\n\n"
+                    "你必须严格按标准打分，不要给'同情分'。如果候选人没有回答问题，分数必须低于 3。"
                 )
             },
             {
@@ -268,7 +305,7 @@ class AIService:
                 )
             }
         ]
-        result = await AIService._chat(messages, temperature=0.5)
+        result = await AIService._chat(messages, temperature=0.1)
         return AIService._extract_json(result)
 
     @staticmethod
@@ -292,7 +329,18 @@ class AIService:
                     "请先用自然语言给出详细点评（100字左右），然后换行输出评分JSON。\n"
                     "格式要求：\n"
                     "先输出点评文字，然后另起一行输出：\n"
-                    '```json\n{"score": 7.5}\n```'
+                    '```json\n{"score": 7.5}\n```\n\n'
+                    "评分标准：\n"
+                    "- 9-10: 回答非常出色，有深度有见解\n"
+                    "- 7-8: 回答良好，基本正确\n"
+                    "- 5-6: 回答一般，有明显不足，但至少尝试回答了\n"
+                    "- 3-4: 回答较差，理解有误\n"
+                    "- 1-2: 基本没有回答到点上，或答非所问\n\n"
+                    "【重要规则】以下情况必须给 1-2 分：\n"
+                    "- 候选人明确表示'不知道'、'不会'、'没了解过'、'不清楚'\n"
+                    "- 回答内容为空或只有几个字\n"
+                    "- 回答与问题完全无关\n"
+                    "你必须严格按标准打分，不要给'同情分'。"
                 )
             },
             {
@@ -306,7 +354,7 @@ class AIService:
                 )
             }
         ]
-        async for chunk in AIService._chat_stream(messages, temperature=0.5):
+        async for chunk in AIService._chat_stream(messages, temperature=0.1):
             yield chunk
 
     @staticmethod

@@ -1,6 +1,12 @@
 <template>
   <div class="container">
-    <div class="profile-page">
+    <div v-if="authStore.isGuest" class="profile-page" style="text-align:center;padding:60px 20px">
+      <p style="font-size:48px;margin-bottom:16px">👤</p>
+      <p style="font-size:16px;color:#374151;margin-bottom:8px">游客模式暂不支持个人中心</p>
+      <p style="font-size:14px;color:#6b7280;margin-bottom:24px">注册账号后即可编辑个人资料</p>
+      <router-link to="/register" style="display:inline-block;padding:10px 28px;background:#4f46e5;color:white;border-radius:8px;font-size:14px;text-decoration:none">注册账号</router-link>
+    </div>
+    <div v-else class="profile-page">
       <h2 style="margin-bottom:24px">👤 个人中心</h2>
 
       <div class="card avatar-section">
@@ -86,6 +92,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getProfile, updateProfile, uploadAvatar, changePassword } from '../api/user'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
 
 const profile = ref({})
 const form = ref({ first_name: '', last_name: '', gender: '', phone: '', university: '', career_goal: '', location: '' })

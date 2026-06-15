@@ -4,6 +4,10 @@ export function register(data) {
   return api.post('/auth/register', data)
 }
 
+export function guestLogin() {
+  return api.post('/auth/guest')
+}
+
 export function login(email, password) {
   return api.post('/auth/login', { email, password })
 }

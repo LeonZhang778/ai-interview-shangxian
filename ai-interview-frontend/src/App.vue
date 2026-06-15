@@ -4,6 +4,7 @@
       <div class="nav-content">
         <router-link to="/dashboard" class="nav-logo">🎯 智面</router-link>
         <div class="nav-links">
+          <router-link to="/experiences">面经广场</router-link>
           <router-link to="/dashboard">面试记录</router-link>
           <router-link to="/resume/upload">上传简历</router-link>
           <router-link to="/profile" class="nav-user-link">
@@ -15,13 +16,18 @@
         </div>
       </div>
     </nav>
+    <div v-if="authStore.isGuest" class="guest-banner">
+      <span>游客模式</span>，<router-link to="/register">注册账号</router-link>可永久保存面试记录
+    </div>
     <router-view />
+    <BugReportBanner />
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
+import BugReportBanner from './components/BugReportBanner.vue'
 import { useRouter } from 'vue-router'
 import { getProfile } from './api/user'
 
@@ -109,5 +115,18 @@ async function logout() {
   align-items: center;
   justify-content: center;
   font-size: 14px;
+}
+.guest-banner {
+  background: #fef3c7;
+  color: #92400e;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid #fde68a;
+}
+.guest-banner a {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: underline;
 }
 </style>
