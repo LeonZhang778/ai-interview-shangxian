@@ -18,7 +18,7 @@ class AIService:
 
     # 低质量回答关键词
     LOW_QUALITY_KEYWORDS = ["不知道", "不会", "不清楚", "没了解", "没学过", "跳过", "下一题", "不会答", "答不上", "不会说", "不记得"]
-    LOW_QUALITY_THRESHOLD = 5  # 低于此字数视为低质量
+    LOW_QUALITY_THRESHOLD = 3  # 低于此字数视为低质量
 
     @staticmethod
     def pre_score(answer: str) -> Optional[float]:
@@ -38,7 +38,7 @@ class AIService:
         """对 AI 返回的分数做合理性校验"""
         text = answer.strip()
         # 回答很短但分数很高 → 降分
-        if len(text) < 10 and score > 5:
+        if len(text) < 6 and score > 5:
             score = min(score, 3.0)
         # 包含"不知道"等关键词但分数 > 3 → 降到 2
         for kw in AIService.LOW_QUALITY_KEYWORDS:
