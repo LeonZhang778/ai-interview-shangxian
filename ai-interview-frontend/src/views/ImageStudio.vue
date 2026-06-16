@@ -156,8 +156,8 @@ async function loadTasks() {
   loading.value = true
   try {
     const res = await getImageTasks({ page: page.value, size: pageSize })
-    tasks.value = res.data.items || []
-    total.value = res.data.total || 0
+    tasks.value = res.items || []
+    total.value = res.total || 0
     totalPages.value = Math.ceil(total.value / pageSize)
   } catch (e) {
     console.error('加载任务列表失败', e)
@@ -218,7 +218,7 @@ function startPolling() {
     // 刷新列表
     try {
       const res = await getImageTasks({ page: page.value, size: pageSize })
-      tasks.value = res.data.items || []
+      tasks.value = res.items || []
     } catch (e) {
       // 忽略轮询错误
     }
