@@ -5,6 +5,7 @@
         <router-link to="/dashboard" class="nav-logo">🎯 智面</router-link>
         <div class="nav-links">
           <router-link to="/experiences">面经广场</router-link>
+          <router-link to="/image-studio">AI 画图</router-link>
           <router-link to="/dashboard">面试记录</router-link>
           <router-link to="/resume/upload">上传简历</router-link>
           <router-link to="/profile" class="nav-user-link">

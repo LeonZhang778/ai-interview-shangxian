@@ -57,6 +57,11 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/experiences",
         tags=["client-experience"]
     ),
+    RouteConfig(
+        module_path="app.api.client.v1.image",
+        prefix=f"{settings.API_V1_STR}/images",
+        tags=["client-image"]
+    ),
 ]
 
 # 后台路由配置

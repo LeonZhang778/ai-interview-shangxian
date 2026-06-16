@@ -10,7 +10,8 @@ celery_app = Celery(
     include=[
         'app.schedule.celery_job',  # 主注册模块
         'app.schedule.jobs.demo',   # 示例任务
-        'app.schedule.jobs.email_tasks'  # 邮件任务
+        'app.schedule.jobs.email_tasks',  # 邮件任务
+        'app.schedule.jobs.image_task'   # 图片生成任务
     ]
 )
 

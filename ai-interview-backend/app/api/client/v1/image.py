@@ -1,0 +1,80 @@
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import get_db
+from app.api.client.deps import get_current_user
+from app.services.client.image_service import image_service
+from app.schemas.client.image import ImageGenerate
+from app.schemas.response import ApiResponse
+from app.models.user import User
+
+router = APIRouter()
+
+
+@router.post("/generate")
+async def generate_image(
+    data: ImageGenerate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """提交图片生成任务"""
+    result = await image_service.create_task(
+        db=db,
+        user_id=current_user.id,
+        prompt=data.prompt,
+        negative_prompt=data.negative_prompt,
+        width=data.width,
+        height=data.height,
+        steps=data.steps,
+        cfg_scale=data.cfg_scale,
+    )
+    # 异步执行图片生成
+    from app.schedule.jobs.image_task import generate_image_task
+    generate_image_task.delay(result["task_id"])
+    return ApiResponse.success(data=result)
+
+
+@router.get("/tasks")
+async def get_tasks(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取用户的图片任务列表"""
+    result = await image_service.get_tasks(
+        db=db,
+        user_id=current_user.id,
+        page=page,
+        size=size,
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.get("/tasks/{task_id}")
+async def get_task(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取单个任务状态"""
+    result = await image_service.get_task(
+        db=db,
+        task_id=task_id,
+        user_id=current_user.id,
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.delete("/tasks/{task_id}")
+async def delete_task(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除任务"""
+    await image_service.delete_task(
+        db=db,
+        task_id=task_id,
+        user_id=current_user.id,
+    )
+    return ApiResponse.success(message="任务已删除")
