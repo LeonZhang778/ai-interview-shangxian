@@ -43,7 +43,7 @@ class ImageService:
             status="pending",
         )
         db.add(task)
-        await db.flush()
+        await db.commit()
         await db.refresh(task)
         return {
             "task_id": task.id,
@@ -137,6 +137,7 @@ class ImageService:
                 os.remove(full_path)
 
         await db.delete(task)
+        await db.commit()
 
     @staticmethod
     async def generate_image(
