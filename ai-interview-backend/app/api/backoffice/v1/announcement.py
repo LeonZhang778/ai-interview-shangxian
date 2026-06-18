@@ -44,6 +44,7 @@ async def list_announcements(
             "title": a.title,
             "content": a.content,
             "type": a.announcement_type,
+            "level": a.level or "P1",
             "is_pinned": a.is_pinned,
             "is_active": a.is_active,
             "published_at": a.published_at.isoformat() if a.published_at else None,
@@ -63,6 +64,7 @@ async def create_announcement(
     title: str,
     content: str,
     announcement_type: str = "info",
+    level: str = "P1",
     is_pinned: bool = False,
     published_at: Optional[str] = None,
     expired_at: Optional[str] = None,
@@ -74,6 +76,7 @@ async def create_announcement(
         title=title,
         content=content,
         announcement_type=announcement_type,
+        level=level,
         is_pinned=is_pinned,
         is_active=True,
         published_at=datetime.fromisoformat(published_at) if published_at else datetime.now(timezone.utc),
@@ -97,6 +100,7 @@ async def update_announcement(
     title: Optional[str] = None,
     content: Optional[str] = None,
     announcement_type: Optional[str] = None,
+    level: Optional[str] = None,
     is_pinned: Optional[bool] = None,
     published_at: Optional[str] = None,
     expired_at: Optional[str] = None,
@@ -114,6 +118,8 @@ async def update_announcement(
         announcement.content = content
     if announcement_type is not None:
         announcement.announcement_type = announcement_type
+    if level is not None:
+        announcement.level = level
     if is_pinned is not None:
         announcement.is_pinned = is_pinned
     if published_at is not None:

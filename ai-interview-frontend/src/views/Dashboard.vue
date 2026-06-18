@@ -7,13 +7,6 @@
       </router-link>
     </div>
 
-    <!-- 公告横幅 -->
-    <div v-if="announcement" class="announcement-banner" @click="$router.push(`/announcements/${announcement.id}`)">
-      <span class="announcement-tag" :class="`type-${announcement.type}`">{{ typeLabels[announcement.type] || '通知' }}</span>
-      <span class="announcement-title">{{ announcement.title }}</span>
-      <span class="announcement-arrow">查看详情 →</span>
-    </div>
-
     <div v-if="authStore.isGuest" class="guest-hint" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#1e40af">
       游客模式下数据临时保存，<router-link to="/register" style="color:#4f46e5;font-weight:600">注册账号</router-link>后永久保留
     </div>
@@ -57,16 +50,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getInterviews, deleteInterview } from '../api/interview'
-import { getLatestAnnouncement } from '../api/announcement'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 
 const interviews = ref([])
 const loading = ref(true)
-const announcement = ref(null)
 const difficultyMap = { easy: '简单', medium: '中等', hard: '困难' }
-const typeLabels = { info: '通知', update: '更新', maintenance: '维护', activity: '活动' }
 
 function formatDate(str) {
   if (!str) return ''
@@ -82,10 +72,6 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  try {
-    const a = await getLatestAnnouncement()
-    if (a) announcement.value = a
-  } catch (e) { /* ignore */ }
 })
 
 async function handleDelete(interviewId) {
@@ -100,48 +86,6 @@ async function handleDelete(interviewId) {
 </script>
 
 <style scoped>
-.announcement-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: linear-gradient(135deg, #eff6ff, #f0f9ff);
-  border: 1px solid #bfdbfe;
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.announcement-banner:hover {
-  background: linear-gradient(135deg, #dbeafe, #e0f2fe);
-  border-color: #93c5fd;
-}
-.announcement-tag {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.announcement-tag.type-info { background: #dbeafe; color: #1e40af; }
-.announcement-tag.type-update { background: #d1fae5; color: #065f46; }
-.announcement-tag.type-maintenance { background: #fef3c7; color: #92400e; }
-.announcement-tag.type-activity { background: #fce7f3; color: #9d174d; }
-.announcement-title {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1e3a5f;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.announcement-arrow {
-  font-size: 13px;
-  color: #3b82f6;
-  white-space: nowrap;
-}
-
 .page-header {
   display: flex;
   justify-content: space-between;

@@ -28,6 +28,7 @@
             <th>ID</th>
             <th>标题</th>
             <th>类型</th>
+            <th>等级</th>
             <th>状态</th>
             <th>置顶</th>
             <th>发布时间</th>
@@ -39,6 +40,7 @@
             <td>{{ a.id }}</td>
             <td>{{ a.title }}</td>
             <td><span class="tag" :class="`type-${a.type}`">{{ typeLabels[a.type] || a.type }}</span></td>
+            <td><span class="level-badge" :class="`level-${a.level}`">{{ a.level }}</span></td>
             <td><span :class="['badge', a.is_active ? 'badge-green' : 'badge-red']">{{ a.is_active ? '已上线' : '已下线' }}</span></td>
             <td>
               <button class="btn-sm" :style="a.is_pinned ? 'background:#f59e0b;color:white' : ''" @click="togglePin(a)">
@@ -72,14 +74,24 @@
           <label>标题</label>
           <input v-model="form.title" placeholder="公告标题" />
         </div>
-        <div class="form-group">
-          <label>类型</label>
-          <select v-model="form.announcement_type">
-            <option value="info">通知</option>
-            <option value="update">更新</option>
-            <option value="maintenance">维护</option>
-            <option value="activity">活动</option>
-          </select>
+        <div style="display:flex;gap:12px">
+          <div class="form-group" style="flex:1">
+            <label>类型</label>
+            <select v-model="form.announcement_type">
+              <option value="info">通知</option>
+              <option value="update">更新</option>
+              <option value="maintenance">维护</option>
+              <option value="activity">活动</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>等级</label>
+            <select v-model="form.level">
+              <option value="P0">P0 紧急（红色，不可关闭）</option>
+              <option value="P1">P1 重要（蓝色，可关闭）</option>
+              <option value="P2">P2 普通（灰色，可关闭）</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
           <label>内容</label>
@@ -118,7 +130,7 @@ const editingId = ref(null)
 const saving = ref(false)
 const typeLabels = { info: '通知', update: '更新', maintenance: '维护', activity: '活动' }
 
-const defaultForm = { title: '', content: '', announcement_type: 'info', is_pinned: false, expired_at: '' }
+const defaultForm = { title: '', content: '', announcement_type: 'info', level: 'P1', is_pinned: false, expired_at: '' }
 const form = ref({ ...defaultForm })
 
 function formatDate(str) {
@@ -149,6 +161,7 @@ function openEdit(a) {
     title: a.title,
     content: a.content,
     announcement_type: a.type,
+    level: a.level || 'P1',
     is_pinned: a.is_pinned,
     expired_at: a.expired_at ? a.expired_at.slice(0, 16) : ''
   }
@@ -210,6 +223,15 @@ onMounted(loadAnnouncements)
 .tag.type-update { background: #d1fae5; color: #065f46; }
 .tag.type-maintenance { background: #fef3c7; color: #92400e; }
 .tag.type-activity { background: #fce7f3; color: #9d174d; }
+.level-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.level-P0 { background: #fef2f2; color: #dc2626; }
+.level-P1 { background: #eff6ff; color: #2563eb; }
+.level-P2 { background: #f1f5f9; color: #64748b; }
 
 .modal-overlay {
   position: fixed;

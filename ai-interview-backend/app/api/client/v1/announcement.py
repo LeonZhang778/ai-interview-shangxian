@@ -9,6 +9,18 @@ from app.schemas.response import ApiResponse
 router = APIRouter()
 
 
+def _serialize(a):
+    return {
+        "id": a.id,
+        "title": a.title,
+        "content": a.content,
+        "type": a.announcement_type,
+        "level": a.level or "P1",
+        "is_pinned": a.is_pinned,
+        "published_at": a.published_at.isoformat() if a.published_at else a.created_at.isoformat(),
+    }
+
+
 @router.get("")
 async def get_announcements(
     page: int = Query(1, ge=1),
@@ -22,7 +34,7 @@ async def get_announcements(
         .where(Announcement.is_active == True)
         .where(or_(Announcement.published_at.is_(None), Announcement.published_at <= now))
         .where(or_(Announcement.expired_at.is_(None), Announcement.expired_at > now))
-        .order_by(Announcement.is_pinned.desc(), Announcement.published_at.desc())
+        .order_by(Announcement.level.asc(), Announcement.is_pinned.desc(), Announcement.published_at.desc())
     )
 
     count_query = select(func.count()).select_from(query.subquery())
@@ -32,19 +44,7 @@ async def get_announcements(
     result = await db.execute(query)
     announcements = result.scalars().all()
 
-    items = [
-        {
-            "id": a.id,
-            "title": a.title,
-            "content": a.content,
-            "type": a.announcement_type,
-            "is_pinned": a.is_pinned,
-            "published_at": a.published_at.isoformat() if a.published_at else a.created_at.isoformat(),
-        }
-        for a in announcements
-    ]
-
-    return ApiResponse.success(data={"items": items, "total": total, "page": page, "per_page": size})
+    return ApiResponse.success(data={"items": [_serialize(a) for a in announcements], "total": total, "page": page, "per_page": size})
 
 
 @router.get("/latest")
@@ -58,7 +58,7 @@ async def get_latest_announcement(
         .where(Announcement.is_active == True)
         .where(or_(Announcement.published_at.is_(None), Announcement.published_at <= now))
         .where(or_(Announcement.expired_at.is_(None), Announcement.expired_at > now))
-        .order_by(Announcement.is_pinned.desc(), Announcement.published_at.desc())
+        .order_by(Announcement.level.asc(), Announcement.is_pinned.desc(), Announcement.published_at.desc())
         .limit(1)
     )
     result = await db.execute(query)
@@ -67,14 +67,7 @@ async def get_latest_announcement(
     if not announcement:
         return ApiResponse.success(data=None)
 
-    return ApiResponse.success(data={
-        "id": announcement.id,
-        "title": announcement.title,
-        "content": announcement.content,
-        "type": announcement.announcement_type,
-        "is_pinned": announcement.is_pinned,
-        "published_at": announcement.published_at.isoformat() if announcement.published_at else announcement.created_at.isoformat(),
-    })
+    return ApiResponse.success(data=_serialize(announcement))
 
 
 @router.get("/{announcement_id}")
@@ -97,12 +90,6 @@ async def get_announcement_detail(
     if not announcement:
         return ApiResponse.failed(message="公告不存在", body_code=404, http_code=404)
 
-    return ApiResponse.success(data={
-        "id": announcement.id,
-        "title": announcement.title,
-        "content": announcement.content,
-        "type": announcement.announcement_type,
-        "is_pinned": announcement.is_pinned,
-        "published_at": announcement.published_at.isoformat() if announcement.published_at else announcement.created_at.isoformat(),
-        "created_at": announcement.created_at.isoformat(),
-    })
+    data = _serialize(announcement)
+    data["created_at"] = announcement.created_at.isoformat()
+    return ApiResponse.success(data=data)

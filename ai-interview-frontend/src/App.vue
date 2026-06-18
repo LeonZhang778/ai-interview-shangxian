@@ -1,22 +1,25 @@
 <template>
   <div id="app">
-    <nav class="navbar" v-if="authStore.token">
-      <div class="nav-content">
-        <router-link to="/dashboard" class="nav-logo">🎯 智面</router-link>
-        <div class="nav-links">
-          <router-link to="/experiences">面经广场</router-link>
-          <router-link to="/image-studio">AI 画图</router-link>
-          <router-link to="/dashboard">面试记录</router-link>
-          <router-link to="/resume/upload">上传简历</router-link>
-          <router-link to="/profile" class="nav-user-link">
-            <img v-if="authStore.userAvatar && !avatarError" :src="authStore.userAvatar" class="nav-avatar" alt="avatar" @error="avatarError = true" />
-            <span v-else class="nav-avatar-placeholder">👤</span>
-            <span>{{ authStore.userName || '个人中心' }}</span>
-          </router-link>
-          <button class="btn-secondary" @click="logout" style="padding:6px 14px;font-size:13px">退出</button>
+    <div class="top-sticky">
+      <AnnouncementBanner />
+      <nav class="navbar" v-if="authStore.token">
+        <div class="nav-content">
+          <router-link to="/dashboard" class="nav-logo">🎯 智面</router-link>
+          <div class="nav-links">
+            <router-link to="/experiences">面经广场</router-link>
+            <router-link to="/image-studio">AI 画图</router-link>
+            <router-link to="/dashboard">面试记录</router-link>
+            <router-link to="/resume/upload">上传简历</router-link>
+            <router-link to="/profile" class="nav-user-link">
+              <img v-if="authStore.userAvatar && !avatarError" :src="authStore.userAvatar" class="nav-avatar" alt="avatar" @error="avatarError = true" />
+              <span v-else class="nav-avatar-placeholder">👤</span>
+              <span>{{ authStore.userName || '个人中心' }}</span>
+            </router-link>
+            <button class="btn-secondary" @click="logout" style="padding:6px 14px;font-size:13px">退出</button>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </div>
     <div v-if="authStore.isGuest" class="guest-banner">
       <span>游客模式</span>，<router-link to="/register">注册账号</router-link>可永久保存面试记录
     </div>
@@ -29,6 +32,7 @@
 import { onMounted, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
 import BugReportBanner from './components/BugReportBanner.vue'
+import AnnouncementBanner from './components/AnnouncementBanner.vue'
 import { useRouter } from 'vue-router'
 import { getProfile } from './api/user'
 
@@ -55,13 +59,15 @@ async function logout() {
 </script>
 
 <style scoped>
+.top-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
 .navbar {
   background: white;
   border-bottom: 1px solid #e5e7eb;
   padding: 0 20px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
 }
 .nav-content {
   max-width: 960px;
