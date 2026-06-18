@@ -99,6 +99,7 @@ services:
       retries: 5
 
   nginx:
+    build: ./nginx
     image: ai-interview-backend-nginx:latest
     container_name: ai-interview-nginx
     restart: unless-stopped
