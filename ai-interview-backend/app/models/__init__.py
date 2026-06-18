@@ -7,5 +7,6 @@ from .interview import Interview
 from .interview_message import InterviewMessage
 from .experience import Experience, ExperienceTag, UserCollection
 from .image_task import ImageTask
+from .announcement import Announcement
 
-__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "ImageTask"]
+__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "ImageTask", "Announcement"]

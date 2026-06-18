@@ -62,6 +62,11 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/images",
         tags=["client-image"]
     ),
+    RouteConfig(
+        module_path="app.api.client.v1.announcement",
+        prefix=f"{settings.API_V1_STR}/announcements",
+        tags=["client-announcement"]
+    ),
 ]
 
 # 后台路由配置
@@ -95,6 +100,11 @@ BACKOFFICE_ROUTES = [
         module_path="app.api.backoffice.v1.interviews",
         prefix=f"{settings.API_V1_STR}/backoffice/interviews",
         tags=["backoffice-interviews"]
+    ),
+    RouteConfig(
+        module_path="app.api.backoffice.v1.announcement",
+        prefix=f"{settings.API_V1_STR}/backoffice/announcements",
+        tags=["backoffice-announcement"]
     ),
 ]
 

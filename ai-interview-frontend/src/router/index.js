@@ -15,7 +15,9 @@ const routes = [
   { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue'), meta: { auth: true } },
   { path: '/experiences', name: 'Experiences', component: () => import('../views/Experiences.vue') },
   { path: '/experiences/:id', name: 'ExperienceDetail', component: () => import('../views/ExperienceDetail.vue') },
-  { path: '/image-studio', name: 'ImageStudio', component: () => import('../views/ImageStudio.vue'), meta: { auth: true } }
+  { path: '/image-studio', name: 'ImageStudio', component: () => import('../views/ImageStudio.vue'), meta: { auth: true } },
+  { path: '/announcements', name: 'Announcements', component: () => import('../views/Announcements.vue') },
+  { path: '/announcements/:id', name: 'AnnouncementDetail', component: () => import('../views/AnnouncementDetail.vue') }
 ]
 
 const router = createRouter({

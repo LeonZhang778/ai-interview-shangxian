@@ -16,6 +16,9 @@
         <router-link to="/admins" active-class="active">
           <span class="nav-icon">🛡️</span> 管理员管理
         </router-link>
+        <router-link to="/announcements" active-class="active">
+          <span class="nav-icon">📢</span> 公告管理
+        </router-link>
         <router-link to="/waiting-list" active-class="active">
           <span class="nav-icon">📋</span> 候选名单
         </router-link>

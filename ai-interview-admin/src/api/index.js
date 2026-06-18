@@ -32,3 +32,12 @@ export const adminApi = {
 export const waitingListApi = {
   list: (params) => api.get('/waiting-list', { params })
 }
+
+export const announcementApi = {
+  list: (params) => api.get('/announcements', { params }),
+  create: (data) => api.post('/announcements', null, { params: data }),
+  update: (id, data) => api.put(`/announcements/${id}`, null, { params: data }),
+  delete: (id) => api.delete(`/announcements/${id}`),
+  togglePin: (id) => api.put(`/announcements/${id}/pin`),
+  toggleStatus: (id, isActive) => api.put(`/announcements/${id}/status`, null, { params: { is_active: isActive } })
+}
