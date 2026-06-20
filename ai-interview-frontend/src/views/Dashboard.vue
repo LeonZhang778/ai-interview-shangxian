@@ -7,8 +7,8 @@
       </router-link>
     </div>
 
-    <div v-if="authStore.isGuest" class="guest-hint" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#1e40af">
-      游客模式下数据临时保存，<router-link to="/register" style="color:#4f46e5;font-weight:600">注册账号</router-link>后永久保留
+    <div v-if="authStore.isGuest" class="guest-hint" style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.12);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#a78bfa">
+      游客模式下数据临时保存，<router-link to="/register" style="color:#a855f7;font-weight:600">注册账号</router-link>后永久保留
     </div>
 
     <div v-if="loading" class="loading">加载中...</div>
@@ -93,11 +93,16 @@ async function handleDelete(interviewId) {
   margin: 20px 0;
 }
 .page-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 22px;
+  background: linear-gradient(135deg, #fff, #c4b5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .loading, .empty {
   text-align: center;
   padding: 60px 20px;
+  color: #6b7280;
 }
 .interview-list {
   display: flex;
@@ -108,6 +113,11 @@ async function handleDelete(interviewId) {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  transition: all 0.2s;
+}
+.interview-item:hover {
+  border-color: rgba(139,92,246,0.2);
+  transform: translateY(-1px);
 }
 .item-header {
   display: flex;
@@ -117,6 +127,7 @@ async function handleDelete(interviewId) {
 .position {
   font-weight: 600;
   font-size: 16px;
+  color: #f1f5f9;
 }
 .status {
   font-size: 12px;
@@ -124,12 +135,12 @@ async function handleDelete(interviewId) {
   border-radius: 12px;
 }
 .status.completed {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(16,185,129,0.1);
+  color: #34d399;
 }
 .status.in_progress {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(245,158,11,0.1);
+  color: #fbbf24;
 }
 .item-meta {
   display: flex;
@@ -142,10 +153,12 @@ async function handleDelete(interviewId) {
   gap: 8px;
 }
 .btn-danger {
-  background: #ef4444;
-  color: white;
+  background: rgba(239,68,68,0.1);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.15);
 }
 .btn-danger:hover {
-  background: #dc2626;
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.3);
 }
 </style>

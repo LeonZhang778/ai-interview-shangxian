@@ -264,11 +264,11 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.interview-page { display: flex; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; }
+.interview-page { display: flex; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; background: #0a0a1a; color: #e2e8f0; }
 
 /* 准备动画 */
 .prepare-overlay {
-  position: fixed; inset: 0; background: #f5f7fa;
+  position: fixed; inset: 0; background: #0a0a1a;
   display: flex; align-items: center; justify-content: center; z-index: 200;
 }
 .prepare-card { text-align: center; padding: 40px; }
@@ -278,19 +278,19 @@ async function handleSubmit() {
   50% { transform: translateY(-8px); }
 }
 .prepare-progress {
-  width: 280px; height: 6px; background: #e5e7eb; border-radius: 3px;
+  width: 280px; height: 6px; background: rgba(139,92,246,0.1); border-radius: 3px;
   margin: 16px auto 0; overflow: hidden;
 }
 .prepare-bar {
-  height: 100%; background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  height: 100%; background: linear-gradient(90deg, #7c3aed, #a855f7);
   border-radius: 3px; transition: width 0.3s ease;
 }
 
 /* 顶部 */
 .interview-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: white; border-bottom: 1px solid #e5e7eb;
-  font-size: 14px; font-weight: 600;
+  padding: 12px 20px; background: rgba(8,5,25,0.9); border-bottom: 1px solid rgba(139,92,246,0.1);
+  font-size: 14px; font-weight: 600; backdrop-filter: blur(20px);
 }
 .progress { color: #6b7280; font-weight: 400; }
 
@@ -302,37 +302,37 @@ async function handleSubmit() {
 
 /* 头像 */
 .avatar-col { flex-shrink: 0; margin-top: 2px; }
-.ai-avatar { border-radius: 50%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1)); }
+.ai-avatar { border-radius: 50%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
 .ai-avatar.thinking { animation: avatarPulse 1.5s ease-in-out infinite; }
 @keyframes avatarPulse {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(79,70,229,0)); }
-  50% { filter: drop-shadow(0 0 8px rgba(79,70,229,0.4)); }
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(168,85,247,0)); }
+  50% { filter: drop-shadow(0 0 8px rgba(168,85,247,0.5)); }
 }
 .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
 .user-avatar-placeholder {
   width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
   color: white; display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 600;
 }
 
 /* 气泡 */
 .bubble { max-width: 70%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
-.interviewer .bubble { background: white; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
-.candidate .bubble { background: #4f46e5; color: white; border-bottom-right-radius: 4px; }
+.interviewer .bubble { background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.12); border-bottom-left-radius: 4px; color: #e2e8f0; }
+.candidate .bubble { background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; border-bottom-right-radius: 4px; }
 .thinking-bubble { color: #6b7280; font-style: italic; }
 .dot-animation .dots::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
 @keyframes dots {
   0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; }
 }
 .streaming-content { display: inline; }
-.cursor-blink { display: inline; animation: blink 0.8s step-end infinite; color: #4f46e5; font-size: 14px; }
+.cursor-blink { display: inline; animation: blink 0.8s step-end infinite; color: #a855f7; font-size: 14px; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-.bubble-score { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 13px; }
-.interviewer .bubble-score { border-top-color: #e5e7eb; }
+.bubble-score { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); font-size: 13px; }
+.interviewer .bubble-score { border-top-color: rgba(139,92,246,0.12); }
 
 /* 输入 */
-.input-area { padding: 16px 20px; background: white; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; align-items: flex-end; }
+.input-area { padding: 16px 20px; background: rgba(8,5,25,0.9); border-top: 1px solid rgba(139,92,246,0.1); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: blur(20px); }
 .input-area textarea { flex: 1; resize: none; font-family: inherit; }
 .input-area.finished { justify-content: center; align-items: center; padding: 24px; gap: 16px; }
 .input-area.finished p { font-size: 18px; font-weight: 600; }

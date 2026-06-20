@@ -5,14 +5,14 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f7fa;
-  color: #333;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0a1a;
+  color: #e2e8f0;
   min-height: 100vh;
 }
 
 a {
-  color: #4f46e5;
+  color: #a855f7;
   text-decoration: none;
 }
 
@@ -26,41 +26,62 @@ button {
 }
 
 .btn-primary {
-  background: #4f46e5;
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
   color: white;
+  box-shadow: 0 2px 12px rgba(124,58,237,0.25);
 }
 
 .btn-primary:hover {
-  background: #4338ca;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.4);
+  transform: translateY(-1px);
 }
 
 .btn-primary:disabled {
-  background: #a5b4fc;
+  background: #4a4a6a;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-secondary {
-  background: #e5e7eb;
-  color: #374151;
+  background: rgba(139,92,246,0.08);
+  color: #a78bfa;
+  border: 1px solid rgba(139,92,246,0.15);
 }
 
 .btn-secondary:hover {
-  background: #d1d5db;
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(139,92,246,0.3);
 }
 
 input, select, textarea {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid rgba(139,92,246,0.12);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  background: rgba(139,92,246,0.04);
+  color: #e2e8f0;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #4a4a6a;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: rgba(139,92,246,0.35);
+  box-shadow: 0 0 16px rgba(139,92,246,0.08);
+  background: rgba(139,92,246,0.07);
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
 }
 
 .container {
@@ -70,8 +91,27 @@ input:focus, select:focus, textarea:focus {
 }
 
 .card {
-  background: white;
-  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.04);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card:hover {
+  border-color: rgba(139, 92, 246, 0.18);
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139,92,246,0.2);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139,92,246,0.35);
 }

@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="card" style="max-width:600px;margin:40px auto">
-      <h2 style="margin-bottom:20px">📄 上传简历 & 开始面试</h2>
+      <h2 style="margin-bottom:20px;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#fff,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent">上传简历 & 开始面试</h2>
 
       <!-- Step 1: 上传简历 -->
       <div v-if="step === 1">
@@ -40,8 +40,8 @@
 
       <!-- Step 2: 解析结果 + 简历分析 + 面试配置 -->
       <div v-if="step === 2">
-        <div class="parsed-info card" style="background:#f9fafb;margin-bottom:20px">
-          <h3 style="margin-bottom:12px">✅ 简历解析完成</h3>
+        <div class="parsed-info card" style="margin-bottom:20px">
+          <h3 style="margin-bottom:12px;color:#34d399">简历解析完成</h3>
           <div v-if="parsedContent">
             <p v-if="parsedContent.name"><strong>姓名：</strong>{{ parsedContent.name }}</p>
             <p v-if="parsedContent.education"><strong>学历：</strong>{{ parsedContent.education }}</p>
@@ -52,7 +52,7 @@
 
         <!-- 简历分析报告 -->
         <div v-if="analysis" class="card analysis-card" style="margin-bottom:20px">
-          <h3 style="margin-bottom:14px">📊 简历分析报告</h3>
+          <h3 style="margin-bottom:14px;color:#c4b5fd">简历分析报告</h3>
           <div class="analysis-score" v-if="analysis.overall_score">
             <div class="score-badge" :style="{ background: scoreColor(analysis.overall_score) }">
               {{ analysis.overall_score }}
@@ -74,11 +74,11 @@
           </div>
           <div class="analysis-two-col">
             <div v-if="analysis.strengths?.length">
-              <h4 style="color:#059669;margin-bottom:8px">✅ 优势</h4>
+              <h4 style="color:#34d399;margin-bottom:8px">优势</h4>
               <ul><li v-for="(s, i) in analysis.strengths" :key="i">{{ s }}</li></ul>
             </div>
             <div v-if="analysis.weaknesses?.length">
-              <h4 style="color:#dc2626;margin-bottom:8px">❌ 不足</h4>
+              <h4 style="color:#f87171;margin-bottom:8px">不足</h4>
               <ul><li v-for="(w, i) in analysis.weaknesses" :key="i">{{ w }}</li></ul>
             </div>
           </div>
@@ -367,75 +367,67 @@ async function handleStart() {
 
 <style scoped>
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #374151; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #9ca3af; }
 .upload-area {
-  border: 2px dashed #d1d5db; border-radius: 8px; padding: 40px;
-  text-align: center; cursor: pointer; transition: border-color 0.2s;
+  border: 2px dashed rgba(139,92,246,0.15); border-radius: 12px; padding: 40px;
+  text-align: center; cursor: pointer; transition: all 0.3s;
+  background: rgba(139,92,246,0.02);
 }
-.upload-area:hover { border-color: #4f46e5; }
-.error { color: #ef4444; font-size: 13px; margin-bottom: 12px; }
-.parsed-info p { font-size: 14px; margin-bottom: 6px; line-height: 1.6; }
+.upload-area:hover { border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.05); }
+.error { color: #f87171; font-size: 13px; margin-bottom: 12px; }
+.parsed-info p { font-size: 14px; margin-bottom: 6px; line-height: 1.6; color: #cbd5e1; }
 
-/* 解析动画 */
 .parsing-stage { text-align: center; padding: 30px 0; }
 .parsing-icon { font-size: 48px; margin-bottom: 16px; animation: pulse 1.5s ease-in-out infinite; }
 .ai-face-anim { margin-bottom: 16px; animation: faceFloat 2s ease-in-out infinite; }
-@keyframes faceFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.15); opacity: 0.7; }
-}
-.parsing-stage h3 { font-size: 16px; color: #374151; margin-bottom: 20px; }
+@keyframes faceFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } }
+.parsing-stage h3 { font-size: 16px; color: #e2e8f0; margin-bottom: 20px; }
 .progress-bar-wrapper {
-  width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-bottom: 8px;
+  width: 100%; height: 8px; background: rgba(139,92,246,0.08); border-radius: 4px; overflow: hidden; margin-bottom: 8px;
 }
 .progress-bar {
   height: 100%; border-radius: 4px; transition: width 0.3s ease;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed, #a78bfa);
+  background: linear-gradient(90deg, #7c3aed, #a855f7, #c4b5fd);
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
 }
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .progress-text { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
 .tips-area {
   min-height: 50px; display: flex; align-items: center; justify-content: center;
-  background: #f9fafb; border-radius: 10px; padding: 14px 20px;
+  background: rgba(139,92,246,0.04); border: 1px solid rgba(139,92,246,0.08);
+  border-radius: 10px; padding: 14px 20px;
 }
-.tip-text { font-size: 13px; color: #4b5563; line-height: 1.6; margin: 0; }
+.tip-text { font-size: 13px; color: #9ca3af; line-height: 1.6; margin: 0; }
 .tip-fade-enter-active, .tip-fade-leave-active { transition: all 0.4s ease; }
 .tip-fade-enter-from { opacity: 0; transform: translateY(8px); }
 .tip-fade-leave-to { opacity: 0; transform: translateY(-8px); }
 
-/* 分析报告 */
-.analysis-card { border: 1px solid #e5e7eb; }
+.analysis-card { border: 1px solid rgba(139,92,246,0.1); }
 .analysis-score { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .score-badge {
   width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center;
   justify-content: center; color: white; font-size: 18px; font-weight: 700;
+  box-shadow: 0 0 16px rgba(124,58,237,0.3);
 }
 .score-text { font-size: 14px; color: #6b7280; }
 .analysis-summary {
-  font-size: 14px; line-height: 1.8; color: #374151; margin-bottom: 16px;
-  padding: 10px 14px; background: #f9fafb; border-radius: 8px;
+  font-size: 14px; line-height: 1.8; color: #cbd5e1; margin-bottom: 16px;
+  padding: 10px 14px; background: rgba(139,92,246,0.04); border-radius: 8px;
 }
 .analysis-section { margin-bottom: 14px; }
-.analysis-section h4 { font-size: 14px; margin-bottom: 8px; color: #374151; }
+.analysis-section h4 { font-size: 14px; margin-bottom: 8px; color: #c4b5fd; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag { padding: 3px 10px; border-radius: 12px; font-size: 12px; }
-.tag-green { background: #d1fae5; color: #065f46; }
-.tag-red { background: #fee2e2; color: #991b1b; }
+.tag-green { background: rgba(16,185,129,0.1); color: #34d399; }
+.tag-red { background: rgba(239,68,68,0.1); color: #f87171; }
 .analysis-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
 .analysis-two-col ul, .analysis-section ul { list-style: none; padding: 0; }
 .analysis-two-col li, .analysis-section li {
-  font-size: 13px; line-height: 1.8; padding-left: 14px; position: relative;
+  font-size: 13px; line-height: 1.8; padding-left: 14px; position: relative; color: #cbd5e1;
 }
 .analysis-two-col li::before, .analysis-section li::before {
-  content: '•'; position: absolute; left: 0; color: #9ca3af;
+  content: '•'; position: absolute; left: 0; color: #6b7280;
 }
 </style>

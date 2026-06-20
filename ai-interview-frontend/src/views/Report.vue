@@ -19,20 +19,20 @@
 
       <!-- 总结 -->
       <div class="card" style="margin-top:16px" v-if="report.summary">
-        <h3 style="margin-bottom:10px">📝 总体评价</h3>
-        <p style="font-size:14px;line-height:1.8;color:#374151">{{ report.summary }}</p>
+        <h3 style="margin-bottom:10px;color:#c4b5fd">总体评价</h3>
+        <p style="font-size:14px;line-height:1.8;color:#cbd5e1">{{ report.summary }}</p>
       </div>
 
       <!-- 优势 & 不足 -->
       <div class="two-col" style="margin-top:16px">
         <div class="card" v-if="report.strengths?.length">
-          <h3 style="margin-bottom:10px;color:#059669">✅ 优势</h3>
+          <h3 style="margin-bottom:10px;color:#34d399">优势</h3>
           <ul>
             <li v-for="(s, i) in report.strengths" :key="i">{{ s }}</li>
           </ul>
         </div>
         <div class="card" v-if="report.weaknesses?.length">
-          <h3 style="margin-bottom:10px;color:#dc2626">⚠️ 不足</h3>
+          <h3 style="margin-bottom:10px;color:#f87171">不足</h3>
           <ul>
             <li v-for="(w, i) in report.weaknesses" :key="i">{{ w }}</li>
           </ul>
@@ -41,7 +41,7 @@
 
       <!-- 建议 -->
       <div class="card" style="margin-top:16px" v-if="report.suggestions?.length">
-        <h3 style="margin-bottom:10px">💡 改进建议</h3>
+        <h3 style="margin-bottom:10px;color:#c4b5fd">改进建议</h3>
         <ul>
           <li v-for="(s, i) in report.suggestions" :key="i">{{ s }}</li>
         </ul>
@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    <div v-else class="card" style="text-align:center;padding:60px;max-width:500px;margin:60px auto">
+    <div v-else class="card" style="text-align:center;padding:60px;max-width:500px;margin:60px auto;color:#6b7280">
       <p>报告加载失败</p>
       <router-link to="/dashboard" style="margin-top:12px;display:inline-block">返回首页</router-link>
     </div>
@@ -167,11 +167,12 @@ async function handleShare() {
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 24px rgba(124,58,237,0.3);
 }
 .score-num {
   font-size: 32px;
@@ -183,8 +184,10 @@ async function handleShare() {
   color: rgba(255,255,255,0.7);
 }
 .score-info h2 {
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 20px;
   margin-bottom: 4px;
+  color: #f1f5f9;
 }
 .hire-rec {
   font-size: 14px;
@@ -205,6 +208,7 @@ ul li {
   line-height: 1.8;
   padding-left: 16px;
   position: relative;
+  color: #cbd5e1;
 }
 ul li::before {
   content: '•';
@@ -221,28 +225,31 @@ ul li::before {
   gap: 10px;
   margin-bottom: 6px;
   font-size: 14px;
+  color: #e2e8f0;
 }
 .q-index {
-  background: #f3f4f6;
+  background: rgba(139,92,246,0.1);
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
   font-size: 12px;
-  color: #6b7280;
+  color: #a78bfa;
 }
 .q-text {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #cbd5e1;
 }
 .q-score {
   font-weight: 700;
   font-size: 16px;
+  color: #f1f5f9;
 }
 .q-bar {
   height: 6px;
-  background: #f3f4f6;
+  background: rgba(139,92,246,0.08);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -252,7 +259,7 @@ ul li::before {
   transition: width 0.5s ease;
 }
 
-/* Share card - hidden, used for screenshot */
+/* Share card */
 .share-card {
   position: absolute;
   left: -9999px;
@@ -265,44 +272,13 @@ ul li::before {
   border-radius: 16px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
-.share-header {
-  font-size: 14px;
-  opacity: 0.8;
-  margin-bottom: 16px;
-}
-.share-score {
-  font-size: 64px;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 8px;
-}
-.share-score span {
-  font-size: 24px;
-  font-weight: 400;
-  opacity: 0.6;
-}
-.share-position {
-  font-size: 16px;
-  opacity: 0.9;
-  margin-bottom: 12px;
-}
-.share-rec {
-  font-size: 14px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 8px;
-  padding: 6px 14px;
-  display: inline-block;
-  margin-bottom: 20px;
-}
-.share-footer {
-  font-size: 12px;
-  opacity: 0.6;
-  border-top: 1px solid rgba(255,255,255,0.2);
-  padding-top: 14px;
-  margin-top: 10px;
-}
+.share-header { font-size: 14px; opacity: 0.8; margin-bottom: 16px; }
+.share-score { font-size: 64px; font-weight: 800; line-height: 1; margin-bottom: 8px; }
+.share-score span { font-size: 24px; font-weight: 400; opacity: 0.6; }
+.share-position { font-size: 16px; opacity: 0.9; margin-bottom: 12px; }
+.share-rec { font-size: 14px; background: rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 14px; display: inline-block; margin-bottom: 20px; }
+.share-footer { font-size: 12px; opacity: 0.6; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 14px; margin-top: 10px; }
 
-/* Share button */
 .btn-share {
   background: linear-gradient(135deg, #f59e0b, #f97316);
   color: white;
