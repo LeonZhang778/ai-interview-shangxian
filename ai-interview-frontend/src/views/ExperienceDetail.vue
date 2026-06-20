@@ -81,7 +81,7 @@
 
         <div v-for="c in comments" :key="c.id" class="comment-item">
           <div class="comment-header">
-            <img v-if="c.user.avatar" :src="c.user.avatar" class="comment-avatar-img" />
+            <img v-if="c.user.avatar" :src="c.user.avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block;" />
             <span v-else class="comment-avatar">{{ (c.user.first_name || '?')[0] }}</span>
             <span class="comment-name">{{ c.user.first_name || '匿名用户' }}</span>
             <span class="comment-time">{{ formatTime(c.created_at) }}</span>
@@ -111,7 +111,7 @@
           <!-- 子回复 -->
           <div v-for="r in c.replies" :key="r.id" class="comment-item reply-item">
             <div class="comment-header">
-              <img v-if="r.user.avatar" :src="r.user.avatar" class="comment-avatar-img small" />
+              <img v-if="r.user.avatar" :src="r.user.avatar" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block;" />
               <span v-else class="comment-avatar small">{{ (r.user.first_name || '?')[0] }}</span>
               <span class="comment-name">{{ r.user.first_name || '匿名用户' }}</span>
               <span class="comment-time">{{ formatTime(r.created_at) }}</span>
