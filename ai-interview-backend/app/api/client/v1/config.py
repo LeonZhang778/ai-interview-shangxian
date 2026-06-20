@@ -1,8 +1,10 @@
 from fastapi import APIRouter
+from sqlalchemy import select
 from app.schemas.response import ApiResponse
 from app.common.release import RELEASE_CONFIG
 from app.services.common.redis import redis_client
 from app.db.session import get_db
+from app.models.setting import SystemSetting
 from sqlalchemy import text
 
 router = APIRouter()
@@ -59,5 +61,30 @@ async def health_check():
 @router.get("/release")
 async def get_release_config():
     return ApiResponse.success(data=RELEASE_CONFIG)
-    
 
+
+@router.get("/site-info")
+async def get_site_info():
+    """获取公开的站点配置（无需认证）"""
+    from app.db.session import get_session_local
+    SessionLocal = get_session_local()
+    async with SessionLocal() as db:
+        result = await db.execute(select(SystemSetting))
+        settings = result.scalars().all()
+        data = {s.key: s.value for s in settings}
+
+    # 只返回公开字段
+    public_keys = [
+        "site_name", "site_slogan", "site_logo",
+        "seo_title", "seo_description",
+        "icp_number", "contact_email",
+        "register_enabled", "guest_enabled",
+    ]
+    site_info = {k: data.get(k, "") for k in public_keys}
+
+    # 布尔字段转为实际 bool
+    for bool_key in ("register_enabled", "guest_enabled"):
+        val = site_info.get(bool_key, "true")
+        site_info[bool_key] = str(val).lower() in ("true", "1", "yes")
+
+    return ApiResponse.success(data=site_info)

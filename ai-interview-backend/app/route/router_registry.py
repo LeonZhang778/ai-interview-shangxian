@@ -106,6 +106,11 @@ BACKOFFICE_ROUTES = [
         prefix=f"{settings.API_V1_STR}/backoffice/announcements",
         tags=["backoffice-announcement"]
     ),
+    RouteConfig(
+        module_path="app.api.backoffice.v1.setting",
+        prefix=f"{settings.API_V1_STR}/backoffice/settings",
+        tags=["backoffice-setting"]
+    ),
 ]
 
 # 公共路由配置（不分客户端和后台的路由）

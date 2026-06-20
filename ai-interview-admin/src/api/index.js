@@ -41,3 +41,9 @@ export const announcementApi = {
   togglePin: (id) => api.put(`/announcements/${id}/pin`),
   toggleStatus: (id, isActive) => api.put(`/announcements/${id}/status`, null, { params: { is_active: isActive } })
 }
+
+export const settingsApi = {
+  list: () => api.get('/settings'),
+  batchUpdate: (data) => api.put('/settings', data),
+  updateSingle: (key, data) => api.put(`/settings/${key}`, data)
+}

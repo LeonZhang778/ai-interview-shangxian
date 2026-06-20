@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-content">
         <h1>AI 帮你模拟面试<br /><span class="highlight">提升通过率</span></h1>
-        <p class="hero-desc">上传简历，AI 自动生成个性化面试题，实时评分反馈，生成综合评估报告</p>
+        <p class="hero-desc">{{ siteSlogan }} — 上传简历，AI 自动生成个性化面试题，实时评分反馈</p>
         <div class="hero-actions">
           <button class="btn-glow" @click="handleGuest" :disabled="guestLoading">
             {{ guestLoading ? '进入中...' : '免费体验，无需注册' }}
@@ -54,27 +54,47 @@
 
     <!-- Footer -->
     <footer class="footer">
-      <p>智面 AI &copy; 2026 &mdash; 智能模拟面试平台</p>
+      <p>{{ siteName }} &copy; 2026 &mdash; {{ siteSlogan }}</p>
       <p class="footer-links">
         <router-link to="/login">登录</router-link>
         <router-link to="/register">注册</router-link>
-        <a href="mailto:1448203623@qq.com">反馈建议</a>
+        <a v-if="contactEmail" :href="`mailto:${contactEmail}`">反馈建议</a>
+        <a v-else href="mailto:1448203623@qq.com">反馈建议</a>
+      </p>
+      <p v-if="icpNumber" class="footer-icp" style="font-size:11px;color:#94a3b8;margin-top:8px">
+        {{ icpNumber }}
       </p>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { guestLogin } from '../api/auth'
+import { getSiteInfo } from '../api/config'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const guestLoading = ref(false)
 const userCount = ref('100+')
 const interviewCount = ref('500+')
+const siteName = ref('智面 AI')
+const siteSlogan = ref('AI 驱动的智能模拟面试平台')
+const icpNumber = ref('')
+const contactEmail = ref('')
+
+onMounted(async () => {
+  try {
+    const info = await getSiteInfo()
+    if (info.site_name) siteName.value = info.site_name
+    if (info.site_slogan) siteSlogan.value = info.site_slogan
+    if (info.icp_number) icpNumber.value = info.icp_number
+    if (info.contact_email) contactEmail.value = info.contact_email
+    if (info.seo_title) document.title = info.seo_title
+  } catch (e) { /* use defaults */ }
+})
 
 const features = [
   { icon: '📄', title: 'AI 简历解析', desc: '上传 PDF 简历，30 秒提取关键技能、经历和项目信息' },

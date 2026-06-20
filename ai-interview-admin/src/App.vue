@@ -19,6 +19,9 @@
         <router-link to="/announcements" active-class="active">
           <span class="nav-icon">📢</span> 公告管理
         </router-link>
+        <router-link to="/settings" active-class="active">
+          <span class="nav-icon">⚙️</span> 系统设置
+        </router-link>
         <router-link to="/waiting-list" active-class="active">
           <span class="nav-icon">📋</span> 候选名单
         </router-link>
