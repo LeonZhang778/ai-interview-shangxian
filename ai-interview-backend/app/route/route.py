@@ -12,6 +12,7 @@ from app.services.common.redis import redis_client
 from app.services.common.thread_pool import thread_pool_service
 from app.db.base import close_db_engine
 from app.schedule.schedule import setup_scheduler, shutdown_scheduler
+from app.services.common.setting_service import get_setting_bool
 import logging
 from app.common.log_consumer import consume_logs_forever
 import threading
@@ -98,6 +99,33 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # 维护模式中间件
+    @app.middleware("http")
+    async def maintenance_mode_middleware(request: Request, call_next):
+        path = request.url.path
+        # 仅拦截客户端 API，放行后台、健康检查、站点配置、文档
+        if (
+            path.startswith("/api/v1/")
+            and not path.startswith("/api/v1/backoffice")
+            and not path.startswith("/api/v1/config/health")
+            and not path.startswith("/api/v1/config/site-info")
+            and not path.startswith("/api/v1/config/release")
+            and not path.startswith("/client/")
+            and not path.startswith("/backoffice/")
+            and not path.startswith("/api-docs/")
+            and not path.startswith("/uploads/")
+        ):
+            try:
+                if await get_setting_bool("maintenance_mode", False):
+                    return ApiResponse.failed(
+                        message="系统维护中，请稍后再试",
+                        body_code=503,
+                        http_code=status.HTTP_503_SERVICE_UNAVAILABLE
+                    )
+            except Exception:
+                pass  # settings 读取失败时放行，不阻塞正常请求
+        return await call_next(request)
 
     # 开发环境提供文档访问指引，生产环境隐藏
     if settings.ENV in ["development", "preview"]:

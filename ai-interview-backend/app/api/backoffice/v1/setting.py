@@ -8,6 +8,7 @@ from app.api.backoffice.deps import get_current_admin
 from app.models.admin import Admin
 from app.models.setting import SystemSetting
 from app.schemas.response import ApiResponse
+from app.services.common.setting_service import invalidate_settings_cache
 
 router = APIRouter()
 
@@ -61,6 +62,7 @@ async def batch_update_settings(
             db.add(SystemSetting(key=item.key, value=item.value))
 
     await db.commit()
+    await invalidate_settings_cache()
     return ApiResponse.success(message="设置已更新")
 
 
@@ -83,4 +85,5 @@ async def update_single_setting(
         db.add(SystemSetting(key=key, value=body.value))
 
     await db.commit()
+    await invalidate_settings_cache()
     return ApiResponse.success(message="设置已更新")

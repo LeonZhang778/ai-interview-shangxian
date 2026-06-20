@@ -10,6 +10,7 @@ from app.schemas.client.auth import (
 )
 from app.schemas.client.user import UserProfile
 from app.services.client.auth import client_auth_service
+from app.services.common.setting_service import get_setting_bool
 from app.schemas.response import ApiResponse
 from app.models.user import User
 from pydantic import BaseModel
@@ -25,6 +26,8 @@ async def register(
     db: AsyncSession = Depends(get_db)
 ):
     """用户注册（直接注册并登录）"""
+    if not await get_setting_bool("register_enabled", True):
+        return ApiResponse.failed(message="注册功能已关闭", body_code=403, http_code=403)
     result = await client_auth_service.register_user(
         db, user_data.model_dump()
     )
@@ -34,6 +37,8 @@ async def register(
 @router.post("/guest", response_model=AuthToken)
 async def guest_login(db: AsyncSession = Depends(get_db)):
     """游客模式，无需注册即可体验"""
+    if not await get_setting_bool("guest_enabled", True):
+        return ApiResponse.failed(message="游客模式已关闭", body_code=403, http_code=403)
     result = await client_auth_service.create_guest_user(db)
     return ApiResponse.success(data=result)
 
@@ -44,6 +49,8 @@ async def send_verification_code(
     db: AsyncSession = Depends(get_db)
 ):
     """发送验证码"""
+    if request.code_type == "registration" and not await get_setting_bool("register_enabled", True):
+        return ApiResponse.failed(message="注册功能已关闭", body_code=403, http_code=403)
     result = await client_auth_service.send_verification_code(
         db, request.email, request.code_type
     )
