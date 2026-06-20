@@ -178,10 +178,10 @@ onMounted(async () => {
   font-weight: 600;
   letter-spacing: 0.3px;
 }
-.tag.type-info { background: rgba(59,130,246,0.12); color: #60a5fa; }
-.tag.type-update { background: rgba(16,185,129,0.12); color: #34d399; }
-.tag.type-maintenance { background: rgba(245,158,11,0.12); color: #fbbf24; }
-.tag.type-activity { background: rgba(236,72,153,0.12); color: #f472b6; }
+.tag.type-info { background: rgba(139,92,246,0.1); color: #a78bfa; }
+.tag.type-update { background: rgba(139,92,246,0.08); color: #8b7cf6; }
+.tag.type-maintenance { background: rgba(139,92,246,0.06); color: #7c6de8; }
+.tag.type-activity { background: rgba(6,182,212,0.08); color: #67d4e8; }
 .pin-badge {
   font-size: 11px;
   color: #f59e0b;
