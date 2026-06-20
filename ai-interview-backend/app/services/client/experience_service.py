@@ -3,7 +3,8 @@ from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
-from app.models.experience import Experience, ExperienceTag, UserCollection
+from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment
+from app.models.user import User
 from app.exceptions.http_exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
@@ -184,17 +185,33 @@ class ExperienceService:
     @staticmethod
     async def like_experience(
         db: AsyncSession,
-        experience_id: int
+        experience_id: int,
+        user_id: int
     ) -> Dict:
-        """点赞面经"""
+        """点赞/取消点赞面经（toggle）"""
         experience = await db.get(Experience, experience_id)
         if not experience or experience.status != "published":
             raise NotFoundError(message="面经不存在")
 
-        experience.like_count += 1
-        await db.commit()
+        result = await db.execute(
+            select(UserLike).where(
+                UserLike.user_id == user_id,
+                UserLike.experience_id == experience_id
+            )
+        )
+        existing = result.scalar_one_or_none()
 
-        return {"like_count": experience.like_count}
+        if existing:
+            await db.delete(existing)
+            experience.like_count = max(0, experience.like_count - 1)
+            liked = False
+        else:
+            db.add(UserLike(user_id=user_id, experience_id=experience_id))
+            experience.like_count += 1
+            liked = True
+
+        await db.commit()
+        return {"liked": liked, "like_count": experience.like_count}
 
     @staticmethod
     async def collect_experience(
@@ -233,6 +250,135 @@ class ExperienceService:
             "collected": collected,
             "collect_count": experience.collect_count
         }
+
+    @staticmethod
+    async def get_comments(
+        db: AsyncSession,
+        experience_id: int,
+        page: int = 1,
+        size: int = 20
+    ) -> Dict:
+        """获取评论列表（顶级评论 + 嵌套回复）"""
+        # 只查顶级评论
+        query = (
+            select(ExperienceComment)
+            .where(
+                ExperienceComment.experience_id == experience_id,
+                ExperienceComment.parent_id.is_(None)
+            )
+            .order_by(ExperienceComment.created_at.desc())
+        )
+        count_query = select(func.count()).select_from(
+            select(ExperienceComment).where(
+                ExperienceComment.experience_id == experience_id,
+                ExperienceComment.parent_id.is_(None)
+            ).subquery()
+        )
+        total = await db.scalar(count_query)
+
+        query = query.offset((page - 1) * size).limit(size)
+        result = await db.execute(query)
+        comments = result.scalars().all()
+
+        items = []
+        for c in comments:
+            replies_data = []
+            for r in c.replies:
+                replies_data.append({
+                    "id": r.id,
+                    "content": r.content,
+                    "user": {"id": r.author.id, "first_name": r.author.first_name or "", "avatar": r.author.avatar},
+                    "parent_id": r.parent_id,
+                    "like_count": r.like_count,
+                    "created_at": r.created_at.isoformat(),
+                })
+            items.append({
+                "id": c.id,
+                "content": c.content,
+                "user": {"id": c.author.id, "first_name": c.author.first_name or "", "avatar": c.author.avatar},
+                "parent_id": None,
+                "replies": replies_data,
+                "like_count": c.like_count,
+                "created_at": c.created_at.isoformat(),
+            })
+
+        return {"items": items, "total": total, "page": page, "per_page": size}
+
+    @staticmethod
+    async def create_comment(
+        db: AsyncSession,
+        experience_id: int,
+        user_id: int,
+        content: str,
+        parent_id: Optional[int] = None
+    ) -> Dict:
+        """发表评论"""
+        experience = await db.get(Experience, experience_id)
+        if not experience or experience.status != "published":
+            raise NotFoundError(message="面经不存在")
+
+        if parent_id:
+            parent = await db.get(ExperienceComment, parent_id)
+            if not parent or parent.experience_id != experience_id:
+                raise NotFoundError(message="父评论不存在")
+
+        comment = ExperienceComment(
+            experience_id=experience_id,
+            user_id=user_id,
+            parent_id=parent_id,
+            content=content,
+        )
+        db.add(comment)
+        await db.commit()
+        await db.refresh(comment)
+
+        return {
+            "id": comment.id,
+            "content": comment.content,
+            "user": {"id": comment.author.id, "first_name": comment.author.first_name or "", "avatar": comment.author.avatar},
+            "parent_id": comment.parent_id,
+            "like_count": 0,
+            "created_at": comment.created_at.isoformat(),
+        }
+
+    @staticmethod
+    async def delete_comment(
+        db: AsyncSession,
+        comment_id: int,
+        user_id: int
+    ) -> None:
+        """删除自己的评论"""
+        comment = await db.get(ExperienceComment, comment_id)
+        if not comment:
+            raise NotFoundError(message="评论不存在")
+        if comment.user_id != user_id:
+            from app.exceptions.http_exceptions import AuthorizationError
+            raise AuthorizationError(message="只能删除自己的评论")
+
+        await db.delete(comment)
+        await db.commit()
+
+    @staticmethod
+    async def check_user_liked(db: AsyncSession, user_id: int, experience_id: int) -> bool:
+        """检查用户是否已点赞"""
+        result = await db.execute(
+            select(UserLike).where(
+                UserLike.user_id == user_id,
+                UserLike.experience_id == experience_id
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def check_user_collected(db: AsyncSession, user_id: int, experience_id: int) -> bool:
+        """检查用户是否已收藏"""
+        result = await db.execute(
+            select(UserCollection).where(
+                UserCollection.user_id == user_id,
+                UserCollection.experience_id == experience_id
+            )
+        )
+        return result.scalar_one_or_none() is not None
 
     @staticmethod
     async def get_filter_options(db: AsyncSession) -> Dict:

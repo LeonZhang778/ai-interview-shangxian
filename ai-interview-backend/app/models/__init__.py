@@ -5,9 +5,9 @@ from .waiting_list import WaitingList
 from .resume import Resume
 from .interview import Interview
 from .interview_message import InterviewMessage
-from .experience import Experience, ExperienceTag, UserCollection
+from .experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment
 from .image_task import ImageTask
 from .announcement import Announcement
 from .setting import SystemSetting
 
-__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "ImageTask", "Announcement", "SystemSetting"]
+__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "ImageTask", "Announcement", "SystemSetting"]

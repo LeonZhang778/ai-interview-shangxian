@@ -52,6 +52,83 @@
         </button>
       </div>
 
+      <!-- 评论区 -->
+      <div class="comment-section">
+        <h2 class="comment-title">评论 ({{ commentTotal }})</h2>
+
+        <!-- 评论输入框 -->
+        <div class="comment-input-box">
+          <textarea
+            v-model="commentContent"
+            placeholder="写下你的评论..."
+            rows="3"
+            maxlength="1000"
+          ></textarea>
+          <div class="comment-input-actions">
+            <span class="char-count">{{ commentContent.length }}/1000</span>
+            <button
+              class="btn-primary btn-sm"
+              :disabled="!commentContent.trim() || commentSubmitting"
+              @click="submitComment"
+            >
+              {{ commentSubmitting ? '发送中...' : '发表评论' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 评论列表 -->
+        <div v-if="comments.length === 0" class="comment-empty">暂无评论，快来抢沙发吧</div>
+
+        <div v-for="c in comments" :key="c.id" class="comment-item">
+          <div class="comment-header">
+            <span class="comment-avatar">{{ (c.user.first_name || '?')[0] }}</span>
+            <span class="comment-name">{{ c.user.first_name || '匿名用户' }}</span>
+            <span class="comment-time">{{ formatTime(c.created_at) }}</span>
+            <button
+              v-if="authStore.user?.id === c.user.id"
+              class="comment-delete"
+              @click="handleDeleteComment(c.id)"
+            >删除</button>
+          </div>
+          <div class="comment-body">{{ c.content }}</div>
+          <div class="comment-footer">
+            <button class="reply-btn" @click="replyTo = replyTo === c.id ? null : c.id">
+              {{ replyTo === c.id ? '取消回复' : '回复' }}
+            </button>
+          </div>
+
+          <!-- 回复输入框 -->
+          <div v-if="replyTo === c.id" class="reply-input-box">
+            <textarea v-model="replyContent" placeholder="回复..." rows="2" maxlength="500"></textarea>
+            <button
+              class="btn-primary btn-sm"
+              :disabled="!replyContent.trim() || commentSubmitting"
+              @click="submitReply(c.id)"
+            >回复</button>
+          </div>
+
+          <!-- 子回复 -->
+          <div v-for="r in c.replies" :key="r.id" class="comment-item reply-item">
+            <div class="comment-header">
+              <span class="comment-avatar small">{{ (r.user.first_name || '?')[0] }}</span>
+              <span class="comment-name">{{ r.user.first_name || '匿名用户' }}</span>
+              <span class="comment-time">{{ formatTime(r.created_at) }}</span>
+              <button
+                v-if="authStore.user?.id === r.user.id"
+                class="comment-delete"
+                @click="handleDeleteComment(r.id)"
+              >删除</button>
+            </div>
+            <div class="comment-body">{{ r.content }}</div>
+          </div>
+        </div>
+
+        <!-- 加载更多 -->
+        <div v-if="comments.length < commentTotal" class="comment-load-more">
+          <button class="btn-sm" @click="loadComments(commentPage + 1)">加载更多评论</button>
+        </div>
+      </div>
+
       <!-- 转化入口 -->
       <div class="cta-section">
         <div class="cta-content">
@@ -90,7 +167,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getExperienceDetail, likeExperience, collectExperience } from '../api/experience'
+import { getExperienceDetail, likeExperience, collectExperience, getInteractionStatus, getComments, createComment, deleteComment } from '../api/experience'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
@@ -101,6 +178,14 @@ const experience = ref(null)
 const loading = ref(true)
 const liked = ref(false)
 const collected = ref(false)
+
+const comments = ref([])
+const commentTotal = ref(0)
+const commentPage = ref(1)
+const commentContent = ref('')
+const commentSubmitting = ref(false)
+const replyTo = ref(null)
+const replyContent = ref('')
 
 const renderedContent = computed(() => {
   if (!experience.value?.content) return ''
@@ -143,6 +228,7 @@ async function fetchDetail() {
     const id = route.params.id
     const data = await getExperienceDetail(id)
     experience.value = data
+    await Promise.all([loadInteractionStatus(), loadComments(1)])
   } catch (e) {
     console.error('加载面经详情失败:', e)
     experience.value = null
@@ -151,10 +237,33 @@ async function fetchDetail() {
   }
 }
 
+async function loadInteractionStatus() {
+  if (!authStore.token) return
+  try {
+    const data = await getInteractionStatus(experience.value.id)
+    liked.value = data.liked
+    collected.value = data.collected
+  } catch (e) { /* ignore */ }
+}
+
+async function loadComments(page) {
+  try {
+    const data = await getComments(experience.value.id, { page, size: 20 })
+    if (page === 1) {
+      comments.value = data.items
+    } else {
+      comments.value = [...comments.value, ...data.items]
+    }
+    commentTotal.value = data.total
+    commentPage.value = page
+  } catch (e) { console.error(e) }
+}
+
 async function handleLike() {
+  if (!authStore.token) { router.push('/login'); return }
   try {
     const data = await likeExperience(experience.value.id)
-    liked.value = true
+    liked.value = data.liked
     experience.value.like_count = data.like_count
   } catch (e) {
     console.error('点赞失败:', e)
@@ -162,10 +271,7 @@ async function handleLike() {
 }
 
 async function handleCollect() {
-  if (!authStore.token) {
-    router.push('/login')
-    return
-  }
+  if (!authStore.token) { router.push('/login'); return }
   try {
     const data = await collectExperience(experience.value.id)
     collected.value = data.collected
@@ -173,6 +279,55 @@ async function handleCollect() {
   } catch (e) {
     console.error('收藏失败:', e)
   }
+}
+
+async function submitComment(parentId) {
+  if (!authStore.token) { router.push('/login'); return }
+  const content = parentId ? replyContent.value : commentContent.value
+  if (!content.trim()) return
+  commentSubmitting.value = true
+  try {
+    const newComment = await createComment(experience.value.id, { content: content.trim(), parent_id: parentId || null })
+    if (parentId) {
+      const parent = comments.value.find(c => c.id === parentId)
+      if (parent) parent.replies.push(newComment)
+      replyContent.value = ''
+      replyTo.value = null
+    } else {
+      comments.value.unshift(newComment)
+      commentContent.value = ''
+    }
+    commentTotal.value++
+  } catch (e) {
+    alert('评论失败: ' + e.message)
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
+async function submitReply(parentId) {
+  await submitComment(parentId)
+}
+
+async function handleDeleteComment(commentId) {
+  if (!confirm('确定删除这条评论？')) return
+  try {
+    await deleteComment(commentId)
+    // Remove from list
+    comments.value = comments.value.filter(c => {
+      if (c.id === commentId) return false
+      c.replies = c.replies.filter(r => r.id !== commentId)
+      return true
+    })
+    commentTotal.value--
+  } catch (e) {
+    alert('删除失败: ' + e.message)
+  }
+}
+
+function formatTime(str) {
+  if (!str) return ''
+  return new Date(str).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 function goToDetail(id) {
@@ -537,6 +692,217 @@ onMounted(() => {
   gap: 16px;
   font-size: 12px;
   color: #9ca3af;
+}
+
+/* 评论区 */
+.comment-section {
+  max-width: 800px;
+  margin: 0 auto 24px;
+  padding: 0 20px;
+}
+
+.comment-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 16px;
+}
+
+.comment-input-box {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.comment-input-box textarea {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.comment-input-box textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.comment-input-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.char-count {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.comment-empty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 32px 0;
+  font-size: 14px;
+}
+
+.comment-item {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.reply-item {
+  margin-left: 40px;
+  margin-bottom: 8px;
+  background: #f9fafb;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.comment-avatar.small {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.comment-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-left: auto;
+}
+
+.comment-delete {
+  font-size: 12px;
+  color: #ef4444;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.comment-delete:hover {
+  background: #fef2f2;
+}
+
+.comment-body {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.comment-footer {
+  display: flex;
+  gap: 16px;
+}
+
+.reply-btn {
+  font-size: 12px;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.reply-btn:hover {
+  color: #4f46e5;
+  background: #eef2ff;
+}
+
+.reply-input-box {
+  margin: 8px 0 8px 40px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.reply-input-box textarea {
+  flex: 1;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  resize: none;
+}
+
+.reply-input-box textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.reply-input-box .btn-primary {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.comment-load-more {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.btn-sm {
+  padding: 6px 16px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+}
+
+.btn-sm:hover {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.btn-primary {
+  background: #4f46e5;
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 响应式 */

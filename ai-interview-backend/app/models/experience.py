@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -40,3 +40,29 @@ class UserCollection(BaseModel):
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     experience_id = Column(Integer, ForeignKey("experiences.id", ondelete="CASCADE"), primary_key=True)
+
+
+class UserLike(BaseModel):
+    __tablename__ = "user_likes"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    experience_id = Column(Integer, ForeignKey("experiences.id", ondelete="CASCADE"), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "experience_id", name="uq_user_like"),
+    )
+
+
+class ExperienceComment(BaseModel):
+    __tablename__ = "experience_comments"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    experience_id = Column(Integer, ForeignKey("experiences.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("experience_comments.id", ondelete="CASCADE"), nullable=True)
+    content = Column(Text, nullable=False)
+    like_count = Column(Integer, default=0)
+
+    author = relationship("User", lazy="joined")
+    replies = relationship("ExperienceComment", backref="parent", remote_side="ExperienceComment.id", lazy="selectin")
