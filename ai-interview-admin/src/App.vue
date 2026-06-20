@@ -22,8 +22,14 @@
         <router-link to="/settings" active-class="active">
           <span class="nav-icon">⚙️</span> 系统设置
         </router-link>
+        <router-link to="/feedbacks" active-class="active">
+          <span class="nav-icon">📝</span> 用户反馈
+        </router-link>
+        <router-link to="/audit-logs" active-class="active">
+          <span class="nav-icon">📋</span> 操作日志
+        </router-link>
         <router-link to="/waiting-list" active-class="active">
-          <span class="nav-icon">📋</span> 候选名单
+          <span class="nav-icon">⏳</span> 候选名单
         </router-link>
       </nav>
       <div class="sidebar-footer">

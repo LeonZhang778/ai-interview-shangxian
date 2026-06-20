@@ -67,6 +67,11 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/announcements",
         tags=["client-announcement"]
     ),
+    RouteConfig(
+        module_path="app.api.client.v1.feedback",
+        prefix=f"{settings.API_V1_STR}/feedbacks",
+        tags=["client-feedback"]
+    ),
 ]
 
 # 后台路由配置
@@ -110,6 +115,21 @@ BACKOFFICE_ROUTES = [
         module_path="app.api.backoffice.v1.setting",
         prefix=f"{settings.API_V1_STR}/backoffice/settings",
         tags=["backoffice-setting"]
+    ),
+    RouteConfig(
+        module_path="app.api.backoffice.v1.feedback",
+        prefix=f"{settings.API_V1_STR}/backoffice/feedbacks",
+        tags=["backoffice-feedback"]
+    ),
+    RouteConfig(
+        module_path="app.api.backoffice.v1.audit_log",
+        prefix=f"{settings.API_V1_STR}/backoffice/audit-logs",
+        tags=["backoffice-audit-log"]
+    ),
+    RouteConfig(
+        module_path="app.api.backoffice.v1.analytics",
+        prefix=f"{settings.API_V1_STR}/backoffice/analytics",
+        tags=["backoffice-analytics"]
     ),
 ]
 

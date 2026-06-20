@@ -9,5 +9,7 @@ from .experience import Experience, ExperienceTag, UserCollection, UserLike, Exp
 from .image_task import ImageTask
 from .announcement import Announcement
 from .setting import SystemSetting
+from .feedback import Feedback
+from .audit_log import AuditLog
 
-__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "ImageTask", "Announcement", "SystemSetting"]
+__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog"]

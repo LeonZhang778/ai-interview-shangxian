@@ -47,3 +47,23 @@ export const settingsApi = {
   batchUpdate: (data) => api.put('/settings', data),
   updateSingle: (key, data) => api.put(`/settings/${key}`, data)
 }
+
+export const feedbackApi = {
+  list: (params) => api.get('/feedbacks', { params }),
+  stats: () => api.get('/feedbacks/stats'),
+  updateStatus: (id, status) => api.put(`/feedbacks/${id}/status`, null, { params: { status } }),
+  reply: (id, adminReply) => api.put(`/feedbacks/${id}/reply`, null, { params: { admin_reply: adminReply } })
+}
+
+export const auditLogApi = {
+  list: (params) => api.get('/audit-logs', { params }),
+  export: (params) => api.get('/audit-logs/export', { params, responseType: 'blob' })
+}
+
+export const analyticsApi = {
+  overview: () => api.get('/analytics/overview'),
+  userTrend: (days) => api.get('/analytics/user-trend', { params: { days } }),
+  interviewTrend: (days) => api.get('/analytics/interview-trend', { params: { days } }),
+  experienceRanking: () => api.get('/analytics/experience-ranking'),
+  activeUsers: () => api.get('/analytics/active-users')
+}
