@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment
 from app.models.user import User
 from app.exceptions.http_exceptions import NotFoundError
@@ -266,6 +266,7 @@ class ExperienceService:
                 ExperienceComment.experience_id == experience_id,
                 ExperienceComment.parent_id.is_(None)
             )
+            .options(joinedload(ExperienceComment.author))
             .order_by(ExperienceComment.created_at.desc())
         )
         count_query = select(func.count()).select_from(
@@ -278,12 +279,28 @@ class ExperienceService:
 
         query = query.offset((page - 1) * size).limit(size)
         result = await db.execute(query)
-        comments = result.scalars().all()
+        comments = result.unique().scalars().all()
+
+        # 批量查回复
+        comment_ids = [c.id for c in comments]
+        replies_map = {}
+        if comment_ids:
+            reply_query = (
+                select(ExperienceComment)
+                .where(
+                    ExperienceComment.parent_id.in_(comment_ids)
+                )
+                .options(joinedload(ExperienceComment.author))
+                .order_by(ExperienceComment.created_at.asc())
+            )
+            reply_result = await db.execute(reply_query)
+            for r in reply_result.unique().scalars().all():
+                replies_map.setdefault(r.parent_id, []).append(r)
 
         items = []
         for c in comments:
             replies_data = []
-            for r in c.replies:
+            for r in replies_map.get(c.id, []):
                 replies_data.append({
                     "id": r.id,
                     "content": r.content,
