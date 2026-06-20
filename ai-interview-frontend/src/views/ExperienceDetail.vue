@@ -69,7 +69,7 @@
             <button
               class="btn-primary btn-sm"
               :disabled="!commentContent.trim() || commentSubmitting"
-              @click="submitComment"
+              @click="submitComment(null)"
             >
               {{ commentSubmitting ? '发送中...' : '发表评论' }}
             </button>
@@ -85,7 +85,7 @@
             <span class="comment-name">{{ c.user.first_name || '匿名用户' }}</span>
             <span class="comment-time">{{ formatTime(c.created_at) }}</span>
             <button
-              v-if="authStore.user?.id === c.user.id"
+              v-if="Number(authStore.userId) === c.user.id"
               class="comment-delete"
               @click="handleDeleteComment(c.id)"
             >删除</button>
@@ -114,7 +114,7 @@
               <span class="comment-name">{{ r.user.first_name || '匿名用户' }}</span>
               <span class="comment-time">{{ formatTime(r.created_at) }}</span>
               <button
-                v-if="authStore.user?.id === r.user.id"
+                v-if="Number(authStore.userId) === r.user.id"
                 class="comment-delete"
                 @click="handleDeleteComment(r.id)"
               >删除</button>
