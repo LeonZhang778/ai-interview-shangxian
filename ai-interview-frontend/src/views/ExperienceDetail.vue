@@ -81,7 +81,8 @@
 
         <div v-for="c in comments" :key="c.id" class="comment-item">
           <div class="comment-header">
-            <span class="comment-avatar">{{ (c.user.first_name || '?')[0] }}</span>
+            <img v-if="c.user.avatar" :src="c.user.avatar" class="comment-avatar-img" />
+            <span v-else class="comment-avatar">{{ (c.user.first_name || '?')[0] }}</span>
             <span class="comment-name">{{ c.user.first_name || '匿名用户' }}</span>
             <span class="comment-time">{{ formatTime(c.created_at) }}</span>
             <button
@@ -110,7 +111,8 @@
           <!-- 子回复 -->
           <div v-for="r in c.replies" :key="r.id" class="comment-item reply-item">
             <div class="comment-header">
-              <span class="comment-avatar small">{{ (r.user.first_name || '?')[0] }}</span>
+              <img v-if="r.user.avatar" :src="r.user.avatar" class="comment-avatar-img small" />
+              <span v-else class="comment-avatar small">{{ (r.user.first_name || '?')[0] }}</span>
               <span class="comment-name">{{ r.user.first_name || '匿名用户' }}</span>
               <span class="comment-time">{{ formatTime(r.created_at) }}</span>
               <button
@@ -789,6 +791,19 @@ onMounted(() => {
   width: 26px;
   height: 26px;
   font-size: 12px;
+}
+
+.comment-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.comment-avatar-img.small {
+  width: 26px;
+  height: 26px;
 }
 
 .comment-name {
