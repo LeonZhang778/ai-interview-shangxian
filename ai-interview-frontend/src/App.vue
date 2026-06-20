@@ -10,6 +10,7 @@
             <router-link to="/image-studio">AI 画图</router-link>
             <router-link to="/dashboard">面试记录</router-link>
             <router-link to="/resume/upload">上传简历</router-link>
+            <router-link to="/feedbacks" title="我的反馈">我的反馈</router-link>
             <router-link to="/profile" class="nav-user-link">
               <img v-if="authStore.userAvatar && !avatarError" :src="authStore.userAvatar" class="nav-avatar" alt="avatar" @error="avatarError = true" />
               <span v-else class="nav-avatar-placeholder">👤</span>

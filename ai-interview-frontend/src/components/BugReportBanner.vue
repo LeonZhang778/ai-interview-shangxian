@@ -55,13 +55,12 @@ async function submitFeedback() {
   submitting.value = true
   submitSuccess.value = false
   try {
-    const params = new URLSearchParams()
-    params.append('content', form.content)
-    params.append('feedback_type', form.feedback_type)
-    if (form.contact) params.append('contact', form.contact)
-    params.append('page_url', window.location.href)
-
-    await api.post('/feedbacks', params)
+    await api.post('/feedbacks', {
+      content: form.content,
+      feedback_type: form.feedback_type,
+      contact: form.contact || undefined,
+      page_url: window.location.href,
+    })
     submitSuccess.value = true
     form.content = ''
     form.contact = ''
