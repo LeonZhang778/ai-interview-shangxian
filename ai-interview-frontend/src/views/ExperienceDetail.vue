@@ -290,7 +290,7 @@ async function submitComment(parentId) {
     const newComment = await createComment(experience.value.id, { content: content.trim(), parent_id: parentId || null })
     if (parentId) {
       const parent = comments.value.find(c => c.id === parentId)
-      if (parent) parent.replies.push(newComment)
+      if (parent) { if (!parent.replies) parent.replies = []; parent.replies.push(newComment) }
       replyContent.value = ''
       replyTo.value = null
     } else {
