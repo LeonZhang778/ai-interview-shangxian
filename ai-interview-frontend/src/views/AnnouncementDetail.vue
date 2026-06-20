@@ -1,26 +1,34 @@
 <template>
-  <div class="container">
-    <div class="page-header">
-      <router-link to="/announcements" class="back-link">← 返回公告列表</router-link>
-    </div>
-
-    <div v-if="loading" class="loading">加载中...</div>
-
-    <div v-else-if="!announcement" class="empty card">
-      <p style="font-size:48px;margin-bottom:12px">😕</p>
-      <p>公告不存在或已过期</p>
-    </div>
-
-    <div v-else class="card detail-card">
-      <div class="detail-header">
-        <span class="tag" :class="`type-${announcement.type}`">{{ typeLabels[announcement.type] || '通知' }}</span>
-        <span v-if="announcement.is_pinned" class="pin-badge">📌 置顶</span>
+  <div class="announcement-detail-page">
+    <div class="container">
+      <div class="page-header">
+        <router-link to="/announcements" class="back-link">&larr; 返回公告列表</router-link>
       </div>
-      <h1 class="detail-title">{{ announcement.title }}</h1>
-      <div class="detail-meta">
-        <span>发布时间：{{ formatDate(announcement.published_at) }}</span>
+
+      <div v-if="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <span>加载中...</span>
       </div>
-      <div class="detail-content" v-html="renderContent(announcement.content)"></div>
+
+      <div v-else-if="!announcement" class="empty-state">
+        <div class="empty-icon">&#x1F615;</div>
+        <p>公告不存在或已过期</p>
+      </div>
+
+      <div v-else class="detail-card">
+        <div class="card-top-line"></div>
+        <div class="card-inner">
+          <div class="detail-header">
+            <span class="tag" :class="`type-${announcement.type}`">{{ typeLabels[announcement.type] || '通知' }}</span>
+            <span v-if="announcement.is_pinned" class="pin-badge">&#x1F4CC; 置顶</span>
+          </div>
+          <h1 class="detail-title">{{ announcement.title }}</h1>
+          <div class="detail-meta">
+            <span>发布时间：{{ formatDate(announcement.published_at) }}</span>
+          </div>
+          <div class="detail-content" v-html="renderContent(announcement.content)"></div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -63,17 +71,74 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-header {
-  margin: 20px 0;
+.announcement-detail-page {
+  min-height: 100vh;
+  background: #0a0a1a;
+  color: #e2e8f0;
 }
-.back-link { color: #6b7280; font-size: 14px; text-decoration: none; }
-.back-link:hover { color: #4f46e5; }
 
-.loading, .empty { text-align: center; padding: 60px 20px; }
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
 
+.page-header {
+  margin-bottom: 24px;
+}
+.back-link {
+  color: #6b7280;
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.back-link:hover { color: #a855f7; }
+
+/* 加载 */
+.loading {
+  text-align: center;
+  padding: 80px 20px;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.loading-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid rgba(139,92,246,0.15);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #4a4a6a;
+}
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+/* 详情卡片 */
 .detail-card {
+  background: rgba(139, 92, 246, 0.04);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.card-top-line {
+  height: 2px;
+  background: linear-gradient(90deg, #a855f7, #06b6d4);
+}
+.card-inner {
   padding: 32px;
 }
+
 .detail-header {
   display: flex;
   align-items: center;
@@ -82,32 +147,45 @@ onMounted(async () => {
 }
 .tag {
   font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
-.tag.type-info { background: #dbeafe; color: #1e40af; }
-.tag.type-update { background: #d1fae5; color: #065f46; }
-.tag.type-maintenance { background: #fef3c7; color: #92400e; }
-.tag.type-activity { background: #fce7f3; color: #9d174d; }
+.tag.type-info { background: rgba(59,130,246,0.12); color: #60a5fa; }
+.tag.type-update { background: rgba(16,185,129,0.12); color: #34d399; }
+.tag.type-maintenance { background: rgba(245,158,11,0.12); color: #fbbf24; }
+.tag.type-activity { background: rgba(236,72,153,0.12); color: #f472b6; }
 .pin-badge { font-size: 11px; color: #f59e0b; font-weight: 600; }
 
 .detail-title {
-  font-size: 24px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 26px;
   font-weight: 700;
-  color: #1f2937;
+  color: #f8fafc;
   margin-bottom: 12px;
+  line-height: 1.3;
 }
 .detail-meta {
   font-size: 13px;
-  color: #9ca3af;
+  color: #4a4a6a;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(139,92,246,0.08);
   margin-bottom: 24px;
 }
 .detail-content {
   font-size: 15px;
   line-height: 1.8;
-  color: #374151;
+  color: #cbd5e1;
+}
+.detail-content :deep(strong) {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .container { padding: 20px 16px; }
+  .card-inner { padding: 20px; }
+  .detail-title { font-size: 22px; }
 }
 </style>
