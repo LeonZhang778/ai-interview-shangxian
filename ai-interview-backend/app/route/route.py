@@ -100,9 +100,9 @@ def create_app():
         allow_headers=["*"],
     )
 
-    # 维护模式中间件
+    # 维护模式 & 功能开关中间件
     @app.middleware("http")
-    async def maintenance_mode_middleware(request: Request, call_next):
+    async def feature_toggle_middleware(request: Request, call_next):
         path = request.url.path
         # 仅拦截客户端 API，放行后台、健康检查、站点配置、文档
         if (
@@ -117,12 +117,29 @@ def create_app():
             and not path.startswith("/uploads/")
         ):
             try:
+                # 维护模式：拦截所有客户端 API
                 if await get_setting_bool("maintenance_mode", False):
                     return ApiResponse.failed(
                         message="系统维护中，请稍后再试",
                         body_code=503,
                         http_code=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
+                # 注册开关：拦截注册相关接口
+                if path in ("/api/v1/auth/register", "/api/v1/auth/send-verification-code"):
+                    if not await get_setting_bool("register_enabled", True):
+                        return ApiResponse.failed(
+                            message="注册功能已关闭",
+                            body_code=403,
+                            http_code=status.HTTP_403_FORBIDDEN
+                        )
+                # 游客模式开关：拦截游客登录
+                if path == "/api/v1/auth/guest":
+                    if not await get_setting_bool("guest_enabled", True):
+                        return ApiResponse.failed(
+                            message="游客模式已关闭",
+                            body_code=403,
+                            http_code=status.HTTP_403_FORBIDDEN
+                        )
             except Exception:
                 pass  # settings 读取失败时放行，不阻塞正常请求
         return await call_next(request)
