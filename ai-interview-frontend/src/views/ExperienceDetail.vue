@@ -804,6 +804,9 @@ onMounted(() => {
 .comment-avatar-img.small {
   width: 26px;
   height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .comment-name {
