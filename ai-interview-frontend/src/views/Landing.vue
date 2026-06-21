@@ -1,5 +1,6 @@
 <template>
   <div class="landing">
+    <StarryBackground />
     <!-- Hero -->
     <section class="hero">
       <div class="hero-content">
@@ -74,6 +75,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { guestLogin } from '../api/auth'
 import { getSiteInfo } from '../api/config'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -135,14 +137,18 @@ async function handleGuest() {
 .landing {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text-primary);
-  background: var(--bg-base);
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
 }
 
 /* Hero */
 .hero {
+  position: relative;
+  z-index: 2;
   background: linear-gradient(135deg, rgba(124,58,237,0.25) 0%, rgba(99,102,241,0.18) 50%, rgba(139,92,246,0.12) 100%);
   color: white;
-  padding: 80px 20px 60px;
+  padding: 100px 20px 80px;
   text-align: center;
   border-bottom: 1px solid var(--border-default);
 }
@@ -220,6 +226,8 @@ async function handleGuest() {
 
 /* Features */
 .features {
+  position: relative;
+  z-index: 2;
   padding: 60px 20px;
   max-width: 900px;
   margin: 0 auto;
@@ -271,6 +279,8 @@ async function handleGuest() {
 
 /* Steps */
 .steps {
+  position: relative;
+  z-index: 2;
   background: var(--bg-card);
   padding: 60px 20px;
   border-top: 1px solid var(--border-default);
@@ -316,6 +326,8 @@ async function handleGuest() {
 
 /* CTA */
 .cta {
+  position: relative;
+  z-index: 2;
   text-align: center;
   padding: 60px 20px;
   max-width: 500px;
@@ -334,6 +346,8 @@ async function handleGuest() {
 
 /* Footer */
 .footer {
+  position: relative;
+  z-index: 2;
   text-align: center;
   padding: 30px 20px;
   border-top: 1px solid var(--border-default);

@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="detail-page">
     <div v-if="loading" class="loading-state">加载中...</div>
     <div v-else-if="!experience" class="empty-state">面经不存在或已被删除</div>
@@ -131,12 +132,22 @@
         </div>
       </div>
 
-      <!-- 转化入口 -->
+      <!-- AI 模拟面试入口 -->
       <div class="cta-section">
         <div class="cta-content">
-          <h3>这篇面经的题目，你能在智面答出来吗？</h3>
-          <p>上传简历，AI 面试官为你模拟真实面试场景</p>
-          <router-link to="/resume/upload" class="cta-btn">开始模拟面试</router-link>
+          <h3>基于这篇面经，AI 为你模拟面试</h3>
+          <p>AI 将根据面经内容生成同类型面试题，开启模拟面试</p>
+          <div class="practice-options">
+            <select v-model="practiceCount" class="practice-select">
+              <option :value="3">3 题</option>
+              <option :value="5">5 题</option>
+              <option :value="8">8 题</option>
+              <option :value="10">10 题</option>
+            </select>
+            <button class="cta-btn" :disabled="practiceLoading" @click="handlePractice">
+              {{ practiceLoading ? '生成中...' : '开始模拟面试' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -170,8 +181,10 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getExperienceDetail, likeExperience, collectExperience, getInteractionStatus, getComments, createComment, deleteComment } from '../api/experience'
+import { startPractice } from '../api/interview'
 import { useAuthStore } from '../stores/auth'
 import { marked } from 'marked'
+import StarryBackground from '../components/StarryBackground.vue'
 
 marked.setOptions({
   breaks: true,
@@ -186,6 +199,9 @@ const experience = ref(null)
 const loading = ref(true)
 const liked = ref(false)
 const collected = ref(false)
+
+const practiceCount = ref(5)
+const practiceLoading = ref(false)
 
 const comments = ref([])
 const commentTotal = ref(0)
@@ -303,6 +319,19 @@ async function handleDeleteComment(commentId) {
   }
 }
 
+async function handlePractice() {
+  if (!authStore.token) { router.push('/login'); return }
+  practiceLoading.value = true
+  try {
+    const data = await startPractice(experience.value.id, practiceCount.value)
+    router.push(`/interview/${data.interview_id}`)
+  } catch (e) {
+    alert('创建模拟面试失败: ' + e.message)
+  } finally {
+    practiceLoading.value = false
+  }
+}
+
 function formatTime(str) {
   if (!str) return ''
   return new Date(str).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -324,7 +353,6 @@ onMounted(() => {
 <style scoped>
 .detail-page {
   min-height: 100vh;
-  background: var(--bg-base);
   padding-bottom: 40px;
 }
 .loading-state, .empty-state { text-align: center; padding: 80px 20px; color: var(--text-dim); font-size: 15px; }
@@ -392,13 +420,22 @@ onMounted(() => {
 }
 .cta-content h3 { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--text-primary); }
 .cta-content p { font-size: 14px; color: var(--text-secondary); margin: 0 0 20px; }
+.practice-options { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.practice-select {
+  padding: 10px 14px; border-radius: 8px;
+  background: var(--bg-card); color: var(--text-primary);
+  border: 1px solid var(--border-default); font-size: 14px;
+  cursor: pointer;
+}
+.practice-select:focus { outline: none; border-color: rgba(139,92,246,0.4); }
 .cta-btn {
   display: inline-block; padding: 12px 32px; border-radius: 10px;
   background: linear-gradient(135deg, #7c3aed, #6366f1); color: white;
-  font-size: 15px; font-weight: 700; text-decoration: none;
+  font-size: 15px; font-weight: 700; text-decoration: none; border: none; cursor: pointer;
   transition: all 0.3s; box-shadow: 0 4px 20px rgba(124,58,237,0.3);
 }
 .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,0.45); }
+.cta-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 .related-section { max-width: 800px; margin: 0 auto; padding: 0 20px; }
 .related-section h2 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: var(--accent-light); margin: 0 0 16px; }

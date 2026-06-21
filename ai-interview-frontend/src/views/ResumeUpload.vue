@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="container">
     <div class="card" style="max-width:600px;margin:40px auto">
       <h2 style="margin-bottom:20px;font-family:'Space Grotesk',sans-serif;background:var(--title-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent">上传简历 & 开始面试</h2>
@@ -144,6 +145,7 @@ import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadResume, getResume } from '../api/resume'
 import { startInterview } from '../api/interview'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const router = useRouter()
 const step = ref(1)

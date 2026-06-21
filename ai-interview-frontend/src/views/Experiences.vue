@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="experiences-page">
     <!-- 顶部 Hero -->
     <div class="hero-section">
@@ -126,11 +127,6 @@
                 class="btn-read"
                 @click.stop
               >阅读全文</router-link>
-              <router-link
-                to="/resume/upload"
-                class="btn-practice"
-                @click.stop
-              >用智面模拟这场面试</router-link>
             </div>
           </div>
         </div>
@@ -150,6 +146,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getExperiences, getFilterOptions } from '../api/experience'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const router = useRouter()
 
@@ -257,7 +254,6 @@ onMounted(() => {
 <style scoped>
 .experiences-page {
   min-height: 100vh;
-  background: var(--bg-base);
 }
 
 .hero-section {

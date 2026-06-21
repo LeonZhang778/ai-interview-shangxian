@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="submit-page">
     <div class="page-header">
       <h1>投稿面经</h1>
@@ -133,6 +134,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { submitExperience } from '../api/experience'
 import { marked } from 'marked'
+import StarryBackground from '../components/StarryBackground.vue'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -242,7 +244,6 @@ onMounted(() => {
 <style scoped>
 .submit-page {
   min-height: 100vh;
-  background: var(--bg-base);
   padding-bottom: 60px;
 }
 

@@ -259,6 +259,44 @@ class AIService:
         return AIService._extract_json(result)
 
     @staticmethod
+    async def generate_questions_from_experience(
+        title: str,
+        company: str,
+        position: str,
+        content: str,
+        count: int = 5
+    ) -> list:
+        """根据面经内容生成同类型面试题"""
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    f"你是一个资深技术面试官，正在为{company}公司的{position}岗位准备面试题。\n"
+                    "以下是一篇面经，请根据面经内容生成同类型、同难度的面试题。\n"
+                    "要求：\n"
+                    "1. 问题类型覆盖面经中提到的考察方向\n"
+                    "2. 难度与面经描述匹配\n"
+                    "3. 不要照搬面经原文，而是生成同类型的新问题\n"
+                    "4. 返回纯JSON数组格式（不要markdown代码块）\n"
+                    '格式：[{"index": 0, "question": "题目内容", "category": "分类"}]\n'
+                    "分类包括：technical, project, coding, system-design, behavioral"
+                )
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"面经标题：{title}\n"
+                    f"公司：{company}\n"
+                    f"岗位：{position}\n"
+                    f"面经内容：\n{content[:3000]}\n\n"
+                    f"请生成{count}道面试题。"
+                )
+            }
+        ]
+        result = await AIService._chat(messages, temperature=0.7)
+        return AIService._extract_json(result)
+
+    @staticmethod
     async def evaluate_answer(
         question: str,
         answer: str,

@@ -167,7 +167,16 @@ class ImageService:
             )
             response.raise_for_status()
             result = response.json()
-            return base64.b64decode(result["data"][0]["b64_json"])
+            data_item = result["data"][0]
+            # API 可能返回 base64 或 URL
+            if data_item.get("b64_json"):
+                return base64.b64decode(data_item["b64_json"])
+            elif data_item.get("url"):
+                img_resp = await client.get(data_item["url"])
+                img_resp.raise_for_status()
+                return img_resp.content
+            else:
+                raise ValueError("API 未返回图片数据")
 
     @staticmethod
     def save_image(image_data: bytes, task_id: int) -> str:

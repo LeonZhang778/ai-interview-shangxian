@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="announcement-detail-page">
     <div class="container">
       <div class="page-header">
@@ -37,6 +38,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAnnouncementDetail } from '../api/announcement'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const route = useRoute()
 const announcement = ref(null)
@@ -73,7 +75,6 @@ onMounted(async () => {
 <style scoped>
 .announcement-detail-page {
   min-height: 100vh;
-  background: var(--bg-base);
   color: var(--text-primary);
 }
 

@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="container">
     <div v-if="authStore.isGuest" class="profile-page" style="text-align:center;padding:60px 20px">
       <p style="font-size:48px;margin-bottom:16px">👤</p>
@@ -93,6 +94,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { getProfile, updateProfile, uploadAvatar, changePassword } from '../api/user'
 import { useAuthStore } from '../stores/auth'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const authStore = useAuthStore()
 

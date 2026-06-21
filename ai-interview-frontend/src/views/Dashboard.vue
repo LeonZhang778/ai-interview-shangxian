@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="container">
     <div class="page-header">
       <h1>📋 面试记录</h1>
@@ -51,6 +52,7 @@
 import { ref, onMounted } from 'vue'
 import { getInterviews, deleteInterview } from '../api/interview'
 import { useAuthStore } from '../stores/auth'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const authStore = useAuthStore()
 

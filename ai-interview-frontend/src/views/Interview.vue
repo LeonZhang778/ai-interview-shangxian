@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="interview-page">
     <!-- 面试准备动画 -->
     <div v-if="preparing" class="prepare-overlay">
@@ -121,6 +122,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { submitAnswerStream, getMessages } from '../api/interview'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -190,6 +192,7 @@ onMounted(async () => {
     }))
     const indices = msgList.map(m => m.question_index).filter(i => i != null)
     if (indices.length) currentIndex.value = Math.max(...indices)
+    if (data.total_questions) totalQuestions.value = data.total_questions
   } catch (e) {
     console.error('加载消息失败:', e)
   }
@@ -264,7 +267,7 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.interview-page { display: flex; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; background: var(--bg-base); color: var(--text-primary); }
+.interview-page { display: flex; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; color: var(--text-primary); }
 
 /* 准备动画 */
 .prepare-overlay {
@@ -289,7 +292,7 @@ async function handleSubmit() {
 /* 顶部 */
 .interview-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: rgba(8,5,25,0.9); border-bottom: 1px solid var(--border-default);
+  padding: 12px 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border-default);
   font-size: 14px; font-weight: 600; backdrop-filter: blur(20px);
 }
 .progress { color: var(--text-muted); font-weight: 400; }
@@ -332,7 +335,7 @@ async function handleSubmit() {
 .interviewer .bubble-score { border-top-color: rgba(139,92,246,0.12); }
 
 /* 输入 */
-.input-area { padding: 16px 20px; background: rgba(8,5,25,0.9); border-top: 1px solid rgba(139,92,246,0.1); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: blur(20px); }
+.input-area { padding: 16px 20px; background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: blur(20px); }
 .input-area textarea { flex: 1; resize: none; font-family: inherit; }
 .input-area.finished { justify-content: center; align-items: center; padding: 24px; gap: 16px; }
 .input-area.finished p { font-size: 18px; font-weight: 600; }

@@ -172,6 +172,16 @@ async function submitFeedback() {
   resize: vertical;
 }
 
+/* Dark mode: override browser defaults for select/option */
+.bug-panel select option {
+  background-color: #1a1b2e;
+  color: #e2e8f0;
+}
+:root[data-theme="light"] .bug-panel select option {
+  background-color: #fff;
+  color: #1E293B;
+}
+
 .submit-btn {
   width: 100%;
   padding: 10px;

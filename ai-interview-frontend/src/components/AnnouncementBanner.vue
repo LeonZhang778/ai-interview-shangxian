@@ -187,78 +187,140 @@ watch(currentIndex, () => {
 .announcement-banner {
   width: 100%;
   border-bottom: 1px solid;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+/* 发光线 */
+.announcement-banner::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  z-index: 1;
 }
 
-/* === P0 紧急 === */
+/* === P0 紧急 — 深紫品红脉冲 === */
 .level-P0 {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
-  border-color: rgba(239, 68, 68, 0.3);
+  background: linear-gradient(135deg, rgba(109, 20, 80, 0.88), rgba(76, 10, 100, 0.88));
+  border-color: rgba(236, 72, 153, 0.25);
   color: white;
-  box-shadow: 0 2px 16px rgba(239, 68, 68, 0.25);
+  box-shadow: 0 2px 20px rgba(236, 72, 153, 0.2);
+}
+.level-P0::after {
+  background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.6), rgba(168, 85, 247, 0.4), transparent);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 .level-P0 .banner-icon { color: rgba(255, 255, 255, 0.9); }
 .level-P0 .banner-detail-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(236, 72, 153, 0.35);
 }
 .level-P0 .banner-detail-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
 }
 .level-P0 .banner-label {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: rgba(236, 72, 153, 0.25);
+  color: #f9a8d4;
 }
-.level-P0 .dot { background: rgba(255, 255, 255, 0.3); }
-.level-P0 .dot.active { background: white; }
+.level-P0 .dot { background: rgba(255, 255, 255, 0.25); }
+.level-P0 .dot.active { background: #f0abfc; box-shadow: 0 0 6px rgba(236, 72, 153, 0.5); }
 
-/* === P1 重要 === */
+/* === P1 重要 — 靛蓝青色极光 === */
 .level-P1 {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.92), rgba(99, 102, 241, 0.92));
-  border-color: rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.88), rgba(49, 46, 129, 0.88));
+  border-color: rgba(6, 182, 212, 0.2);
   color: white;
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 16px rgba(6, 182, 212, 0.15);
 }
-.level-P1 .banner-icon { color: rgba(255, 255, 255, 0.85); }
+.level-P1::after {
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.5), rgba(99, 102, 241, 0.3), transparent);
+}
+.level-P1 .banner-icon { color: rgba(6, 182, 212, 0.9); }
 .level-P1 .banner-detail-btn {
-  background: rgba(255, 255, 255, 0.18);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(6, 182, 212, 0.12);
+  color: #67e8f9;
+  border: 1px solid rgba(6, 182, 212, 0.3);
 }
 .level-P1 .banner-detail-btn:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(6, 182, 212, 0.22);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
 }
 .level-P1 .banner-label {
-  background: rgba(255, 255, 255, 0.18);
-  color: white;
+  background: rgba(6, 182, 212, 0.2);
+  color: #67e8f9;
 }
-.level-P1 .banner-close { color: rgba(255, 255, 255, 0.6); }
-.level-P1 .banner-close:hover { color: white; background: rgba(255, 255, 255, 0.15); }
-.level-P1 .dot { background: rgba(255, 255, 255, 0.3); }
-.level-P1 .dot.active { background: white; }
+.level-P1 .banner-close { color: rgba(255, 255, 255, 0.5); }
+.level-P1 .banner-close:hover { color: white; background: rgba(6, 182, 212, 0.15); }
+.level-P1 .dot { background: rgba(255, 255, 255, 0.2); }
+.level-P1 .dot.active { background: #67e8f9; box-shadow: 0 0 6px rgba(6, 182, 212, 0.5); }
 
-/* === P2 普通 === */
+/* === P2 普通 — 深空灰紫 === */
 .level-P2 {
+  background: linear-gradient(135deg, rgba(20, 18, 50, 0.85), rgba(30, 27, 75, 0.85));
+  border-color: rgba(139, 92, 246, 0.12);
+  color: #e2e8f0;
+  box-shadow: 0 1px 8px rgba(139, 92, 246, 0.08);
+}
+.level-P2::after {
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.3), transparent);
+}
+.level-P2 .banner-icon { color: #a78bfa; }
+.level-P2 .banner-detail-btn {
+  background: rgba(139, 92, 246, 0.1);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.level-P2 .banner-detail-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+.level-P2 .banner-close { color: #6b7280; }
+.level-P2 .banner-close:hover { color: #c4b5fd; background: rgba(139, 92, 246, 0.1); }
+.level-P2 .dot { background: rgba(139, 92, 246, 0.25); }
+.level-P2 .dot.active { background: #a78bfa; }
+
+/* === Light mode === */
+:root[data-theme="light"] .level-P0 {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.92), rgba(220, 38, 38, 0.92));
+  border-color: rgba(239, 68, 68, 0.3);
+}
+:root[data-theme="light"] .level-P0::after {
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.5), transparent);
+}
+:root[data-theme="light"] .level-P1 {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(99, 102, 241, 0.9));
+  border-color: rgba(59, 130, 246, 0.3);
+}
+:root[data-theme="light"] .level-P1::after {
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
+}
+:root[data-theme="light"] .level-P2 {
   background: linear-gradient(135deg, rgba(241, 245, 249, 0.95), rgba(226, 232, 240, 0.95));
   border-color: rgba(203, 213, 225, 0.5);
   color: #334155;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
-.level-P2 .banner-icon { color: #6366f1; }
-.level-P2 .banner-detail-btn {
+:root[data-theme="light"] .level-P2::after {
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.25), transparent);
+}
+:root[data-theme="light"] .level-P2 .banner-icon { color: #6366f1; }
+:root[data-theme="light"] .level-P2 .banner-label {
   background: rgba(99, 102, 241, 0.1);
   color: #4f46e5;
-  border: 1px solid rgba(99, 102, 241, 0.2);
 }
-.level-P2 .banner-detail-btn:hover {
-  background: rgba(99, 102, 241, 0.18);
+:root[data-theme="light"] .level-P2 .banner-detail-btn {
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.2);
 }
-.level-P2 .banner-close { color: #94a3b8; }
-.level-P2 .banner-close:hover { color: #475569; background: rgba(0, 0, 0, 0.06); }
-.level-P2 .dot { background: #cbd5e1; }
-.level-P2 .dot.active { background: #6366f1; }
+:root[data-theme="light"] .level-P2 .dot { background: #cbd5e1; }
+:root[data-theme="light"] .level-P2 .dot.active { background: #6366f1; }
 
 /* === 内部布局 === */
 .banner-inner {

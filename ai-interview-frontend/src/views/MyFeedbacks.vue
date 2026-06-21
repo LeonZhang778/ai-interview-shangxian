@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="container">
     <div class="my-feedbacks-page">
       <div class="page-header">
@@ -38,6 +39,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api/request'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const feedbacks = ref([])
 const loading = ref(true)

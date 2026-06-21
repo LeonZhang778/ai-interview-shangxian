@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="image-studio">
     <div class="studio-header">
       <h1>AI 画图</h1>
@@ -132,6 +133,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { generateImage, getImageTasks, getImageTask, deleteImageTask } from '../api/image'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const form = reactive({
   prompt: '',
