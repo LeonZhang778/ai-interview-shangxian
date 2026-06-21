@@ -71,5 +71,7 @@ export const analyticsApi = {
 export const experienceApi = {
   list: (params) => api.get('/experiences', { params }),
   detail: (id) => api.get(`/experiences/${id}`),
-  review: (id, action) => api.put(`/experiences/${id}/review`, null, { params: { action } })
+  review: (id, action) => api.put(`/experiences/${id}/review`, null, { params: { action } }),
+  delete: (id) => api.delete(`/experiences/${id}`),
+  batchReview: (ids, action) => api.post('/experiences/batch-review', { ids, action })
 }

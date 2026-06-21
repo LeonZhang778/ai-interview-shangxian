@@ -627,5 +627,46 @@ class ExperienceService:
             "created_at": experience.created_at.strftime("%Y-%m-%d %H:%M") if experience.created_at else None,
         }
 
+    @staticmethod
+    async def admin_delete_experience(
+        db: AsyncSession,
+        experience_id: int,
+    ) -> Dict:
+        """管理员删除面经"""
+        experience = await db.get(Experience, experience_id)
+        if not experience:
+            raise NotFoundError(message="面经不存在")
+        title = experience.title
+        await db.delete(experience)
+        await db.commit()
+        return {"id": experience_id, "title": title}
+
+    @staticmethod
+    async def admin_batch_review(
+        db: AsyncSession,
+        experience_ids: list,
+        action: str,
+    ) -> Dict:
+        """管理员批量审核面经"""
+        if action not in ("approve", "reject", "delete"):
+            from app.exceptions.http_exceptions import ValidationError
+            raise ValidationError(message="无效的操作")
+
+        count = 0
+        for eid in experience_ids:
+            experience = await db.get(Experience, eid)
+            if not experience:
+                continue
+            if action == "delete":
+                await db.delete(experience)
+            elif action == "approve":
+                experience.status = "published"
+            elif action == "reject":
+                experience.status = "rejected"
+            count += 1
+
+        await db.commit()
+        return {"affected": count, "action": action}
+
 
 experience_service = ExperienceService()

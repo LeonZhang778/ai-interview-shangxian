@@ -15,12 +15,24 @@
       </div>
     </div>
 
+    <!-- 批量操作栏 -->
+    <div v-if="selectedIds.length > 0" class="batch-bar">
+      <span>已选择 {{ selectedIds.length }} 项</span>
+      <button class="btn-action btn-approve" @click="batchAction('approve')">批量通过</button>
+      <button class="btn-action btn-reject" @click="batchAction('reject')">批量拒绝</button>
+      <button class="btn-action btn-delete" @click="batchAction('delete')">批量删除</button>
+      <button class="btn-action btn-cancel" @click="selectedIds = []">取消选择</button>
+    </div>
+
     <div class="content-card">
       <div v-if="loading" class="loading-state">加载中...</div>
       <div v-else-if="items.length === 0" class="empty-state">暂无数据</div>
       <table v-else class="data-table">
         <thead>
           <tr>
+            <th class="checkbox-col">
+              <input type="checkbox" :checked="allSelected" @change="toggleAll" />
+            </th>
             <th>ID</th>
             <th>标题</th>
             <th>公司</th>
@@ -33,7 +45,10 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in items" :key="item.id">
+          <tr v-for="item in items" :key="item.id" :class="{ 'row-selected': selectedIds.includes(item.id) }">
+            <td class="checkbox-col">
+              <input type="checkbox" :checked="selectedIds.includes(item.id)" @change="toggleSelect(item.id)" />
+            </td>
             <td>{{ item.id }}</td>
             <td class="title-cell">{{ item.title }}</td>
             <td>{{ item.company }}</td>
@@ -52,6 +67,7 @@
                 <button class="btn-action btn-approve" @click="review(item.id, 'approve')">通过</button>
                 <button class="btn-action btn-reject" @click="review(item.id, 'reject')">拒绝</button>
               </template>
+              <button class="btn-action btn-delete" @click="deleteItem(item)">删除</button>
             </td>
           </tr>
         </tbody>
@@ -96,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { experienceApi } from '../api'
 
 const items = ref([])
@@ -106,6 +122,7 @@ const perPage = 20
 const total = ref(0)
 const currentStatus = ref('')
 const detailItem = ref(null)
+const selectedIds = ref([])
 
 const statusTabs = [
   { label: '全部', value: '' },
@@ -121,8 +138,27 @@ const statusMap = {
   draft: '草稿'
 }
 
+const allSelected = computed(() => {
+  return items.value.length > 0 && items.value.every(i => selectedIds.value.includes(i.id))
+})
+
+function toggleSelect(id) {
+  const idx = selectedIds.value.indexOf(id)
+  if (idx === -1) selectedIds.value.push(id)
+  else selectedIds.value.splice(idx, 1)
+}
+
+function toggleAll() {
+  if (allSelected.value) {
+    selectedIds.value = []
+  } else {
+    selectedIds.value = items.value.map(i => i.id)
+  }
+}
+
 async function fetchData() {
   loading.value = true
+  selectedIds.value = []
   try {
     const params = { page: page.value, per_page: perPage }
     if (currentStatus.value) params.status = currentStatus.value
@@ -148,6 +184,29 @@ async function viewDetail(item) {
 async function review(id, action) {
   try {
     await experienceApi.review(id, action)
+    fetchData()
+  } catch (e) {
+    alert(e.response?.data?.message || '操作失败')
+  }
+}
+
+async function deleteItem(item) {
+  if (!confirm(`确定删除面经「${item.title}」？此操作不可恢复。`)) return
+  try {
+    await experienceApi.delete(item.id)
+    fetchData()
+  } catch (e) {
+    alert(e.response?.data?.message || '删除失败')
+  }
+}
+
+async function batchAction(action) {
+  const label = { approve: '批量通过', reject: '批量拒绝', delete: '批量删除' }[action]
+  const count = selectedIds.value.length
+  if (!confirm(`确定${label} ${count} 条面经？`)) return
+  try {
+    await experienceApi.batchReview(selectedIds.value, action)
+    selectedIds.value = []
     fetchData()
   } catch (e) {
     alert(e.response?.data?.message || '操作失败')
@@ -194,6 +253,21 @@ onMounted(() => fetchData())
   border-color: transparent;
 }
 
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #ede9fe;
+  border: 1px solid #c4b5fd;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #5b21b6;
+  font-weight: 600;
+}
+.batch-bar .btn-action { font-size: 12px; }
+
 .content-card {
   background: white;
   border-radius: 12px;
@@ -221,6 +295,12 @@ onMounted(() => fetchData())
   border-bottom: 1px solid #f1f5f9;
 }
 .data-table tr:hover { background: #f8fafc; }
+.row-selected { background: #f5f3ff !important; }
+
+.checkbox-col { width: 40px; text-align: center; }
+.checkbox-col input[type="checkbox"] {
+  width: 16px; height: 16px; accent-color: #7c3aed; cursor: pointer;
+}
 
 .title-cell {
   max-width: 240px;
@@ -256,6 +336,10 @@ onMounted(() => fetchData())
 .btn-approve:hover { background: #a7f3d0; }
 .btn-reject { background: #fee2e2; color: #991b1b; }
 .btn-reject:hover { background: #fecaca; }
+.btn-delete { background: #f1f5f9; color: #dc2626; border: 1px solid #e2e8f0; }
+.btn-delete:hover { background: #fee2e2; border-color: #fca5a5; }
+.btn-cancel { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.btn-cancel:hover { background: #e2e8f0; }
 
 .pagination {
   display: flex;

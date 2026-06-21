@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.api.backoffice.deps import get_current_admin
@@ -9,6 +10,11 @@ from app.schemas.response import ApiResponse
 from app.common.audit import log_audit
 
 router = APIRouter()
+
+
+class BatchReviewRequest(BaseModel):
+    ids: List[int]
+    action: str
 
 
 @router.get("")
@@ -54,5 +60,40 @@ async def review_experience(
     action_label = "通过" if action == "approve" else "拒绝"
     await log_audit(db, current_admin.id, "review", "experience", experience_id,
                     f"{action_label}面经审核: ID {experience_id}")
+
+    return ApiResponse.success(data=result)
+
+
+@router.delete("/{experience_id}")
+async def delete_experience(
+    experience_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin)
+):
+    """删除面经"""
+    result = await experience_service.admin_delete_experience(
+        db=db, experience_id=experience_id
+    )
+
+    await log_audit(db, current_admin.id, "delete", "experience", experience_id,
+                    f"删除面经: {result['title']}")
+
+    return ApiResponse.success(data=result)
+
+
+@router.post("/batch-review")
+async def batch_review(
+    body: BatchReviewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin)
+):
+    """批量审核/删除面经"""
+    result = await experience_service.admin_batch_review(
+        db=db, experience_ids=body.ids, action=body.action
+    )
+
+    action_label = {"approve": "批量通过", "reject": "批量拒绝", "delete": "批量删除"}.get(body.action, body.action)
+    await log_audit(db, current_admin.id, "batch_review", "experience", None,
+                    f"{action_label} {result['affected']} 条面经")
 
     return ApiResponse.success(data=result)

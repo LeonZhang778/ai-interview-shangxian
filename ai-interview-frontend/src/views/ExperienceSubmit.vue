@@ -61,7 +61,12 @@
             <button type="button" @click="insertFormat('```\n', '\n```')" title="代码块">&lt;/&gt;</button>
             <button type="button" @click="insertFormat('> ', '')" title="引用">"</button>
             <button type="button" @click="insertFormat('- ', '')" title="列表">-</button>
+            <button type="button" @click="insertFormat('### ', '')" title="标题">H</button>
             <span class="toolbar-divider"></span>
+            <button type="button" @click="fileInput.click()" title="从文件导入">导入</button>
+            <input ref="fileInput" type="file" accept=".txt,.md,.text,.markdown" style="display:none" @change="handleFileImport" />
+            <span class="toolbar-divider"></span>
+            <span class="char-count">{{ form.content.length }} 字</span>
             <button type="button" class="preview-toggle" :class="{ active: showPreview }" @click="showPreview = !showPreview">
               {{ showPreview ? '编辑' : '预览' }}
             </button>
@@ -127,6 +132,9 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { submitExperience } from '../api/experience'
+import { marked } from 'marked'
+
+marked.setOptions({ breaks: true, gfm: true })
 
 const router = useRouter()
 const contentRef = ref(null)
@@ -153,18 +161,21 @@ const commonPositions = ['后端开发', '前端开发', '算法工程师', '测
 const suggestedTags = ['算法', '系统设计', '数据库', '网络', '操作系统', '项目经验', 'HR面', '手撕代码', '八股文', '场景题']
 
 const renderedContent = computed(() => {
-  let text = form.content
-  // Simple markdown rendering
-  text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  text = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>')
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>')
-  text = text.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-  text = text.replace(/^- (.+)$/gm, '<li>$1</li>')
-  text = text.replace(/\n/g, '<br>')
-  return text
+  return marked.parse(form.content || '')
 })
+
+const fileInput = ref(null)
+
+function handleFileImport(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    form.content = e.target.result
+  }
+  reader.readAsText(file)
+  event.target.value = ''
+}
 
 function insertFormat(prefix, suffix) {
   const el = contentRef.value
@@ -361,6 +372,12 @@ textarea {
   width: 1px;
   background: var(--border-default);
   margin: 0 4px;
+}
+
+.char-count {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 0 4px;
 }
 
 .preview-toggle.active {

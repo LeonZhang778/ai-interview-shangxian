@@ -171,6 +171,12 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getExperienceDetail, likeExperience, collectExperience, getInteractionStatus, getComments, createComment, deleteComment } from '../api/experience'
 import { useAuthStore } from '../stores/auth'
+import { marked } from 'marked'
+
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -191,38 +197,8 @@ const replyContent = ref('')
 
 const renderedContent = computed(() => {
   if (!experience.value?.content) return ''
-  return renderMarkdown(experience.value.content)
+  return marked.parse(experience.value.content)
 })
-
-function renderMarkdown(text) {
-  if (!text) return ''
-  let html = text
-    // 标题
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // 粗体和斜体
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // 行内代码
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // 代码块
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-    // 列表
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
-    // 链接
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
-    // 换行
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-
-  // 包裹 li
-  html = html.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
-  html = html.replace(/<\/ul>\s*<ul>/g, '')
-
-  return '<p>' + html + '</p>'
-}
 
 async function fetchDetail() {
   loading.value = true
@@ -354,7 +330,7 @@ onMounted(() => {
 .loading-state, .empty-state { text-align: center; padding: 80px 20px; color: var(--text-dim); font-size: 15px; }
 
 .breadcrumb-bar {
-  background: rgba(8,5,25,0.8);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-default);
   padding: 12px 0;
 }
@@ -368,7 +344,7 @@ onMounted(() => {
   background: var(--bg-card); border: 1px solid var(--border-default);
   border-radius: 0 0 14px 14px;
 }
-.article-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 800; color: #f8fafc; line-height: 1.4; margin: 0 0 14px; }
+.article-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 800; color: var(--text-primary); line-height: 1.4; margin: 0 0 14px; }
 .meta-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
 .dot { color: var(--text-dim); }
 .tags-row { display: flex; flex-wrap: wrap; gap: 8px; }
