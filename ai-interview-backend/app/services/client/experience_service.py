@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload, joinedload
-from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment
+from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment, CollectionGroup
 from app.models.user import User
 from app.exceptions.http_exceptions import NotFoundError
 
@@ -633,14 +633,19 @@ class ExperienceService:
         experience_id: int,
     ) -> Dict:
         """管理员删除面经"""
-        from sqlalchemy import delete as sql_delete
+        from sqlalchemy import delete as sql_delete, update as sql_update
+        from app.models.interview import Interview
 
         experience = await db.get(Experience, experience_id)
         if not experience:
             raise NotFoundError(message="面经不存在")
         title = experience.title
 
-        # 先删除关联数据
+        # 先清理关联的面试记录（置空 experience_id）
+        await db.execute(
+            sql_update(Interview).where(Interview.experience_id == experience_id).values(experience_id=None)
+        )
+        # 删除关联数据
         await db.execute(sql_delete(ExperienceComment).where(ExperienceComment.experience_id == experience_id))
         await db.execute(sql_delete(UserLike).where(UserLike.experience_id == experience_id))
         await db.execute(sql_delete(UserCollection).where(UserCollection.experience_id == experience_id))
@@ -657,7 +662,8 @@ class ExperienceService:
         action: str,
     ) -> Dict:
         """管理员批量审核面经"""
-        from sqlalchemy import delete as sql_delete
+        from sqlalchemy import delete as sql_delete, update as sql_update
+        from app.models.interview import Interview
 
         if action not in ("approve", "reject", "delete"):
             from app.exceptions.http_exceptions import ValidationError
@@ -669,7 +675,11 @@ class ExperienceService:
             if not experience:
                 continue
             if action == "delete":
-                # 先删除关联数据
+                # 先清理关联的面试记录（置空 experience_id）
+                await db.execute(
+                    sql_update(Interview).where(Interview.experience_id == eid).values(experience_id=None)
+                )
+                # 删除关联数据
                 await db.execute(sql_delete(ExperienceComment).where(ExperienceComment.experience_id == eid))
                 await db.execute(sql_delete(UserLike).where(UserLike.experience_id == eid))
                 await db.execute(sql_delete(UserCollection).where(UserCollection.experience_id == eid))
@@ -683,6 +693,214 @@ class ExperienceService:
 
         await db.commit()
         return {"affected": count, "action": action}
+
+    # ==================== 收藏夹分组 ====================
+
+    @staticmethod
+    async def get_user_collections(
+        db: AsyncSession,
+        user_id: int,
+        group_id: Optional[int] = None,
+        page: int = 1,
+        size: int = 20
+    ) -> Dict:
+        """获取用户的收藏列表（可按分组筛选）"""
+        from app.models.experience import CollectionGroup
+
+        query = (
+            select(UserCollection)
+            .where(UserCollection.user_id == user_id)
+            .options(
+                joinedload(UserCollection.group),
+                selectinload(UserCollection.experience).joinedload(Experience.author),
+                selectinload(UserCollection.experience).selectinload(Experience.tags)
+            )
+        )
+
+        if group_id is not None:
+            if group_id == 0:
+                query = query.where(UserCollection.group_id.is_(None))
+            else:
+                query = query.where(UserCollection.group_id == group_id)
+
+        # 总数
+        count_query = select(func.count()).select_from(
+            select(UserCollection).where(UserCollection.user_id == user_id).subquery()
+        )
+        if group_id is not None:
+            if group_id == 0:
+                count_query = count_query.where(UserCollection.group_id.is_(None))
+            else:
+                count_query = count_query.where(UserCollection.group_id == group_id)
+
+        total_result = await db.execute(count_query)
+        total = total_result.scalar()
+
+        # 分页查询
+        query = query.order_by(UserCollection.created_at.desc())
+        query = query.offset((page - 1) * size).limit(size)
+        result = await db.execute(query)
+        collections = result.scalars().unique().all()
+
+        items = []
+        for c in collections:
+            exp = c.experience
+            if not exp:
+                continue
+            items.append({
+                "group_id": c.group_id,
+                "group_name": c.group.name if c.group else None,
+                "experience": {
+                    "id": exp.id,
+                    "title": exp.title,
+                    "company": exp.company,
+                    "position": exp.position,
+                    "summary": exp.summary,
+                    "view_count": exp.view_count,
+                    "like_count": exp.like_count,
+                    "collect_count": exp.collect_count,
+                    "author_name": exp.author.nickname if exp.author and not exp.is_anonymous else "匿名用户",
+                    "tags": [t.tag for t in exp.tags] if exp.tags else [],
+                    "created_at": exp.created_at.strftime("%Y-%m-%d %H:%M") if exp.created_at else None,
+                }
+            })
+
+        return {"items": items, "total": total, "page": page, "size": size}
+
+    @staticmethod
+    async def get_collection_groups(
+        db: AsyncSession,
+        user_id: int
+    ) -> list:
+        """获取用户的收藏分组列表"""
+        from app.models.experience import CollectionGroup
+
+        query = (
+            select(CollectionGroup)
+            .where(CollectionGroup.user_id == user_id)
+            .order_by(CollectionGroup.sort_order, CollectionGroup.id)
+        )
+        result = await db.execute(query)
+        groups = result.scalars().all()
+
+        # 统计每个分组的收藏数
+        items = []
+        for g in groups:
+            count_query = select(func.count()).where(
+                UserCollection.user_id == user_id,
+                UserCollection.group_id == g.id
+            )
+            count_result = await db.execute(count_query)
+            count = count_result.scalar()
+            items.append({
+                "id": g.id,
+                "name": g.name,
+                "sort_order": g.sort_order,
+                "count": count
+            })
+
+        # 未分组数量
+        ungrouped_query = select(func.count()).where(
+            UserCollection.user_id == user_id,
+            UserCollection.group_id.is_(None)
+        )
+        ungrouped_result = await db.execute(ungrouped_query)
+        ungrouped_count = ungrouped_result.scalar()
+
+        return {"groups": items, "ungrouped_count": ungrouped_count}
+
+    @staticmethod
+    async def create_collection_group(
+        db: AsyncSession,
+        user_id: int,
+        name: str
+    ) -> Dict:
+        """创建收藏分组"""
+        from app.models.experience import CollectionGroup
+
+        group = CollectionGroup(user_id=user_id, name=name)
+        db.add(group)
+        await db.commit()
+        await db.refresh(group)
+        return {"id": group.id, "name": group.name, "sort_order": group.sort_order, "count": 0}
+
+    @staticmethod
+    async def update_collection_group(
+        db: AsyncSession,
+        user_id: int,
+        group_id: int,
+        name: Optional[str] = None,
+        sort_order: Optional[int] = None
+    ) -> Dict:
+        """更新收藏分组"""
+        from app.models.experience import CollectionGroup
+
+        group = await db.get(CollectionGroup, group_id)
+        if not group or group.user_id != user_id:
+            raise NotFoundError(message="分组不存在")
+
+        if name is not None:
+            group.name = name
+        if sort_order is not None:
+            group.sort_order = sort_order
+
+        await db.commit()
+        return {"id": group.id, "name": group.name, "sort_order": group.sort_order}
+
+    @staticmethod
+    async def delete_collection_group(
+        db: AsyncSession,
+        user_id: int,
+        group_id: int
+    ) -> Dict:
+        """删除收藏分组（分组内的收藏项不会被删除，只是变为未分组）"""
+        from app.models.experience import CollectionGroup
+
+        group = await db.get(CollectionGroup, group_id)
+        if not group or group.user_id != user_id:
+            raise NotFoundError(message="分组不存在")
+
+        # 将该分组下的收藏项设为未分组
+        await db.execute(
+            update(UserCollection).where(
+                UserCollection.group_id == group_id
+            ).values(group_id=None)
+        )
+
+        await db.delete(group)
+        await db.commit()
+        return {"id": group_id}
+
+    @staticmethod
+    async def move_collection(
+        db: AsyncSession,
+        user_id: int,
+        experience_id: int,
+        group_id: Optional[int]
+    ) -> Dict:
+        """移动收藏到指定分组"""
+        from app.models.experience import CollectionGroup
+
+        query = select(UserCollection).where(
+            UserCollection.user_id == user_id,
+            UserCollection.experience_id == experience_id
+        )
+        result = await db.execute(query)
+        collection = result.scalar_one_or_none()
+
+        if not collection:
+            raise NotFoundError(message="收藏不存在")
+
+        if group_id is not None and group_id != 0:
+            group = await db.get(CollectionGroup, group_id)
+            if not group or group.user_id != user_id:
+                raise NotFoundError(message="分组不存在")
+            collection.group_id = group_id
+        else:
+            collection.group_id = None
+
+        await db.commit()
+        return {"experience_id": experience_id, "group_id": collection.group_id}
 
 
 experience_service = ExperienceService()

@@ -3,6 +3,17 @@ from sqlalchemy.orm import relationship
 from .base import BaseModel
 
 
+class CollectionGroup(BaseModel):
+    __tablename__ = "collection_groups"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(50), nullable=False)
+    sort_order = Column(Integer, default=0)
+
+    collections = relationship("UserCollection", back_populates="group")
+
+
 class Experience(BaseModel):
     __tablename__ = "experiences"
 
@@ -40,6 +51,9 @@ class UserCollection(BaseModel):
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     experience_id = Column(Integer, ForeignKey("experiences.id", ondelete="CASCADE"), primary_key=True)
+    group_id = Column(Integer, ForeignKey("collection_groups.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    group = relationship("CollectionGroup", back_populates="collections")
 
 
 class UserLike(BaseModel):

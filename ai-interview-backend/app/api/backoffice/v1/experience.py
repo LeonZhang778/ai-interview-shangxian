@@ -61,6 +61,32 @@ async def review_experience(
     await log_audit(db, current_admin.id, "review", "experience", experience_id,
                     f"{action_label}面经审核: ID {experience_id}")
 
+    # 发送审核结果通知
+    try:
+        from app.models.experience import Experience
+        exp = await db.get(Experience, experience_id)
+        if exp and exp.author_id:
+            from app.services.client.notification_service import notification_service
+            if action == "approve":
+                await notification_service.create_notification(
+                    db=db, user_id=exp.author_id,
+                    title="面经审核通过",
+                    content=f"你投稿的「{exp.title}」已通过审核，快去看看吧",
+                    notification_type="experience",
+                    related_id=experience_id, related_type="experience"
+                )
+            elif action == "reject":
+                await notification_service.create_notification(
+                    db=db, user_id=exp.author_id,
+                    title="面经审核未通过",
+                    content=f"你投稿的「{exp.title}」未通过审核，请修改后重新投稿",
+                    notification_type="experience",
+                    related_id=experience_id, related_type="experience"
+                )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"发送审核通知失败: {e}")
+
     return ApiResponse.success(data=result)
 
 

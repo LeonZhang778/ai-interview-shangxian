@@ -43,3 +43,29 @@ export function submitExperience(data) {
 export function getMyExperiences(params) {
   return api.get('/experiences/my/submissions', { params })
 }
+
+// ==================== 收藏夹分组 ====================
+
+export function getMyCollections(params) {
+  return api.get('/experiences/collections/my', { params })
+}
+
+export function getCollectionGroups() {
+  return api.get('/experiences/collections/groups')
+}
+
+export function createCollectionGroup(name) {
+  return api.post('/experiences/collections/groups', { name })
+}
+
+export function updateCollectionGroup(groupId, data) {
+  return api.put(`/experiences/collections/groups/${groupId}`, data)
+}
+
+export function deleteCollectionGroup(groupId) {
+  return api.delete(`/experiences/collections/groups/${groupId}`)
+}
+
+export function moveCollection(experienceId, groupId) {
+  return api.put(`/experiences/collections/${experienceId}/move`, { group_id: groupId })
+}

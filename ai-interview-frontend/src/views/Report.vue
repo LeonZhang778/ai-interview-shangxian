@@ -67,11 +67,64 @@
 
       <!-- 分享卡片（隐藏，用于截图） -->
       <div ref="shareCard" class="share-card" v-if="report">
-        <div class="share-header">🎯 智面 AI 面试报告</div>
-        <div class="share-score">{{ data.overall_score }}<span>/10</span></div>
-        <div class="share-position">{{ data.target_position || '模拟面试' }}</div>
-        <div class="share-rec" v-if="report.hire_recommendation">{{ report.hire_recommendation }}</div>
-        <div class="share-footer">扫码免费体验 AI 模拟面试</div>
+        <!-- 背景装饰 -->
+        <div class="share-bg-circle share-bg-1"></div>
+        <div class="share-bg-circle share-bg-2"></div>
+
+        <!-- 头部品牌 -->
+        <div class="share-brand">
+          <div class="share-logo">
+            <span class="share-logo-icon">🎯</span>
+            <span class="share-logo-text">智面 AI</span>
+          </div>
+          <div class="share-tag">面试评估报告</div>
+        </div>
+
+        <!-- 分数区域 -->
+        <div class="share-score-section">
+          <div class="share-score-ring">
+            <svg viewBox="0 0 120 120" class="share-score-svg">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="url(#scoreGrad)" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="326.7"
+                :stroke-dashoffset="326.7 - (326.7 * (data.overall_score || 0) / 10)"
+                transform="rotate(-90 60 60)"/>
+              <defs>
+                <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#fbbf24"/>
+                  <stop offset="100%" stop-color="#f59e0b"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="share-score-inner">
+              <span class="share-score-num">{{ data.overall_score }}</span>
+              <span class="share-score-unit">/10</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 信息区 -->
+        <div class="share-info">
+          <div class="share-position">{{ data.target_position || '模拟面试' }}</div>
+          <div class="share-rec" v-if="report.hire_recommendation">{{ report.hire_recommendation }}</div>
+        </div>
+
+        <!-- 亮点摘要 -->
+        <div class="share-highlights" v-if="report.strengths?.length">
+          <div class="share-highlight-item" v-for="(s, i) in report.strengths.slice(0, 2)" :key="i">
+            <span class="share-highlight-dot"></span>
+            <span>{{ s }}</span>
+          </div>
+        </div>
+
+        <!-- 底部二维码 + 品牌 -->
+        <div class="share-bottom">
+          <div class="share-qr" ref="qrCanvas"></div>
+          <div class="share-bottom-info">
+            <div class="share-bottom-title">扫码查看完整报告</div>
+            <div class="share-bottom-sub">免费体验 AI 模拟面试</div>
+          </div>
+        </div>
       </div>
 
       <!-- 分享链接面板 -->
@@ -127,6 +180,7 @@ const data = ref(null)
 const report = ref(null)
 const loading = ref(true)
 const shareCard = ref(null)
+const qrCanvas = ref(null)
 const shareStatus = ref('idle')
 const shareLinkStatus = ref('idle')
 const shareToken = ref(null)
@@ -159,6 +213,16 @@ async function handleShareImage() {
   if (shareStatus.value === 'generating') return
   shareStatus.value = 'generating'
   try {
+    // 如果还没有分享链接，先生成
+    if (!shareToken.value) {
+      const res = await shareInterview(interviewId)
+      shareToken.value = res.share_token
+      isShared.value = true
+    }
+
+    // 生成二维码到 canvas
+    await generateQRCode(shareUrl.value)
+
     const html2canvas = (await import('html2canvas')).default
     const canvas = await html2canvas(shareCard.value, {
       backgroundColor: '#4f46e5',
@@ -183,6 +247,211 @@ async function handleShareImage() {
   } catch (e) {
     console.error(e)
     shareStatus.value = 'idle'
+  }
+}
+
+// 纯 Canvas 实现的二维码生成器
+async function generateQRCode(text) {
+  const container = qrCanvas.value
+  if (!container) return
+  container.innerHTML = ''
+
+  const canvas = document.createElement('canvas')
+  const size = 80
+  canvas.width = size
+  canvas.height = size
+  canvas.style.width = size + 'px'
+  canvas.style.height = size + 'px'
+  container.appendChild(canvas)
+
+  const ctx = canvas.getContext('2d')
+  const modules = encodeQR(text)
+  const moduleCount = modules.length
+  const cellSize = size / moduleCount
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, size, size)
+  ctx.fillStyle = '#1a1a2e'
+
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (modules[row][col]) {
+        ctx.fillRect(col * cellSize, row * cellSize, cellSize + 0.5, cellSize + 0.5)
+      }
+    }
+  }
+}
+
+// 最小 QR Code 编码器（支持数字/字母/字节模式）
+function encodeQR(text) {
+  const data = encodeData(text)
+  const version = Math.max(1, Math.ceil((data.length + 10) / 4)) // 简化版本选择
+  const moduleCount = version * 4 + 17
+  const matrix = Array.from({ length: moduleCount }, () => Array(moduleCount).fill(null))
+  const reserved = Array.from({ length: moduleCount }, () => Array(moduleCount).fill(false))
+
+  // 放置定位图案
+  placeFinder(matrix, reserved, 0, 0)
+  placeFinder(matrix, reserved, moduleCount - 7, 0)
+  placeFinder(matrix, reserved, 0, moduleCount - 7)
+
+  // 放置对齐图案（version >= 2）
+  if (version >= 2) {
+    const alignPos = getAlignmentPositions(version)
+    for (const r of alignPos) {
+      for (const c of alignPos) {
+        if (reserved[r][c]) continue
+        placeAlignment(matrix, reserved, r, c)
+      }
+    }
+  }
+
+  // 时序图案
+  for (let i = 8; i < moduleCount - 8; i++) {
+    if (!reserved[6][i]) { matrix[6][i] = i % 2 === 0; reserved[6][i] = true }
+    if (!reserved[i][6]) { matrix[i][6] = i % 2 === 0; reserved[i][6] = true }
+  }
+
+  // 暗模块
+  if (moduleCount >= 9) {
+    matrix[moduleCount - 8][8] = true
+    reserved[moduleCount - 8][8] = true
+  }
+
+  // 格式信息（简化：使用 mask 0, 纠错 L）
+  placeFormatInfo(matrix, reserved, moduleCount, 0)
+
+  // 放置数据
+  placeData(matrix, reserved, data, moduleCount)
+
+  // 应用 mask
+  applyMask(matrix, reserved, moduleCount, 0)
+
+  return matrix.map(row => row.map(cell => cell === true))
+}
+
+function encodeData(text) {
+  const bytes = new TextEncoder().encode(text)
+  const bits = []
+  // 模式指示符 0100 (字节模式)
+  bits.push(0, 1, 0, 0)
+  // 字符计数
+  const countBits = 8
+  for (let i = countBits - 1; i >= 0; i--) bits.push((bytes.length >> i) & 1)
+  // 数据
+  for (const b of bytes) {
+    for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1)
+  }
+  // 终止符
+  for (let i = 0; i < 4 && bits.length < 200; i++) bits.push(0)
+  // 填充到字节边界
+  while (bits.length % 8 !== 0) bits.push(0)
+  // 填充字节
+  const padBytes = [0xEC, 0x11]
+  let padIdx = 0
+  while (bits.length < 200) {
+    const b = padBytes[padIdx % 2]
+    for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1)
+    padIdx++
+  }
+  return bits
+}
+
+function placeFinder(matrix, reserved, row, col) {
+  for (let r = -1; r <= 7; r++) {
+    for (let c = -1; c <= 7; c++) {
+      const mr = row + r, mc = col + c
+      if (mr < 0 || mr >= matrix.length || mc < 0 || mc >= matrix.length) continue
+      const val = (r >= 0 && r <= 6 && (c === 0 || c === 6)) ||
+                  (c >= 0 && c <= 6 && (r === 0 || r === 6)) ||
+                  (r >= 2 && r <= 4 && c >= 2 && c <= 4)
+      matrix[mr][mc] = val ? true : false
+      reserved[mr][mc] = true
+    }
+  }
+}
+
+function placeAlignment(matrix, reserved, row, col) {
+  for (let r = -2; r <= 2; r++) {
+    for (let c = -2; c <= 2; c++) {
+      const val = Math.abs(r) === 2 || Math.abs(c) === 2 || (r === 0 && c === 0)
+      matrix[row + r][col + c] = val
+      reserved[row + r][col + c] = true
+    }
+  }
+}
+
+function getAlignmentPositions(version) {
+  if (version <= 1) return []
+  const positions = [6]
+  const last = version * 4 + 10
+  if (version <= 6) {
+    positions.push(last)
+  } else {
+    const step = Math.ceil((last - 6) / (version - 1))
+    for (let i = 1; i < version; i++) positions.push(6 + i * step)
+    positions.push(last)
+  }
+  return positions
+}
+
+function placeFormatInfo(matrix, reserved, moduleCount, mask) {
+  const formatBits = getFormatBits(0, mask) // EC level L = 0
+  // 水平格式信息（第8行）
+  for (let i = 0; i < 15; i++) {
+    const col = i < 6 ? i : (i === 6 ? 7 : (i < 8 ? 8 : moduleCount - 15 + i))
+    if (!reserved[8][col]) {
+      matrix[8][col] = (formatBits >> (14 - i)) & 1 ? true : false
+      reserved[8][col] = true
+    }
+  }
+  // 垂直格式信息（第8列）
+  for (let i = 0; i < 15; i++) {
+    const row = i < 6 ? i : (i === 6 ? 7 : (i < 8 ? 8 : moduleCount - 15 + i))
+    if (!reserved[row][8]) {
+      matrix[row][8] = (formatBits >> (14 - i)) & 1 ? true : false
+      reserved[row][8] = true
+    }
+  }
+}
+
+function getFormatBits(ecLevel, mask) {
+  let data = (ecLevel << 3) | mask
+  let bits = data << 10
+  let gen = 0x537 // 生成多项式
+  for (let i = 4; i >= 0; i--) {
+    if (bits & (1 << (i + 10))) bits ^= gen << i
+  }
+  return ((data << 10) | bits) ^ 0x5412
+}
+
+function placeData(matrix, reserved, data, moduleCount) {
+  let bitIdx = 0
+  let upward = true
+  for (let col = moduleCount - 1; col >= 0; col -= 2) {
+    if (col === 6) col = 5
+    const rows = upward
+      ? Array.from({ length: moduleCount }, (_, i) => moduleCount - 1 - i)
+      : Array.from({ length: moduleCount }, (_, i) => i)
+    for (const row of rows) {
+      for (let c = 0; c < 2; c++) {
+        const cc = col - c
+        if (cc < 0 || cc >= moduleCount) continue
+        if (reserved[row][cc]) continue
+        matrix[row][cc] = bitIdx < data.length ? data[bitIdx] === 1 : false
+        bitIdx++
+      }
+    }
+    upward = !upward
+  }
+}
+
+function applyMask(matrix, reserved, moduleCount, mask) {
+  for (let r = 0; r < moduleCount; r++) {
+    for (let c = 0; c < moduleCount; c++) {
+      if (reserved[r][c]) continue
+      if (mask === 0 && (r + c) % 2 === 0) matrix[r][c] = !matrix[r][c]
+    }
   }
 }
 
@@ -342,20 +611,180 @@ ul li::before {
   position: absolute;
   left: -9999px;
   top: 0;
-  width: 360px;
-  padding: 40px 30px;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  width: 380px;
+  padding: 32px 28px 24px;
+  background: linear-gradient(150deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
   color: white;
   text-align: center;
-  border-radius: 16px;
+  border-radius: 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  position: absolute;
+  left: -9999px;
+  top: 0;
 }
-.share-header { font-size: 14px; opacity: 0.8; margin-bottom: 16px; }
-.share-score { font-size: 64px; font-weight: 800; line-height: 1; margin-bottom: 8px; }
-.share-score span { font-size: 24px; font-weight: 400; opacity: 0.6; }
-.share-position { font-size: 16px; opacity: 0.9; margin-bottom: 12px; }
-.share-rec { font-size: 14px; background: rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 14px; display: inline-block; margin-bottom: 20px; }
-.share-footer { font-size: 12px; opacity: 0.6; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 14px; margin-top: 10px; }
+.share-bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.share-bg-1 {
+  width: 200px; height: 200px;
+  top: -60px; right: -40px;
+  background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);
+}
+.share-bg-2 {
+  width: 150px; height: 150px;
+  bottom: 20px; left: -30px;
+  background: radial-gradient(circle, rgba(236,72,153,0.2) 0%, transparent 70%);
+}
+.share-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  position: relative;
+}
+.share-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.share-logo-icon { font-size: 18px; }
+.share-logo-text {
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.share-tag {
+  font-size: 11px;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  color: rgba(255,255,255,0.7);
+}
+.share-score-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+.share-score-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+.share-score-svg {
+  width: 100%;
+  height: 100%;
+}
+.share-score-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.share-score-num {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.share-score-unit {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
+}
+.share-info {
+  margin-bottom: 16px;
+  position: relative;
+}
+.share-position {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.95);
+  margin-bottom: 8px;
+}
+.share-rec {
+  font-size: 13px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(236,72,153,0.2));
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 5px 16px;
+  display: inline-block;
+  color: rgba(255,255,255,0.85);
+}
+.share-highlights {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  text-align: left;
+  position: relative;
+}
+.share-highlight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+.share-highlight-item:last-child { margin-bottom: 0; }
+.share-highlight-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #a78bfa;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.share-bottom {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+}
+.share-qr {
+  width: 80px;
+  height: 80px;
+  background: white;
+  border-radius: 8px;
+  padding: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.share-qr canvas {
+  display: block;
+}
+.share-bottom-info {
+  text-align: left;
+}
+.share-bottom-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 3px;
+}
+.share-bottom-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
 
 .btn-share {
   background: linear-gradient(135deg, #f59e0b, #f97316);

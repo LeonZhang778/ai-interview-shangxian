@@ -7,10 +7,16 @@
           <router-link to="/dashboard" class="nav-logo">🎯 智面</router-link>
           <div class="nav-links">
             <router-link to="/experiences">面经广场</router-link>
+            <router-link to="/collections">我的收藏</router-link>
             <router-link to="/image-studio">AI 画图</router-link>
             <router-link to="/dashboard">面试记录</router-link>
+            <router-link to="/analysis">面试分析</router-link>
             <router-link to="/resume/upload">上传简历</router-link>
             <router-link to="/feedbacks" title="我的反馈">我的反馈</router-link>
+            <router-link to="/notifications" class="nav-bell-link" title="消息通知">
+              <span class="bell-icon">🔔</span>
+              <span v-if="unreadCount > 0" class="bell-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+            </router-link>
             <router-link to="/profile" class="nav-user-link">
               <img v-if="authStore.userAvatar && !avatarError" :src="authStore.userAvatar" class="nav-avatar" alt="avatar" @error="avatarError = true" />
               <span v-else class="nav-avatar-placeholder">👤</span>
@@ -39,7 +45,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, onUnmounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import BugReportBanner from './components/BugReportBanner.vue'
 import AnnouncementBanner from './components/AnnouncementBanner.vue'
@@ -47,15 +53,27 @@ import ThemeToggle from './components/ThemeToggle.vue'
 import { useTheme } from './composables/useTheme'
 import { useRouter } from 'vue-router'
 import { getProfile } from './api/user'
+import { getUnreadCount } from './api/notification'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const avatarError = ref(false)
+const unreadCount = ref(0)
+let unreadTimer = null
 
 // Initialize theme
 const { theme } = useTheme()
 
+async function fetchUnreadCount() {
+  if (!authStore.token) return
+  try {
+    const data = await getUnreadCount()
+    unreadCount.value = data.count
+  } catch (e) { /* ignore */ }
+}
+
 onMounted(async () => {
+  window.addEventListener('notifications-updated', fetchUnreadCount)
   if (authStore.token) {
     try {
       const data = await getProfile()
@@ -64,7 +82,14 @@ onMounted(async () => {
     } catch (e) {
       // 忽略
     }
+    fetchUnreadCount()
+    unreadTimer = setInterval(fetchUnreadCount, 60000)
   }
+})
+
+onUnmounted(() => {
+  if (unreadTimer) clearInterval(unreadTimer)
+  window.removeEventListener('notifications-updated', fetchUnreadCount)
 })
 
 async function logout() {
@@ -157,6 +182,30 @@ async function logout() {
   color: var(--accent-primary);
   font-weight: 600;
   text-decoration: underline;
+}
+.nav-bell-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+.bell-icon { font-size: 18px; }
+.bell-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 .btn-logout {
   padding: 6px 14px;

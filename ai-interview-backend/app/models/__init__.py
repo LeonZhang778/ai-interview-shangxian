@@ -5,12 +5,13 @@ from .waiting_list import WaitingList
 from .resume import Resume
 from .interview import Interview
 from .interview_message import InterviewMessage
-from .experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment
+from .experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment, CollectionGroup
 from .image_task import ImageTask
 from .announcement import Announcement
 from .setting import SystemSetting
 from .feedback import Feedback
 from .audit_log import AuditLog
 from .page_view import PageView
+from .notification import Notification
 
-__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView"]
+__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "CollectionGroup", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView", "Notification"]
