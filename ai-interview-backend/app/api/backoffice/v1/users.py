@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.resume import Resume
 from app.models.interview import Interview
 from app.schemas.response import ApiResponse
+from app.common.audit import log_audit
 
 router = APIRouter()
 
@@ -70,6 +71,11 @@ async def toggle_user_active(
 
     user.is_active = not user.is_active
     await db.commit()
+
+    action = "enable" if user.is_active else "disable"
+    await log_audit(db, current_admin.id, action, "user", user_id,
+                    f"{'启用' if user.is_active else '禁用'}用户: {user.email}")
+
     return ApiResponse.success(data={"is_active": user.is_active})
 
 

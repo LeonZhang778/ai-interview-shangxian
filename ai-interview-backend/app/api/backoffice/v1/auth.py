@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.db.session import get_db
 from app.api.backoffice.deps import get_current_admin
 from app.schemas.backoffice.auth import Token, Login, RefreshToken, Logout, AdminInfo
 from app.services.backoffice.auth import backoffice_auth_service
 from app.schemas.response import ApiResponse
 from app.models.admin import Admin
+from app.common.audit import log_audit
 
 router = APIRouter()
 
@@ -13,10 +15,17 @@ router = APIRouter()
 @router.post("/login", response_model=Token)
 async def login(
     login_data: Login,
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """管理员登录"""
     result = await backoffice_auth_service.login(db, login_data.email, login_data.password)
+    # 记录登录日志
+    admin_result = await db.execute(select(Admin).where(Admin.email == login_data.email))
+    admin = admin_result.scalar_one_or_none()
+    if admin:
+        await log_audit(db, admin.id, "login", "admin", admin.id,
+                        f"管理员 {login_data.email} 登录", request.client.host if request.client else None)
     return ApiResponse.success(data=result)
 
 

@@ -19,3 +19,4 @@ async def log_audit(
         detail=detail,
         ip_address=ip,
     ))
+    await db.commit()

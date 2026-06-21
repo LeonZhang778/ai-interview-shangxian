@@ -35,3 +35,11 @@ export function deleteComment(commentId) {
 export function getFilterOptions() {
   return api.get('/experiences/filters')
 }
+
+export function submitExperience(data) {
+  return api.post('/experiences/submit', data)
+}
+
+export function getMyExperiences(params) {
+  return api.get('/experiences/my/submissions', { params })
+}

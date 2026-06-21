@@ -4,6 +4,7 @@
     <div class="hero-section">
       <h1>面经广场</h1>
       <p class="hero-desc">汇集各公司各岗位真实面试经验，助你备战每一场面试</p>
+      <router-link to="/experiences/submit" class="btn-submit-hero">投稿面经</router-link>
     </div>
 
     <div class="main-container">
@@ -279,7 +280,25 @@ onMounted(() => {
 .hero-desc {
   font-size: 16px;
   color: var(--text-muted);
-  margin: 0;
+  margin: 0 0 20px;
+}
+
+.btn-submit-hero {
+  display: inline-block;
+  padding: 10px 28px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  color: white;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.25);
+}
+
+.btn-submit-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(124,58,237,0.4);
 }
 
 .main-container {

@@ -9,6 +9,7 @@ from app.models.admin import Admin
 from app.models.announcement import Announcement
 from app.schemas.response import ApiResponse
 from app.exceptions.http_exceptions import NotFoundError
+from app.common.audit import log_audit
 
 router = APIRouter()
 
@@ -87,6 +88,9 @@ async def create_announcement(
     await db.commit()
     await db.refresh(announcement)
 
+    await log_audit(db, current_admin.id, "create", "announcement", announcement.id,
+                    f"创建公告: {title}")
+
     return ApiResponse.success(data={
         "id": announcement.id,
         "title": announcement.title,
@@ -128,6 +132,10 @@ async def update_announcement(
         announcement.expired_at = datetime.fromisoformat(expired_at) if expired_at else None
 
     await db.commit()
+
+    await log_audit(db, current_admin.id, "update", "announcement", announcement_id,
+                    f"编辑公告: {announcement.title}")
+
     return ApiResponse.success(data={"id": announcement.id})
 
 
@@ -142,8 +150,13 @@ async def delete_announcement(
     if not announcement:
         return ApiResponse.failed(message="公告不存在", body_code=404, http_code=404)
 
+    title = announcement.title
     await db.delete(announcement)
     await db.commit()
+
+    await log_audit(db, current_admin.id, "delete", "announcement", announcement_id,
+                    f"删除公告: {title}")
+
     return ApiResponse.success(message="删除成功")
 
 
@@ -160,6 +173,10 @@ async def toggle_pin(
 
     announcement.is_pinned = not announcement.is_pinned
     await db.commit()
+
+    await log_audit(db, current_admin.id, "update", "announcement", announcement_id,
+                    f"{'置顶' if announcement.is_pinned else '取消置顶'}公告: {announcement.title}")
+
     return ApiResponse.success(data={"is_pinned": announcement.is_pinned})
 
 
@@ -177,4 +194,8 @@ async def toggle_status(
 
     announcement.is_active = is_active
     await db.commit()
+
+    await log_audit(db, current_admin.id, "update", "announcement", announcement_id,
+                    f"{'上线' if is_active else '下线'}公告: {announcement.title}")
+
     return ApiResponse.success(data={"is_active": announcement.is_active})

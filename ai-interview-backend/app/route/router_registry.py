@@ -131,6 +131,11 @@ BACKOFFICE_ROUTES = [
         prefix=f"{settings.API_V1_STR}/backoffice/analytics",
         tags=["backoffice-analytics"]
     ),
+    RouteConfig(
+        module_path="app.api.backoffice.v1.experience",
+        prefix=f"{settings.API_V1_STR}/backoffice/experiences",
+        tags=["backoffice-experience"]
+    ),
 ]
 
 # 公共路由配置（不分客户端和后台的路由）

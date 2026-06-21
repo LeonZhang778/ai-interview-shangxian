@@ -6,7 +6,7 @@
     <div class="stats-grid">
       <div class="stat-card" v-for="(s, i) in statCards" :key="i" :style="{ '--accent': s.color, '--glow': s.glow }">
         <div class="stat-icon">{{ s.icon }}</div>
-        <div class="stat-num">{{ s.value }}</div>
+        <div class="stat-num">{{ stats[s.key] }}</div>
         <div class="stat-label">{{ s.label }}</div>
       </div>
     </div>

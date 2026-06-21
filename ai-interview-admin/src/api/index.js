@@ -67,3 +67,9 @@ export const analyticsApi = {
   experienceRanking: () => api.get('/analytics/experience-ranking'),
   activeUsers: () => api.get('/analytics/active-users')
 }
+
+export const experienceApi = {
+  list: (params) => api.get('/experiences', { params }),
+  detail: (id) => api.get(`/experiences/${id}`),
+  review: (id, action) => api.put(`/experiences/${id}/review`, null, { params: { action } })
+}

@@ -12,7 +12,8 @@ const routes = [
   { path: '/announcements', name: 'Announcements', component: () => import('../views/Announcements.vue'), meta: { auth: true } },
   { path: '/settings', name: 'Settings', component: () => import('../views/Settings.vue'), meta: { auth: true } },
   { path: '/feedbacks', name: 'Feedbacks', component: () => import('../views/Feedbacks.vue'), meta: { auth: true } },
-  { path: '/audit-logs', name: 'AuditLogs', component: () => import('../views/AuditLogs.vue'), meta: { auth: true } }
+  { path: '/audit-logs', name: 'AuditLogs', component: () => import('../views/AuditLogs.vue'), meta: { auth: true } },
+  { path: '/experiences', name: 'Experiences', component: () => import('../views/Experiences.vue'), meta: { auth: true } }
 ]
 
 const router = createRouter({ history: createWebHistory('/admin/'), routes })

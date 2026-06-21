@@ -421,4 +421,211 @@ class ExperienceService:
         }
 
 
+    @staticmethod
+    async def submit_experience(
+        db: AsyncSession,
+        user_id: int,
+        title: str,
+        company: str,
+        position: str,
+        content: str,
+        level: Optional[str] = None,
+        round_: Optional[str] = None,
+        summary: Optional[str] = None,
+        tags: Optional[list] = None,
+        is_anonymous: bool = False,
+    ) -> Dict:
+        """用户提交面经投稿"""
+        experience = Experience(
+            title=title,
+            company=company,
+            position=position,
+            content=content,
+            level=level,
+            round=round_,
+            summary=summary or content[:200],
+            author_id=user_id,
+            is_anonymous=is_anonymous,
+            status="pending",
+        )
+        db.add(experience)
+        await db.commit()
+        await db.refresh(experience)
+
+        # 添加标签
+        if tags:
+            for tag_name in tags:
+                db.add(ExperienceTag(experience_id=experience.id, tag=tag_name))
+            await db.commit()
+
+        return {
+            "id": experience.id,
+            "title": experience.title,
+            "status": experience.status,
+        }
+
+    @staticmethod
+    async def get_my_experiences(
+        db: AsyncSession,
+        user_id: int,
+        page: int = 1,
+        size: int = 20,
+    ) -> Dict:
+        """获取我的投稿列表"""
+        query = (
+            select(Experience)
+            .where(Experience.author_id == user_id)
+            .order_by(Experience.created_at.desc())
+        )
+        count_query = select(func.count()).select_from(
+            query.subquery()
+        )
+        total = await db.scalar(count_query)
+
+        query = query.offset((page - 1) * size).limit(size)
+        result = await db.execute(query)
+        experiences = result.scalars().all()
+
+        exp_ids = [e.id for e in experiences]
+        tags_map = {}
+        if exp_ids:
+            tag_query = select(ExperienceTag).where(ExperienceTag.experience_id.in_(exp_ids))
+            tag_result = await db.execute(tag_query)
+            for t in tag_result.scalars().all():
+                tags_map.setdefault(t.experience_id, []).append(t.tag)
+
+        items = [
+            {
+                "id": e.id,
+                "title": e.title,
+                "company": e.company,
+                "position": e.position,
+                "status": e.status,
+                "tags": tags_map.get(e.id, []),
+                "created_at": e.created_at.strftime("%Y-%m-%d") if e.created_at else None,
+            }
+            for e in experiences
+        ]
+
+        return {"items": items, "total": total, "page": page, "size": size}
+
+
+    @staticmethod
+    async def admin_list_experiences(
+        db: AsyncSession,
+        status: Optional[str] = None,
+        page: int = 1,
+        size: int = 20,
+    ) -> Dict:
+        """管理员获取面经列表（含待审核）"""
+        query = select(Experience).order_by(Experience.created_at.desc())
+        if status:
+            query = query.where(Experience.status == status)
+
+        count_query = select(func.count()).select_from(query.subquery())
+        total = await db.scalar(count_query)
+
+        query = query.offset((page - 1) * size).limit(size)
+        result = await db.execute(query)
+        experiences = result.scalars().all()
+
+        exp_ids = [e.id for e in experiences]
+        tags_map = {}
+        if exp_ids:
+            tag_query = select(ExperienceTag).where(ExperienceTag.experience_id.in_(exp_ids))
+            tag_result = await db.execute(tag_query)
+            for t in tag_result.scalars().all():
+                tags_map.setdefault(t.experience_id, []).append(t.tag)
+
+        # Get author names
+        author_ids = [e.author_id for e in experiences if e.author_id]
+        authors_map = {}
+        if author_ids:
+            author_query = select(User).where(User.id.in_(author_ids))
+            author_result = await db.execute(author_query)
+            for u in author_result.scalars().all():
+                authors_map[u.id] = u.first_name or u.email.split("@")[0]
+
+        items = [
+            {
+                "id": e.id,
+                "title": e.title,
+                "company": e.company,
+                "position": e.position,
+                "status": e.status,
+                "is_anonymous": e.is_anonymous,
+                "author_name": authors_map.get(e.author_id, "未知") if not e.is_anonymous else "匿名",
+                "tags": tags_map.get(e.id, []),
+                "view_count": e.view_count,
+                "like_count": e.like_count,
+                "created_at": e.created_at.strftime("%Y-%m-%d %H:%M") if e.created_at else None,
+            }
+            for e in experiences
+        ]
+
+        return {"items": items, "total": total, "page": page, "size": size}
+
+    @staticmethod
+    async def admin_review_experience(
+        db: AsyncSession,
+        experience_id: int,
+        action: str,
+    ) -> Dict:
+        """管理员审核面经（approve/reject）"""
+        experience = await db.get(Experience, experience_id)
+        if not experience:
+            raise NotFoundError(message="面经不存在")
+
+        if action == "approve":
+            experience.status = "published"
+        elif action == "reject":
+            experience.status = "rejected"
+        else:
+            from app.exceptions.http_exceptions import ValidationError
+            raise ValidationError(message="无效的操作")
+
+        await db.commit()
+        return {"id": experience.id, "status": experience.status}
+
+    @staticmethod
+    async def admin_get_experience_detail(
+        db: AsyncSession,
+        experience_id: int,
+    ) -> Dict:
+        """管理员获取面经详情"""
+        query = select(Experience).where(Experience.id == experience_id).options(selectinload(Experience.tags))
+        result = await db.execute(query)
+        experience = result.scalar_one_or_none()
+
+        if not experience:
+            raise NotFoundError(message="面经不存在")
+
+        author_name = "匿名用户"
+        if not experience.is_anonymous and experience.author_id:
+            user_query = select(User).where(User.id == experience.author_id)
+            user_result = await db.execute(user_query)
+            user = user_result.scalar_one_or_none()
+            if user:
+                author_name = user.first_name or user.email.split("@")[0]
+
+        return {
+            "id": experience.id,
+            "title": experience.title,
+            "company": experience.company,
+            "position": experience.position,
+            "level": experience.level,
+            "round": experience.round,
+            "content": experience.content,
+            "summary": experience.summary,
+            "status": experience.status,
+            "is_anonymous": experience.is_anonymous,
+            "author_name": author_name,
+            "tags": [t.tag for t in experience.tags],
+            "view_count": experience.view_count,
+            "like_count": experience.like_count,
+            "collect_count": experience.collect_count,
+            "created_at": experience.created_at.strftime("%Y-%m-%d %H:%M") if experience.created_at else None,
+        }
+
+
 experience_service = ExperienceService()

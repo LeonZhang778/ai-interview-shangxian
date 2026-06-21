@@ -28,6 +28,9 @@
         <router-link to="/audit-logs" active-class="active">
           <span class="nav-icon">📋</span> 操作日志
         </router-link>
+        <router-link to="/experiences" active-class="active">
+          <span class="nav-icon">📄</span> 面经管理
+        </router-link>
         <router-link to="/waiting-list" active-class="active">
           <span class="nav-icon">⏳</span> 候选名单
         </router-link>

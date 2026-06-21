@@ -14,6 +14,7 @@ const routes = [
   { path: '/interview/:id/report', name: 'Report', component: () => import('../views/Report.vue'), meta: { auth: true } },
   { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue'), meta: { auth: true } },
   { path: '/experiences', name: 'Experiences', component: () => import('../views/Experiences.vue') },
+  { path: '/experiences/submit', name: 'ExperienceSubmit', component: () => import('../views/ExperienceSubmit.vue'), meta: { auth: true } },
   { path: '/experiences/:id', name: 'ExperienceDetail', component: () => import('../views/ExperienceDetail.vue') },
   { path: '/image-studio', name: 'ImageStudio', component: () => import('../views/ImageStudio.vue'), meta: { auth: true } },
   { path: '/announcements', name: 'Announcements', component: () => import('../views/Announcements.vue') },

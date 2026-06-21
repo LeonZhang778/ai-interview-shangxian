@@ -45,6 +45,55 @@ async def get_filter_options(
     return ApiResponse.success(data=result)
 
 
+class ExperienceSubmit(BaseModel):
+    title: str
+    company: str
+    position: str
+    content: str
+    level: Optional[str] = None
+    round: Optional[str] = None
+    summary: Optional[str] = None
+    tags: Optional[list] = None
+    is_anonymous: bool = False
+
+
+@router.post("/submit")
+async def submit_experience(
+    body: ExperienceSubmit,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """提交面经投稿（需要登录）"""
+    result = await experience_service.submit_experience(
+        db=db,
+        user_id=current_user.id,
+        title=body.title,
+        company=body.company,
+        position=body.position,
+        content=body.content,
+        level=body.level,
+        round_=body.round,
+        summary=body.summary,
+        tags=body.tags,
+        is_anonymous=body.is_anonymous,
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.get("/my/submissions")
+async def get_my_experiences(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取我的投稿列表（需要登录）"""
+    result = await experience_service.get_my_experiences(
+        db=db, user_id=current_user.id, page=page, size=size
+    )
+    return ApiResponse.success(data=result)
+
+
 @router.get("/{experience_id}")
 async def get_experience_detail(
     experience_id: int,
