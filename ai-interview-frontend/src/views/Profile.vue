@@ -2,12 +2,12 @@
   <div class="container">
     <div v-if="authStore.isGuest" class="profile-page" style="text-align:center;padding:60px 20px">
       <p style="font-size:48px;margin-bottom:16px">👤</p>
-      <p style="font-size:16px;color:#e2e8f0;margin-bottom:8px">游客模式暂不支持个人中心</p>
-      <p style="font-size:14px;color:#6b7280;margin-bottom:24px">注册账号后即可编辑个人资料</p>
+      <p style="font-size:16px;color:var(--text-primary);margin-bottom:8px">游客模式暂不支持个人中心</p>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:24px">注册账号后即可编辑个人资料</p>
       <router-link to="/register" class="btn-primary" style="display:inline-block;padding:10px 28px;color:white;border-radius:8px;font-size:14px;text-decoration:none">注册账号</router-link>
     </div>
     <div v-else class="profile-page">
-      <h2 style="margin-bottom:24px;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#fff,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent">个人中心</h2>
+      <h2 style="margin-bottom:24px;font-family:'Space Grotesk',sans-serif;background:var(--title-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent">个人中心</h2>
 
       <div class="card avatar-section">
         <div class="avatar-wrapper" @click="$refs.avatarInput.click()">
@@ -23,7 +23,7 @@
       </div>
 
       <div class="card" style="margin-top:16px">
-        <h3 style="margin-bottom:16px;color:#c4b5fd;font-size:15px">基本信息</h3>
+        <h3 style="margin-bottom:16px;color:var(--accent-light);font-size:15px">基本信息</h3>
         <div class="form-row">
           <div class="form-group">
             <label>姓</label>
@@ -67,7 +67,7 @@
       </div>
 
       <div class="card" style="margin-top:16px">
-        <h3 style="margin-bottom:16px;color:#c4b5fd;font-size:15px">修改密码</h3>
+        <h3 style="margin-bottom:16px;color:var(--accent-light);font-size:15px">修改密码</h3>
         <div class="form-group">
           <label>当前密码</label>
           <input v-model="pwForm.old_password" type="password" placeholder="输入当前密码" />
@@ -201,11 +201,11 @@ async function handleChangePassword() {
   font-size: 24px; opacity: 0; transition: opacity 0.2s;
 }
 .avatar-wrapper:hover .avatar-overlay { opacity: 1; }
-.avatar-name { font-size: 18px; font-weight: 600; color: #f1f5f9; }
-.avatar-email { font-size: 13px; color: #6b7280; margin-top: 4px; }
+.avatar-name { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+.avatar-email { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-group { margin-bottom: 14px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #9ca3af; }
-.error { color: #f87171; font-size: 13px; margin-top: 8px; }
-.success-msg { color: #34d399; font-size: 13px; margin-top: 8px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.error { color: var(--red); font-size: 13px; margin-top: 8px; }
+.success-msg { color: var(--green); font-size: 13px; margin-top: 8px; }
 </style>

@@ -35,7 +35,7 @@
       <!-- Step 2: 等待验证 -->
       <template v-else-if="step === 2">
         <h2>📧 查收邮件</h2>
-        <p class="subtitle">验证邮件已发送至 <strong style="color:#c4b5fd">{{ form.email }}</strong></p>
+        <p class="subtitle">验证邮件已发送至 <strong style="color:var(--accent-light)">{{ form.email }}</strong></p>
         <p class="hint">请点击邮件中的链接完成验证，验证后您将加入等候名单。</p>
         <p v-if="error" class="error">{{ error }}</p>
         <p v-if="success" class="success">{{ success }}</p>
@@ -121,25 +121,25 @@ onUnmounted(() => { if (cooldownTimer) clearInterval(cooldownTimer) })
 </script>
 
 <style scoped>
-.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0a0a1a; }
-.auth-card { width: 440px; background: rgba(8,5,25,0.9); border: 1px solid rgba(139,92,246,0.1); border-radius: 16px; padding: 36px; text-align: center; backdrop-filter: blur(40px); }
-.auth-card h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; background: linear-gradient(135deg, #fff, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
-.subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
-.subtitle strong { color: #c4b5fd; }
-.hint { color: #6b7280; font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
-.optional { color: #4a4a6a; font-weight: 400; }
+.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-base); }
+.auth-card { width: 440px; background: rgba(8,5,25,0.9); border: 1px solid var(--border-default); border-radius: 16px; padding: 36px; text-align: center; backdrop-filter: blur(40px); }
+.auth-card h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; background:var(--title-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
+.subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
+.subtitle strong { color: var(--accent-light); }
+.hint { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
+.optional { color: var(--text-dim); font-weight: 400; }
 .form-row { display: flex; gap: 12px; }
 .form-group { margin-bottom: 16px; text-align: left; flex: 1; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #9ca3af; }
-.form-group input { width: 100%; padding: 11px 14px; border: 1px solid rgba(139,92,246,0.12); border-radius: 10px; font-size: 14px; outline: none; transition: all 0.3s; background: rgba(139,92,246,0.04); color: #e2e8f0; }
-.form-group input::placeholder { color: #4a4a6a; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+.form-group input { width: 100%; padding: 11px 14px; border:1px solid var(--border-default); border-radius: 10px; font-size: 14px; outline: none; transition: all 0.3s; background: var(--bg-card); color: var(--text-primary); }
+.form-group input::placeholder { color: var(--text-dim); }
 .form-group input:focus { border-color: rgba(139,92,246,0.35); box-shadow: 0 0 16px rgba(139,92,246,0.08); background: rgba(139,92,246,0.07); }
-.error { color: #f87171; font-size: 13px; margin-bottom: 12px; }
-.success { color: #34d399; font-size: 13px; margin-bottom: 12px; }
+.error { color: var(--red); font-size: 13px; margin-bottom: 12px; }
+.success { color: var(--green); font-size: 13px; margin-bottom: 12px; }
 .btn-glow { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Space Grotesk', sans-serif; color: white; background: linear-gradient(135deg, #7c3aed, #6366f1); cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 20px rgba(124,58,237,0.3); }
 .btn-glow:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,0.45); }
 .btn-glow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.auth-link { margin-top: 18px; font-size: 14px; color: #6b7280; }
-.auth-link a { color: #a855f7; font-weight: 500; }
+.auth-link { margin-top: 18px; font-size: 14px; color: var(--text-muted); }
+.auth-link a { color: var(--accent-primary); font-weight: 500; }
 .actions { margin: 16px 0; }
 </style>

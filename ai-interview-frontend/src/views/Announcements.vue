@@ -70,8 +70,8 @@ onMounted(async () => {
 <style scoped>
 .announcements-page {
   min-height: 100vh;
-  background: #0a0a1a;
-  color: #e2e8f0;
+  background: var(--bg-base);
+  color: var(--text-primary);
 }
 
 .container {
@@ -90,23 +90,23 @@ onMounted(async () => {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, #fff, #c4b5fd);
+  background:var(--title-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .back-link {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 14px;
   text-decoration: none;
   transition: color 0.2s;
 }
-.back-link:hover { color: #a855f7; }
+.back-link:hover { color: var(--accent-primary); }
 
 /* 加载 */
 .loading {
   text-align: center;
   padding: 80px 20px;
-  color: #6b7280;
+  color: var(--text-muted);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -115,7 +115,7 @@ onMounted(async () => {
 .loading-spinner {
   width: 32px; height: 32px;
   border: 3px solid rgba(139,92,246,0.15);
-  border-top-color: #a855f7;
+  border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -125,7 +125,7 @@ onMounted(async () => {
 .empty-state {
   text-align: center;
   padding: 80px 20px;
-  color: #4a4a6a;
+  color: var(--text-dim);
 }
 .empty-icon {
   font-size: 48px;
@@ -178,10 +178,10 @@ onMounted(async () => {
   font-weight: 600;
   letter-spacing: 0.3px;
 }
-.tag.type-info { background: rgba(139,92,246,0.1); color: #a78bfa; }
-.tag.type-update { background: rgba(139,92,246,0.08); color: #8b7cf6; }
-.tag.type-maintenance { background: rgba(139,92,246,0.06); color: #7c6de8; }
-.tag.type-activity { background: rgba(6,182,212,0.08); color: #67d4e8; }
+.tag.type-info { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+.tag.type-update { background: var(--bg-hover); color: var(--accent-purple); }
+.tag.type-maintenance { background: var(--bg-hover); color: var(--accent-purple); }
+.tag.type-activity { background: rgba(6,182,212,0.08); color: var(--accent-cyan); }
 .pin-badge {
   font-size: 11px;
   color: #f59e0b;
@@ -192,11 +192,11 @@ onMounted(async () => {
   font-size: 17px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #f1f5f9;
+  color: var(--text-primary);
 }
 .item-preview {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 12px;
 }
@@ -205,9 +205,9 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
 }
-.item-date { font-size: 12px; color: #4a4a6a; }
-.read-more { font-size: 13px; color: #a855f7; transition: color 0.2s; }
-.announcement-card:hover .read-more { color: #c4b5fd; }
+.item-date { font-size: 12px; color: var(--text-dim); }
+.read-more { font-size: 13px; color: var(--accent-primary); transition: color 0.2s; }
+.announcement-card:hover .read-more { color: var(--accent-light); }
 
 @media (max-width: 640px) {
   .container { padding: 20px 16px; }

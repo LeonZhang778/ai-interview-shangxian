@@ -16,11 +16,11 @@
           </svg>
         </div>
         <h2 style="margin-top:20px;font-size:20px">面试即将开始</h2>
-        <p style="color:#6b7280;margin-top:8px;font-size:14px">{{ prepareTip }}</p>
+        <p style="color:var(--text-muted);margin-top:8px;font-size:14px">{{ prepareTip }}</p>
         <div class="prepare-progress">
           <div class="prepare-bar" :style="{ width: preparePercent + '%' }"></div>
         </div>
-        <p style="color:#9ca3af;font-size:12px;margin-top:8px">AI 正在为你准备面试题目...</p>
+        <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">AI 正在为你准备面试题目...</p>
       </div>
     </div>
 
@@ -264,11 +264,11 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.interview-page { display: flex; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; background: #0a0a1a; color: #e2e8f0; }
+.interview-page { display: flex; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; background: var(--bg-base); color: var(--text-primary); }
 
 /* 准备动画 */
 .prepare-overlay {
-  position: fixed; inset: 0; background: #0a0a1a;
+  position: fixed; inset: 0; background: var(--bg-base);
   display: flex; align-items: center; justify-content: center; z-index: 200;
 }
 .prepare-card { text-align: center; padding: 40px; }
@@ -289,10 +289,10 @@ async function handleSubmit() {
 /* 顶部 */
 .interview-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: rgba(8,5,25,0.9); border-bottom: 1px solid rgba(139,92,246,0.1);
+  padding: 12px 20px; background: rgba(8,5,25,0.9); border-bottom: 1px solid var(--border-default);
   font-size: 14px; font-weight: 600; backdrop-filter: blur(20px);
 }
-.progress { color: #6b7280; font-weight: 400; }
+.progress { color: var(--text-muted); font-weight: 400; }
 
 /* 聊天 */
 .chat-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -318,15 +318,15 @@ async function handleSubmit() {
 
 /* 气泡 */
 .bubble { max-width: 70%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
-.interviewer .bubble { background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.12); border-bottom-left-radius: 4px; color: #e2e8f0; }
+.interviewer .bubble { background: var(--bg-hover); border:1px solid var(--border-default); border-bottom-left-radius: 4px; color: var(--text-primary); }
 .candidate .bubble { background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; border-bottom-right-radius: 4px; }
-.thinking-bubble { color: #6b7280; font-style: italic; }
+.thinking-bubble { color: var(--text-muted); font-style: italic; }
 .dot-animation .dots::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
 @keyframes dots {
   0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; }
 }
 .streaming-content { display: inline; }
-.cursor-blink { display: inline; animation: blink 0.8s step-end infinite; color: #a855f7; font-size: 14px; }
+.cursor-blink { display: inline; animation: blink 0.8s step-end infinite; color: var(--accent-primary); font-size: 14px; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .bubble-score { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); font-size: 13px; }
 .interviewer .bubble-score { border-top-color: rgba(139,92,246,0.12); }

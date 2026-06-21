@@ -793,4 +793,61 @@ h2 {
   initial-value: 0deg;
   inherits: false;
 }
+
+/* Light theme overrides for auth pages */
+:root[data-theme="light"] .card-body {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(139, 92, 246, 0.15);
+}
+:root[data-theme="light"] .card-body::before {
+  background: linear-gradient(90deg, transparent 10%, rgba(139,92,246,0.25) 30%, rgba(99,102,241,0.2) 50%, rgba(139,92,246,0.25) 70%, transparent 90%);
+}
+:root[data-theme="light"] .card-outer-glow {
+  background: radial-gradient(ellipse at center, rgba(139,92,246,0.05), transparent 70%);
+}
+:root[data-theme="light"] .card-mouse-glow {
+  background: radial-gradient(circle, rgba(139,92,246,0.06), transparent 70%);
+}
+:root[data-theme="light"] h2 {
+  background: linear-gradient(135deg, #1E293B, #7C3AED);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+:root[data-theme="light"] .subtitle {
+  color: #64748B;
+}
+:root[data-theme="light"] .form-group label {
+  color: #475569;
+}
+:root[data-theme="light"] .form-group:focus-within label {
+  color: #7C3AED;
+}
+:root[data-theme="light"] .form-group input {
+  background: rgba(139, 92, 246, 0.03);
+  border-color: rgba(139, 92, 246, 0.12);
+  color: #1E293B;
+}
+:root[data-theme="light"] .form-group input::placeholder {
+  color: #94A3B8;
+}
+:root[data-theme="light"] .form-group input:focus {
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.06);
+}
+:root[data-theme="light"] .auth-links a {
+  color: #64748B;
+}
+:root[data-theme="light"] .auth-links a:hover {
+  color: #7C3AED;
+}
+:root[data-theme="light"] .divider {
+  color: #94A3B8;
+}
+:root[data-theme="light"] .btn-guest {
+  color: #0891B2;
+  border-color: rgba(6, 182, 212, 0.25);
+}
+:root[data-theme="light"] .orbit-ring { opacity: 0.3; }
+:root[data-theme="light"] .meteor { opacity: 0.3; }
+:root[data-theme="light"] .aurora { opacity: 0.4; }
 </style>

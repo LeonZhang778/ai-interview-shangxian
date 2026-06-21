@@ -256,14 +256,14 @@ onMounted(() => {
 <style scoped>
 .experiences-page {
   min-height: 100vh;
-  background: #0a0a1a;
+  background: var(--bg-base);
 }
 
 .hero-section {
   background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(99,102,241,0.15) 50%, rgba(139,92,246,0.1) 100%);
   padding: 48px 20px 40px;
   text-align: center;
-  border-bottom: 1px solid rgba(139,92,246,0.08);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .hero-section h1 {
@@ -271,14 +271,14 @@ onMounted(() => {
   font-size: 32px;
   font-weight: 800;
   margin: 0 0 10px;
-  background: linear-gradient(135deg, #fff, #c4b5fd);
+  background:var(--title-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .hero-desc {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -290,8 +290,8 @@ onMounted(() => {
 
 /* 筛选区 */
 .filter-section {
-  background: rgba(139,92,246,0.04);
-  border: 1px solid rgba(139,92,246,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 14px;
   padding: 20px;
   margin-bottom: 20px;
@@ -313,7 +313,7 @@ onMounted(() => {
 .filter-group label {
   font-size: 14px;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--text-secondary);
   white-space: nowrap;
   padding-top: 4px;
   min-width: 36px;
@@ -329,23 +329,23 @@ onMounted(() => {
   border-radius: 16px;
   font-size: 13px;
   cursor: pointer;
-  background: rgba(139,92,246,0.06);
-  color: #6b7280;
+  background: var(--bg-hover);
+  color: var(--text-muted);
   transition: all 0.2s;
   user-select: none;
 }
 .filter-tag:hover {
   background: rgba(139,92,246,0.12);
-  color: #a78bfa;
+  color: var(--accent-purple);
 }
 .filter-tag.active {
   background: rgba(139,92,246,0.2);
-  color: #c4b5fd;
+  color: var(--accent-light);
   border: 1px solid rgba(139,92,246,0.3);
 }
 
 .sort-row {
-  border-top: 1px solid rgba(139,92,246,0.06);
+  border-top: 1px solid var(--border-default);
   padding-top: 14px;
 }
 .sort-tabs { display: flex; gap: 0; }
@@ -353,14 +353,14 @@ onMounted(() => {
   padding: 6px 16px;
   font-size: 13px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-muted);
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
 }
-.sort-tab:hover { color: #a78bfa; }
+.sort-tab:hover { color: var(--accent-purple); }
 .sort-tab.active {
-  color: #a855f7;
-  border-bottom-color: #a855f7;
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
   font-weight: 600;
 }
 
@@ -371,15 +371,15 @@ onMounted(() => {
   gap: 16px;
 }
 .experience-card {
-  background: rgba(139,92,246,0.04);
-  border: 1px solid rgba(139,92,246,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 14px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.3s;
 }
 .experience-card:hover {
-  border-color: rgba(139,92,246,0.25);
+  border-color: var(--border-hover);
   background: rgba(139,92,246,0.07);
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(139,92,246,0.1);
@@ -389,7 +389,7 @@ onMounted(() => {
 .card-title {
   font-size: 17px;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text-primary);
   margin: 0 0 10px;
   line-height: 1.4;
 }
@@ -397,29 +397,29 @@ onMounted(() => {
 .card-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .company-tag {
   background: rgba(139,92,246,0.1);
-  color: #a78bfa;
+  color: var(--accent-purple);
   padding: 2px 10px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
 }
 .position-tag {
-  background: rgba(139,92,246,0.08);
-  color: #8b7cf6;
+  background: var(--bg-hover);
+  color: var(--accent-purple);
   padding: 2px 10px;
   border-radius: 12px;
   font-size: 12px;
 }
 .level-tag {
   background: rgba(6,182,212,0.08);
-  color: #67d4e8;
+  color: var(--accent-cyan);
   padding: 2px 10px;
   border-radius: 12px;
   font-size: 12px;
 }
 .round-tag {
-  background: rgba(139,92,246,0.06);
-  color: #7c6de8;
+  background: var(--bg-hover);
+  color: var(--accent-purple);
   padding: 2px 10px;
   border-radius: 12px;
   font-size: 12px;
@@ -427,7 +427,7 @@ onMounted(() => {
 
 .card-summary {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.6;
   margin: 0 0 12px;
   display: -webkit-box;
@@ -440,7 +440,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: #4a4a6a;
+  color: var(--text-dim);
   margin-bottom: 12px;
 }
 .card-stats { display: flex; gap: 16px; }
@@ -448,7 +448,7 @@ onMounted(() => {
 .card-actions {
   display: flex;
   gap: 10px;
-  border-top: 1px solid rgba(139,92,246,0.06);
+  border-top: 1px solid var(--border-default);
   padding-top: 12px;
 }
 .btn-read {
@@ -468,20 +468,20 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 600;
   background: transparent;
-  color: #a78bfa;
+  color: var(--accent-purple);
   border: 1px solid rgba(139,92,246,0.2);
   text-decoration: none;
   transition: all 0.2s;
 }
 .btn-practice:hover {
-  border-color: rgba(139,92,246,0.4);
-  background: rgba(139,92,246,0.06);
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
 }
 
 .loading-state, .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #4a4a6a;
+  color: var(--text-dim);
   font-size: 15px;
 }
 .load-more { text-align: center; padding: 20px; }
@@ -489,9 +489,9 @@ onMounted(() => {
   padding: 10px 32px;
   border-radius: 8px;
   font-size: 14px;
-  background: rgba(139,92,246,0.06);
-  color: #a78bfa;
-  border: 1px solid rgba(139,92,246,0.12);
+  background: var(--bg-hover);
+  color: var(--accent-purple);
+  border:1px solid var(--border-default);
   cursor: pointer;
   transition: all 0.2s;
 }

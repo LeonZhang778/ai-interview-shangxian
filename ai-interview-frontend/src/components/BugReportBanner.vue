@@ -15,7 +15,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>内容 <span style="color:#ef4444">*</span></label>
+          <label>内容 <span style="color:var(--red)">*</span></label>
           <textarea v-model="form.content" rows="4" placeholder="请描述你遇到的问题或建议..."></textarea>
         </div>
         <div class="form-group">
@@ -89,29 +89,32 @@ async function submitFeedback() {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  background: #4f46e5;
+  border: 2px solid rgba(139,92,246,0.3);
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
   font-size: 22px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
+  box-shadow: 0 4px 20px rgba(124,58,237,0.4);
   transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .bug-toggle:hover {
-  background: #4338ca;
   transform: scale(1.1);
+  box-shadow: 0 6px 28px rgba(124,58,237,0.55);
 }
 
 .bug-panel {
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
   padding: 18px 20px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
   width: 300px;
   font-size: 13px;
   line-height: 1.6;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .bug-header {
@@ -121,18 +124,19 @@ async function submitFeedback() {
   font-weight: 600;
   font-size: 14px;
   margin-bottom: 14px;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .close-btn {
   border: none;
   background: none;
   font-size: 18px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0 2px;
+  transition: color 0.2s;
 }
-.close-btn:hover { color: #475569; }
+.close-btn:hover { color: var(--text-primary); }
 
 .form-group {
   margin-bottom: 10px;
@@ -141,7 +145,7 @@ async function submitFeedback() {
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 .form-group input,
@@ -149,11 +153,20 @@ async function submitFeedback() {
 .form-group textarea {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   font-size: 13px;
   box-sizing: border-box;
   font-family: inherit;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  transition: border-color 0.2s, background 0.3s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-input-focus);
 }
 .form-group textarea {
   resize: vertical;
@@ -162,20 +175,29 @@ async function submitFeedback() {
 .submit-btn {
   width: 100%;
   padding: 10px;
-  background: #4f46e5;
+  background: var(--accent-gradient);
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
 }
-.submit-btn:hover { background: #4338ca; }
-.submit-btn:disabled { background: #a5b4fc; cursor: not-allowed; }
+.submit-btn:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.submit-btn:disabled {
+  background: var(--text-dim);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 .success-msg {
-  color: #10b981;
+  color: var(--green);
   font-size: 13px;
   font-weight: 600;
   text-align: center;
@@ -183,7 +205,7 @@ async function submitFeedback() {
 }
 
 .bug-note {
-  color: #94a3b8;
+  color: var(--text-dim);
   font-size: 11px;
   margin: 8px 0 0;
 }

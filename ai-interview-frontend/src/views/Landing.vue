@@ -61,7 +61,7 @@
         <a v-if="contactEmail" :href="`mailto:${contactEmail}`">反馈建议</a>
         <a v-else href="mailto:1448203623@qq.com">反馈建议</a>
       </p>
-      <p v-if="icpNumber" class="footer-icp" style="font-size:11px;color:#94a3b8;margin-top:8px">
+      <p v-if="icpNumber" class="footer-icp" style="font-size:11px;color:var(--text-muted);margin-top:8px">
         {{ icpNumber }}
       </p>
     </footer>
@@ -129,8 +129,8 @@ async function handleGuest() {
 <style scoped>
 .landing {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #e2e8f0;
-  background: #0a0a1a;
+  color: var(--text-primary);
+  background: var(--bg-base);
 }
 
 /* Hero */
@@ -139,7 +139,7 @@ async function handleGuest() {
   color: white;
   padding: 80px 20px 60px;
   text-align: center;
-  border-bottom: 1px solid rgba(139,92,246,0.1);
+  border-bottom: 1px solid var(--border-default);
 }
 .hero-content {
   max-width: 640px;
@@ -162,7 +162,7 @@ async function handleGuest() {
   opacity: 0.85;
   line-height: 1.7;
   margin-bottom: 32px;
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 .hero-actions {
   display: flex;
@@ -197,20 +197,20 @@ async function handleGuest() {
   border-radius: 10px;
   font-size: 16px;
   font-weight: 600;
-  color: #c4b5fd;
+  color: var(--accent-light);
   text-decoration: none;
   transition: all 0.3s;
 }
 .btn-outline:hover {
-  border-color: #a78bfa;
+  border-color: var(--accent-purple);
   background: rgba(139,92,246,0.1);
 }
 .hero-stats {
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--text-secondary);
 }
 .hero-stats strong {
-  color: #c4b5fd;
+  color: var(--accent-light);
 }
 
 /* Features */
@@ -225,7 +225,7 @@ async function handleGuest() {
   font-weight: 700;
   margin-bottom: 40px;
   font-family: 'Space Grotesk', sans-serif;
-  background: linear-gradient(135deg, #fff, #c4b5fd);
+  background:var(--title-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -235,16 +235,16 @@ async function handleGuest() {
   gap: 24px;
 }
 .feature-card {
-  background: rgba(139,92,246,0.04);
+  background: var(--bg-card);
   border-radius: 14px;
   padding: 28px 24px;
   text-align: center;
-  border: 1px solid rgba(139,92,246,0.1);
+  border: 1px solid var(--border-default);
   transition: all 0.3s;
 }
 .feature-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(139,92,246,0.25);
+  border-color: var(--border-hover);
   box-shadow: 0 12px 40px rgba(139,92,246,0.1);
 }
 .feature-icon {
@@ -256,20 +256,20 @@ async function handleGuest() {
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 8px;
-  color: #f1f5f9;
+  color: var(--text-primary);
 }
 .feature-card p {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
 /* Steps */
 .steps {
-  background: rgba(139,92,246,0.03);
+  background: var(--bg-card);
   padding: 60px 20px;
-  border-top: 1px solid rgba(139,92,246,0.06);
-  border-bottom: 1px solid rgba(139,92,246,0.06);
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
 }
 .step-list {
   max-width: 600px;
@@ -301,11 +301,11 @@ async function handleGuest() {
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 4px;
-  color: #f1f5f9;
+  color: var(--text-primary);
 }
 .step-info p {
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -320,10 +320,10 @@ async function handleGuest() {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 12px;
-  color: #f1f5f9;
+  color: var(--text-primary);
 }
 .cta p {
-  color: #9ca3af;
+  color: var(--text-secondary);
   margin-bottom: 24px;
 }
 
@@ -331,9 +331,9 @@ async function handleGuest() {
 .footer {
   text-align: center;
   padding: 30px 20px;
-  border-top: 1px solid rgba(139,92,246,0.08);
+  border-top: 1px solid var(--border-default);
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 .footer-links {
   margin-top: 8px;
@@ -342,12 +342,12 @@ async function handleGuest() {
   justify-content: center;
 }
 .footer-links a {
-  color: #9ca3af;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 0.2s;
 }
 .footer-links a:hover {
-  color: #a855f7;
+  color: var(--accent-primary);
 }
 
 /* Responsive */

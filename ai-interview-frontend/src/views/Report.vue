@@ -19,20 +19,20 @@
 
       <!-- 总结 -->
       <div class="card" style="margin-top:16px" v-if="report.summary">
-        <h3 style="margin-bottom:10px;color:#c4b5fd">总体评价</h3>
-        <p style="font-size:14px;line-height:1.8;color:#cbd5e1">{{ report.summary }}</p>
+        <h3 style="margin-bottom:10px;color:var(--accent-light)">总体评价</h3>
+        <p style="font-size:14px;line-height:1.8;color:var(--text-secondary)">{{ report.summary }}</p>
       </div>
 
       <!-- 优势 & 不足 -->
       <div class="two-col" style="margin-top:16px">
         <div class="card" v-if="report.strengths?.length">
-          <h3 style="margin-bottom:10px;color:#34d399">优势</h3>
+          <h3 style="margin-bottom:10px;color:var(--green)">优势</h3>
           <ul>
             <li v-for="(s, i) in report.strengths" :key="i">{{ s }}</li>
           </ul>
         </div>
         <div class="card" v-if="report.weaknesses?.length">
-          <h3 style="margin-bottom:10px;color:#f87171">不足</h3>
+          <h3 style="margin-bottom:10px;color:var(--red)">不足</h3>
           <ul>
             <li v-for="(w, i) in report.weaknesses" :key="i">{{ w }}</li>
           </ul>
@@ -41,7 +41,7 @@
 
       <!-- 建议 -->
       <div class="card" style="margin-top:16px" v-if="report.suggestions?.length">
-        <h3 style="margin-bottom:10px;color:#c4b5fd">改进建议</h3>
+        <h3 style="margin-bottom:10px;color:var(--accent-light)">改进建议</h3>
         <ul>
           <li v-for="(s, i) in report.suggestions" :key="i">{{ s }}</li>
         </ul>
@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    <div v-else class="card" style="text-align:center;padding:60px;max-width:500px;margin:60px auto;color:#6b7280">
+    <div v-else class="card" style="text-align:center;padding:60px;max-width:500px;margin:60px auto;color:var(--text-muted)">
       <p>报告加载失败</p>
       <router-link to="/dashboard" style="margin-top:12px;display:inline-block">返回首页</router-link>
     </div>
@@ -156,7 +156,7 @@ async function handleShare() {
 .loading {
   text-align: center;
   padding: 80px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 .score-card {
   display: flex;
@@ -187,11 +187,11 @@ async function handleShare() {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 20px;
   margin-bottom: 4px;
-  color: #f1f5f9;
+  color: var(--text-primary);
 }
 .hire-rec {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 .two-col {
@@ -208,13 +208,13 @@ ul li {
   line-height: 1.8;
   padding-left: 16px;
   position: relative;
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 ul li::before {
   content: '•';
   position: absolute;
   left: 0;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 .q-score-item {
   margin-bottom: 14px;
@@ -225,7 +225,7 @@ ul li::before {
   gap: 10px;
   margin-bottom: 6px;
   font-size: 14px;
-  color: #e2e8f0;
+  color: var(--text-primary);
 }
 .q-index {
   background: rgba(139,92,246,0.1);
@@ -233,23 +233,23 @@ ul li::before {
   border-radius: 4px;
   font-weight: 600;
   font-size: 12px;
-  color: #a78bfa;
+  color: var(--accent-purple);
 }
 .q-text {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 .q-score {
   font-weight: 700;
   font-size: 16px;
-  color: #f1f5f9;
+  color: var(--text-primary);
 }
 .q-bar {
   height: 6px;
-  background: rgba(139,92,246,0.08);
+  background: var(--bg-hover);
   border-radius: 3px;
   overflow: hidden;
 }
