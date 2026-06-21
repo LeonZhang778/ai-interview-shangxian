@@ -633,10 +633,19 @@ class ExperienceService:
         experience_id: int,
     ) -> Dict:
         """管理员删除面经"""
+        from sqlalchemy import delete as sql_delete
+
         experience = await db.get(Experience, experience_id)
         if not experience:
             raise NotFoundError(message="面经不存在")
         title = experience.title
+
+        # 先删除关联数据
+        await db.execute(sql_delete(ExperienceComment).where(ExperienceComment.experience_id == experience_id))
+        await db.execute(sql_delete(UserLike).where(UserLike.experience_id == experience_id))
+        await db.execute(sql_delete(UserCollection).where(UserCollection.experience_id == experience_id))
+        await db.execute(sql_delete(ExperienceTag).where(ExperienceTag.experience_id == experience_id))
+
         await db.delete(experience)
         await db.commit()
         return {"id": experience_id, "title": title}
@@ -648,6 +657,8 @@ class ExperienceService:
         action: str,
     ) -> Dict:
         """管理员批量审核面经"""
+        from sqlalchemy import delete as sql_delete
+
         if action not in ("approve", "reject", "delete"):
             from app.exceptions.http_exceptions import ValidationError
             raise ValidationError(message="无效的操作")
@@ -658,6 +669,11 @@ class ExperienceService:
             if not experience:
                 continue
             if action == "delete":
+                # 先删除关联数据
+                await db.execute(sql_delete(ExperienceComment).where(ExperienceComment.experience_id == eid))
+                await db.execute(sql_delete(UserLike).where(UserLike.experience_id == eid))
+                await db.execute(sql_delete(UserCollection).where(UserCollection.experience_id == eid))
+                await db.execute(sql_delete(ExperienceTag).where(ExperienceTag.experience_id == eid))
                 await db.delete(experience)
             elif action == "approve":
                 experience.status = "published"
