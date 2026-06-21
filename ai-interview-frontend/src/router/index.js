@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { trackPageView } from '../utils/tracker'
 
 const routes = [
   { path: '/', name: 'Landing', component: () => import('../views/Landing.vue') },
@@ -34,6 +35,10 @@ router.beforeEach((to, from, next) => {
   } else {
     next()
   }
+})
+
+router.afterEach((to) => {
+  trackPageView(to.fullPath)
 })
 
 export default router

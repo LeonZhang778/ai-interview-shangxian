@@ -114,6 +114,11 @@ async function handleLogin() {
 async function handleGuest() {
   guestLoading.value = true
   try {
+    // 复用已有的游客 token，避免重复创建匿名用户
+    if (authStore.isLoggedIn && authStore.isGuest) {
+      router.push('/dashboard')
+      return
+    }
     const data = await guestLogin()
     authStore.setAuth(data)
     router.push('/dashboard')

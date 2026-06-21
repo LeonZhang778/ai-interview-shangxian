@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.interview import Interview
 from app.models.experience import Experience, UserLike, UserCollection
 from app.models.image_task import ImageTask
+from app.models.page_view import PageView
 from app.schemas.response import ApiResponse
 
 router = APIRouter()
@@ -158,14 +159,26 @@ async def active_users(
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = now - timedelta(days=7)
 
+    # DAU/WAU 基于 last_active_at 统计（排除游客）
     dau = await db.scalar(
-        select(func.count(func.distinct(Interview.user_id)))
-        .where(Interview.created_at >= today)
+        select(func.count()).select_from(User)
+        .where(User.last_active_at >= today, User.is_guest == False)
     ) or 0
 
     wau = await db.scalar(
-        select(func.count(func.distinct(Interview.user_id)))
-        .where(Interview.created_at >= week_ago)
+        select(func.count()).select_from(User)
+        .where(User.last_active_at >= week_ago, User.is_guest == False)
     ) or 0
 
-    return ApiResponse.success(data={"dau": dau, "wau": wau})
+    # 今日 PV/UV
+    today_pv = await db.scalar(
+        select(func.count()).select_from(PageView)
+        .where(PageView.created_at >= today)
+    ) or 0
+
+    today_uv = await db.scalar(
+        select(func.count(func.distinct(PageView.session_id)))
+        .where(PageView.created_at >= today, PageView.session_id.isnot(None))
+    ) or 0
+
+    return ApiResponse.success(data={"dau": dau, "wau": wau, "today_pv": today_pv, "today_uv": today_uv})

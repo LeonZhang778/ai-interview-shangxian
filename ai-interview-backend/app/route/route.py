@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 # 路由导入已移动到路由注册中心统一管理
 from app.core.config import settings
 from app.configs.docs_apps import create_client_app, create_backoffice_app
@@ -99,6 +100,48 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # 用户活跃度追踪中间件
+    class ActivityTrackingMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next):
+            response = await call_next(request)
+            # 仅追踪客户端 API 请求
+            path = request.url.path
+            if not path.startswith("/api/v1/") or path.startswith("/api/v1/backoffice"):
+                return response
+            # 提取 token
+            auth_header = request.headers.get("authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return response
+            token = auth_header[7:]
+            try:
+                from app.core.security import AuthBase as _Auth
+                payload = _Auth.verify_token(token, scope="client")
+                if not payload:
+                    return response
+                user_id = payload.get("sub")
+                if not user_id:
+                    return response
+                # Redis 节流：每用户每 5 分钟才写一次 DB
+                throttle_key = f"activity:{user_id}"
+                exists = await redis_client.get(throttle_key)
+                if not exists:
+                    await redis_client.set_with_ttl(throttle_key, "1", ttl_seconds=300)
+                    # 异步更新 last_active_at（不阻塞响应）
+                    from app.db.session import async_session
+                    from sqlalchemy import update
+                    from app.models.user import User
+                    from datetime import datetime, UTC
+                    async with async_session() as session:
+                        await session.execute(
+                            update(User).where(User.id == int(user_id)).values(last_active_at=datetime.now(UTC))
+                        )
+                        await session.commit()
+            except Exception:
+                pass  # 不影响正常请求
+            return response
+
+    app.add_middleware(ActivityTrackingMiddleware)
 
     # 维护模式 & 功能开关中间件
     @app.middleware("http")

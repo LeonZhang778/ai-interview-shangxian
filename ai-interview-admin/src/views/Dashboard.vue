@@ -11,7 +11,7 @@
       </div>
     </div>
 
-    <!-- 活跃用户 -->
+    <!-- 活跃用户 & 访问量 -->
     <div class="active-row">
       <div class="active-card">
         <span class="active-num">{{ activeUsers.dau }}</span>
@@ -20,6 +20,14 @@
       <div class="active-card">
         <span class="active-num">{{ activeUsers.wau }}</span>
         <span class="active-label">周活用户 (WAU)</span>
+      </div>
+      <div class="active-card">
+        <span class="active-num">{{ activeUsers.today_pv }}</span>
+        <span class="active-label">今日 PV</span>
+      </div>
+      <div class="active-card">
+        <span class="active-num">{{ activeUsers.today_uv }}</span>
+        <span class="active-label">今日 UV</span>
       </div>
     </div>
 
@@ -73,7 +81,7 @@ import * as echarts from 'echarts'
 import { analyticsApi } from '../api'
 
 const stats = ref({ total_users: 0, total_interviews: 0, total_experiences: 0, total_images: 0, today_new_users: 0, today_interviews: 0, completion_rate: 0, average_score: 0 })
-const activeUsers = ref({ dau: 0, wau: 0 })
+const activeUsers = ref({ dau: 0, wau: 0, today_pv: 0, today_uv: 0 })
 const ranking = ref({ top_likes: [], top_collections: [] })
 
 const userChartRef = ref(null)

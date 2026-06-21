@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, delete
 from app.db.session import get_db
 from app.api.backoffice.deps import get_current_admin
 from app.models.admin import Admin
 from app.models.user import User
 from app.models.resume import Resume
 from app.models.interview import Interview
+from app.models.token import Token
 from app.schemas.response import ApiResponse
 from app.common.audit import log_audit
 
@@ -98,3 +100,37 @@ async def get_stats(
         "interview_count": interview_count or 0,
         "completed_interview_count": completed_count or 0
     })
+
+
+@router.delete("/guests/cleanup")
+async def cleanup_guest_users(
+    days: int = Query(30, ge=7, le=365, description="清理多少天未活跃的游客"),
+    db: AsyncSession = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin)
+):
+    """清理长期未活跃的游客用户"""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # 统计待清理数量
+    count = await db.scalar(
+        select(func.count()).select_from(User)
+        .where(User.is_guest == True, User.last_active_at < cutoff)
+    ) or 0
+
+    if count == 0:
+        return ApiResponse.success(data={"deleted": 0, "message": "没有需要清理的游客用户"})
+
+    # 先删除关联的 token
+    guest_ids = await db.execute(
+        select(User.id).where(User.is_guest == True, User.last_active_at < cutoff)
+    )
+    ids = [row[0] for row in guest_ids.all()]
+    if ids:
+        await db.execute(delete(Token).where(Token.user_id.in_(ids)))
+        await db.execute(delete(User).where(User.id.in_(ids)))
+        await db.commit()
+
+    await log_audit(db, current_admin.id, "cleanup", "guest_users", None,
+                    f"清理 {count} 个超过 {days} 天未活跃的游客用户")
+
+    return ApiResponse.success(data={"deleted": count})

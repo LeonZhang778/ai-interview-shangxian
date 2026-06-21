@@ -72,6 +72,11 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/feedbacks",
         tags=["client-feedback"]
     ),
+    RouteConfig(
+        module_path="app.api.client.v1.tracking",
+        prefix=f"{settings.API_V1_STR}/track",
+        tags=["client-tracking"]
+    ),
 ]
 
 # 后台路由配置

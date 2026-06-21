@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { trackPageView } from '../utils/tracker'
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
@@ -22,6 +23,10 @@ router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   if (to.meta.auth && !authStore.isLoggedIn) next('/login')
   else next()
+})
+
+router.afterEach((to) => {
+  trackPageView(to.fullPath)
 })
 
 export default router
