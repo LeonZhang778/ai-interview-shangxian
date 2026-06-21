@@ -20,7 +20,10 @@ const routes = [
   { path: '/image-studio', name: 'ImageStudio', component: () => import('../views/ImageStudio.vue'), meta: { auth: true } },
   { path: '/announcements', name: 'Announcements', component: () => import('../views/Announcements.vue') },
   { path: '/announcements/:id', name: 'AnnouncementDetail', component: () => import('../views/AnnouncementDetail.vue') },
-  { path: '/feedbacks', name: 'MyFeedbacks', component: () => import('../views/MyFeedbacks.vue'), meta: { auth: true } }
+  { path: '/feedbacks', name: 'MyFeedbacks', component: () => import('../views/MyFeedbacks.vue'), meta: { auth: true } },
+  { path: '/notifications', name: 'Notifications', component: () => import('../views/Notifications.vue'), meta: { auth: true } },
+  { path: '/analysis', name: 'Analysis', component: () => import('../views/Analysis.vue'), meta: { auth: true } },
+  { path: '/shared/:token', name: 'SharedReport', component: () => import('../views/SharedReport.vue') }
 ]
 
 const router = createRouter({

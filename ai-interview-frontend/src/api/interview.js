@@ -61,3 +61,23 @@ export function getInterviews() {
 export function deleteInterview(interviewId) {
   return api.delete(`/interviews/${interviewId}`)
 }
+
+export function getAnalysis() {
+  return api.get('/interviews/analysis')
+}
+
+export function startPractice(experienceId, questionCount = 5) {
+  return api.post(`/experiences/${experienceId}/practice`, { question_count: questionCount })
+}
+
+export function shareInterview(interviewId) {
+  return api.post(`/interviews/${interviewId}/share`)
+}
+
+export function unshareInterview(interviewId) {
+  return api.delete(`/interviews/${interviewId}/share`)
+}
+
+export function getSharedReport(shareToken) {
+  return api.get(`/shared/${shareToken}`)
+}

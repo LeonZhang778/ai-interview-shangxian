@@ -1,4 +1,5 @@
 <template>
+  <StarryBackground />
   <div class="container">
     <div v-if="loading" class="loading">加载报告中...</div>
 
@@ -73,10 +74,30 @@
         <div class="share-footer">扫码免费体验 AI 模拟面试</div>
       </div>
 
+      <!-- 分享链接面板 -->
+      <div class="card share-link-panel" style="margin-top:16px">
+        <h3 style="margin-bottom:12px;color:var(--accent-light)">🔗 分享报告</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">生成分享链接，发给朋友查看你的面试表现</p>
+
+        <div v-if="isShared && shareToken" class="share-link-box">
+          <div class="share-link-url">
+            <input :value="shareUrl" readonly class="share-input" />
+            <button @click="copyShareLink" class="btn-copy" :class="{ copied: copyStatus === 'done' }">
+              {{ copyStatus === 'done' ? '已复制' : '复制' }}
+            </button>
+          </div>
+          <button @click="handleUnshare" class="btn-unshare">取消分享</button>
+        </div>
+
+        <button v-else @click="handleShareLink" class="btn-generate" :disabled="shareLinkStatus === 'loading'">
+          {{ shareLinkStatus === 'loading' ? '生成中...' : '生成分享链接' }}
+        </button>
+      </div>
+
       <!-- 操作 -->
       <div style="text-align:center;margin-top:24px;margin-bottom:40px">
-        <button @click="handleShare" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px">
-          {{ shareStatus === 'generating' ? '生成中...' : shareStatus === 'done' ? '已复制到剪贴板' : '📸 分享报告' }}
+        <button @click="handleShareImage" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px">
+          {{ shareStatus === 'generating' ? '生成中...' : shareStatus === 'done' ? '已复制到剪贴板' : '📸 截图分享' }}
         </button>
         <router-link to="/resume/upload" class="btn-primary" style="display:inline-block;padding:10px 24px;color:white;border-radius:8px;margin-right:12px">
           再来一次
@@ -95,9 +116,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { getReport } from '../api/interview'
+import { getReport, shareInterview, unshareInterview } from '../api/interview'
+import StarryBackground from '../components/StarryBackground.vue'
 
 const route = useRoute()
 const interviewId = route.params.id
@@ -106,12 +128,26 @@ const report = ref(null)
 const loading = ref(true)
 const shareCard = ref(null)
 const shareStatus = ref('idle')
+const shareLinkStatus = ref('idle')
+const shareToken = ref(null)
+const isShared = ref(false)
+const copyStatus = ref('idle')
+
+const shareUrl = computed(() => {
+  if (!shareToken.value) return ''
+  return `${window.location.origin}/shared/${shareToken.value}`
+})
 
 onMounted(async () => {
   try {
     const res = await getReport(interviewId)
     data.value = res
     report.value = res.report || {}
+    // 如果已有分享token
+    if (res.share_token) {
+      shareToken.value = res.share_token
+      isShared.value = true
+    }
   } catch (e) {
     console.error(e)
   } finally {
@@ -119,7 +155,7 @@ onMounted(async () => {
   }
 })
 
-async function handleShare() {
+async function handleShareImage() {
   if (shareStatus.value === 'generating') return
   shareStatus.value = 'generating'
   try {
@@ -134,7 +170,6 @@ async function handleShare() {
         shareStatus.value = 'done'
         setTimeout(() => { shareStatus.value = 'idle' }, 3000)
       } catch {
-        // Clipboard API not supported, download instead
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -148,6 +183,49 @@ async function handleShare() {
   } catch (e) {
     console.error(e)
     shareStatus.value = 'idle'
+  }
+}
+
+async function handleShareLink() {
+  if (shareLinkStatus.value === 'loading') return
+  shareLinkStatus.value = 'loading'
+  try {
+    const res = await shareInterview(interviewId)
+    shareToken.value = res.share_token
+    isShared.value = true
+    shareLinkStatus.value = 'done'
+  } catch (e) {
+    console.error(e)
+    shareLinkStatus.value = 'idle'
+  }
+}
+
+async function handleUnshare() {
+  try {
+    await unshareInterview(interviewId)
+    shareToken.value = null
+    isShared.value = false
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function copyShareLink() {
+  if (!shareUrl.value) return
+  try {
+    await navigator.clipboard.writeText(shareUrl.value)
+    copyStatus.value = 'done'
+    setTimeout(() => { copyStatus.value = 'idle' }, 2000)
+  } catch {
+    // Fallback
+    const input = document.createElement('input')
+    input.value = shareUrl.value
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+    copyStatus.value = 'done'
+    setTimeout(() => { copyStatus.value = 'idle' }, 2000)
   }
 }
 </script>
@@ -291,5 +369,84 @@ ul li::before {
 .btn-share:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(245,158,11,0.4);
+}
+
+/* Share link panel */
+.share-link-panel {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+.share-link-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.share-link-url {
+  display: flex;
+  gap: 8px;
+}
+.share-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+.btn-copy {
+  padding: 10px 18px;
+  background: rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  border-radius: 8px;
+  color: var(--accent-light);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-copy:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+.btn-copy.copied {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #10b981;
+}
+.btn-unshare {
+  align-self: flex-end;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-unshare:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+.btn-generate {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-generate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+.btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 </style>

@@ -11,6 +11,36 @@ from app.models.user import User
 router = APIRouter()
 
 
+@router.post("/{interview_id}/share")
+async def share_interview(
+    interview_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """生成面试分享链接"""
+    result = await interview_service.share_interview(
+        db=db,
+        user_id=current_user.id,
+        interview_id=interview_id
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.delete("/{interview_id}/share")
+async def unshare_interview(
+    interview_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """取消面试分享"""
+    result = await interview_service.unshare_interview(
+        db=db,
+        user_id=current_user.id,
+        interview_id=interview_id
+    )
+    return ApiResponse.success(data=result)
+
+
 @router.post("/start")
 async def start_interview(
     data: InterviewStart,
@@ -128,17 +158,85 @@ async def delete_interview(
     )
     return ApiResponse.success(data=result)
 
-@router.delete("/{interview_id}")
-async def delete_interview(
-    interview_id: int,
+
+@router.get("/analysis")
+async def get_analysis(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """删除面试记录"""
-    result = await interview_service.delete_interview(
-        db=db,
-        user_id=current_user.id,
-        interview_id=interview_id
+    """面试历史对比分析"""
+    import json
+    from sqlalchemy import select, func
+    from app.models.interview import Interview
+
+    # 查询已完成的面试
+    query = (
+        select(Interview)
+        .where(Interview.user_id == current_user.id, Interview.status == "completed")
+        .order_by(Interview.created_at.asc())
     )
-    return ApiResponse.success(data=result)
+    result = await db.execute(query)
+    interviews = result.scalars().all()
+
+    if not interviews:
+        return ApiResponse.success(data={
+            "total_interviews": 0,
+            "completed_interviews": 0,
+            "score_trend": [],
+            "dimension_avg": {},
+            "weakest_dimension": None,
+            "improvement_rate": 0
+        })
+
+    # 分数趋势
+    score_trend = []
+    for i in interviews:
+        if i.overall_score:
+            score_trend.append({
+                "date": i.created_at.strftime("%Y-%m-%d"),
+                "score": float(i.overall_score),
+                "position": i.target_position or "未知"
+            })
+
+    # 维度分析（从报告中提取）
+    dimension_scores = {}
+    for i in interviews:
+        if i.report:
+            try:
+                report = json.loads(i.report)
+                question_scores = report.get("question_scores", [])
+                for qs in question_scores:
+                    category = qs.get("question", "")[:20]
+                    score = qs.get("score", 0)
+                    if category:
+                        dimension_scores.setdefault(category, []).append(float(score))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    # 计算维度平均分
+    dimension_avg = {}
+    for dim, scores in dimension_scores.items():
+        dimension_avg[dim] = round(sum(scores) / len(scores), 1) if scores else 0
+
+    # 最弱维度
+    weakest = min(dimension_avg, key=dimension_avg.get) if dimension_avg else None
+
+    # 进步率（最后3次 vs 前3次）
+    improvement_rate = 0
+    if len(score_trend) >= 4:
+        first_half = [s["score"] for s in score_trend[:len(score_trend)//2]]
+        second_half = [s["score"] for s in score_trend[len(score_trend)//2:]]
+        avg_first = sum(first_half) / len(first_half)
+        avg_second = sum(second_half) / len(second_half)
+        if avg_first > 0:
+            improvement_rate = round((avg_second - avg_first) / avg_first, 2)
+
+    return ApiResponse.success(data={
+        "total_interviews": len(interviews),
+        "completed_interviews": len(interviews),
+        "score_trend": score_trend,
+        "dimension_avg": dimension_avg,
+        "weakest_dimension": weakest,
+        "improvement_rate": improvement_rate
+    })
 

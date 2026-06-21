@@ -77,6 +77,16 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/track",
         tags=["client-tracking"]
     ),
+    RouteConfig(
+        module_path="app.api.client.v1.notification",
+        prefix=f"{settings.API_V1_STR}/notifications",
+        tags=["client-notification"]
+    ),
+    RouteConfig(
+        module_path="app.api.client.v1.shared",
+        prefix=f"{settings.API_V1_STR}/shared",
+        tags=["client-shared"]
+    ),
 ]
 
 # 后台路由配置

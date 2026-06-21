@@ -102,11 +102,18 @@ class InterviewService:
         if interview.status == "completed":
             raise ValidationError(message="面试已结束")
 
-        # 获取简历上下文
-        resume_query = select(Resume).where(Resume.id == interview.resume_id)
-        resume_result = await db.execute(resume_query)
-        resume = resume_result.scalar_one_or_none()
-        parsed_resume = json.loads(resume.parsed_content) if resume and resume.parsed_content else {}
+        # 获取上下文（简历或面经）
+        parsed_resume = {}
+        if interview.resume_id:
+            resume_query = select(Resume).where(Resume.id == interview.resume_id)
+            resume_result = await db.execute(resume_query)
+            resume = resume_result.scalar_one_or_none()
+            parsed_resume = json.loads(resume.parsed_content) if resume and resume.parsed_content else {}
+        elif interview.experience_id:
+            from app.models.experience import Experience
+            exp = await db.get(Experience, interview.experience_id)
+            if exp:
+                parsed_resume = {"summary": f"面经：{exp.title}", "skills": [exp.company, exp.position]}
 
         # 获取对话历史
         msg_query = select(InterviewMessage).where(
@@ -205,7 +212,7 @@ class InterviewService:
                 # 将每题评分加入报告
                 report["question_scores"] = [
                     {"question": q["question"], "score": qa["score"], "feedback": ""}
-                    for q, qa in zip[tuple](questions, qa_data)
+                    for q, qa in zip(questions, qa_data)
                 ]
                 interview.report = json.dumps(report, ensure_ascii=False)
             except Exception as e:
@@ -228,6 +235,21 @@ class InterviewService:
             db.add(interviewer_msg)
 
         await db.commit()
+
+        # 面试完成通知
+        if is_finished:
+            try:
+                from app.services.client.notification_service import notification_service
+                await notification_service.create_notification(
+                    db=db, user_id=user_id,
+                    title="面试已完成",
+                    content=f"你的「{interview.target_position}」面试已结束，得分 {overall} 分，点击查看报告",
+                    notification_type="interview",
+                    related_id=interview.id, related_type="interview"
+                )
+            except Exception as e:
+                logger.warning(f"发送面试完成通知失败: {e}")
+
         return response
 
     @staticmethod
@@ -255,11 +277,18 @@ class InterviewService:
             yield f"data: {json.dumps({'type': 'error', 'content': '面试已结束'})}\n\n"
             return
 
-        # 获取简历上下文
-        resume_query = select(Resume).where(Resume.id == interview.resume_id)
-        resume_result = await db.execute(resume_query)
-        resume = resume_result.scalar_one_or_none()
-        parsed_resume = json.loads(resume.parsed_content) if resume and resume.parsed_content else {}
+        # 获取上下文（简历或面经）
+        parsed_resume = {}
+        if interview.resume_id:
+            resume_query = select(Resume).where(Resume.id == interview.resume_id)
+            resume_result = await db.execute(resume_query)
+            resume = resume_result.scalar_one_or_none()
+            parsed_resume = json.loads(resume.parsed_content) if resume and resume.parsed_content else {}
+        elif interview.experience_id:
+            from app.models.experience import Experience
+            exp = await db.get(Experience, interview.experience_id)
+            if exp:
+                parsed_resume = {"summary": f"面经：{exp.title}", "skills": [exp.company, exp.position]}
 
         # 获取对话历史
         msg_query = select(InterviewMessage).where(
@@ -369,6 +398,20 @@ class InterviewService:
                 interview.report = json.dumps({"summary": "报告生成失败", "strengths": [], "weaknesses": [], "suggestions": []})
 
             await db.commit()
+
+            # 面试完成通知
+            try:
+                from app.services.client.notification_service import notification_service
+                await notification_service.create_notification(
+                    db=db, user_id=user_id,
+                    title="面试已完成",
+                    content=f"你的「{interview.target_position}」面试已结束，得分 {overall} 分，点击查看报告",
+                    notification_type="interview",
+                    related_id=interview.id, related_type="interview"
+                )
+            except Exception as e:
+                logger.warning(f"发送面试完成通知失败: {e}")
+
             yield f"data: {json.dumps({'type': 'done', 'score': score, 'feedback': feedback[:200], 'is_finished': True, 'question_index': current_index}, ensure_ascii=False)}\n\n"
         else:
             # 进入下一题
@@ -471,18 +514,21 @@ class InterviewService:
         result = await db.execute(query)
         messages = result.scalars().all()
 
-        return [
-            {
-                "id": m.id,
-                "role": m.role,
-                "content": m.content,
-                "question_index": m.question_index,
-                "score": float(m.score) if m.score else None,
-                "feedback": m.feedback,
-                "created_at": m.created_at.isoformat() if m.created_at else None
-            }
-            for m in messages
-        ]
+        return {
+            "items": [
+                {
+                    "id": m.id,
+                    "role": m.role,
+                    "content": m.content,
+                    "question_index": m.question_index,
+                    "score": float(m.score) if m.score else None,
+                    "feedback": m.feedback,
+                    "created_at": m.created_at.isoformat() if m.created_at else None
+                }
+                for m in messages
+            ],
+            "total_questions": interview.total_questions
+        }
 
     @staticmethod
     async def delete_interview(
@@ -532,6 +578,163 @@ class InterviewService:
         await db.commit()
 
         return {"message": "面试记录已删除"}
+
+    @staticmethod
+    async def share_interview(
+        db: AsyncSession,
+        user_id: int,
+        interview_id: int
+    ) -> Dict:
+        """生成面试分享链接"""
+        import secrets
+        from datetime import datetime
+
+        query = select(Interview).where(
+            Interview.id == interview_id,
+            Interview.user_id == user_id
+        )
+        result = await db.execute(query)
+        interview = result.scalar_one_or_none()
+
+        if not interview:
+            raise NotFoundError(message="面试记录不存在")
+        if interview.status != "completed":
+            raise ValidationError(message="面试尚未完成，无法分享")
+
+        # 如果已有分享token，直接返回
+        if interview.is_shared and interview.share_token:
+            return {
+                "share_token": interview.share_token,
+                "is_shared": True,
+                "shared_at": interview.shared_at.isoformat() if interview.shared_at else None
+            }
+
+        # 生成新的分享token
+        interview.share_token = secrets.token_urlsafe(24)[:32]
+        interview.is_shared = True
+        interview.shared_at = datetime.utcnow()
+        await db.commit()
+
+        return {
+            "share_token": interview.share_token,
+            "is_shared": True,
+            "shared_at": interview.shared_at.isoformat()
+        }
+
+    @staticmethod
+    async def unshare_interview(
+        db: AsyncSession,
+        user_id: int,
+        interview_id: int
+    ) -> Dict:
+        """取消面试分享"""
+        query = select(Interview).where(
+            Interview.id == interview_id,
+            Interview.user_id == user_id
+        )
+        result = await db.execute(query)
+        interview = result.scalar_one_or_none()
+
+        if not interview:
+            raise NotFoundError(message="面试记录不存在")
+
+        interview.is_shared = False
+        interview.share_token = None
+        interview.shared_at = None
+        await db.commit()
+
+        return {"message": "已取消分享", "is_shared": False}
+
+    @staticmethod
+    async def get_shared_report(
+        db: AsyncSession,
+        share_token: str
+    ) -> Dict:
+        """通过分享token获取面试报告（公开接口）"""
+        query = select(Interview).where(
+            Interview.share_token == share_token,
+            Interview.is_shared == True,
+            Interview.status == "completed"
+        )
+        result = await db.execute(query)
+        interview = result.scalar_one_or_none()
+
+        if not interview:
+            raise NotFoundError(message="分享链接无效或已失效")
+
+        report = {}
+        if interview.report:
+            try:
+                report = json.loads(interview.report)
+            except json.JSONDecodeError:
+                report = {}
+
+        return {
+            "interview_id": interview.id,
+            "overall_score": float(interview.overall_score) if interview.overall_score else 0,
+            "total_questions": interview.total_questions,
+            "target_position": interview.target_position,
+            "difficulty": interview.difficulty,
+            "created_at": interview.created_at.isoformat() if interview.created_at else None,
+            "report": report
+        }
+
+    @staticmethod
+    async def start_practice_from_experience(
+        db: AsyncSession,
+        user_id: int,
+        experience_id: int,
+        question_count: int = 5
+    ) -> Dict:
+        """基于面经创建模拟面试"""
+        from app.models.experience import Experience
+
+        experience = await db.get(Experience, experience_id)
+        if not experience or experience.status != "published":
+            raise NotFoundError(message="面经不存在")
+
+        # 通过 AI 生成面试题
+        questions = await AIService.generate_questions_from_experience(
+            title=experience.title,
+            company=experience.company,
+            position=experience.position,
+            content=experience.content,
+            count=question_count
+        )
+
+        # 创建面试记录
+        interview = Interview(
+            user_id=user_id,
+            resume_id=None,
+            experience_id=experience_id,
+            target_position=f"{experience.company} - {experience.position}",
+            difficulty="medium",
+            total_questions=len(questions),
+            current_question_index=0,
+            questions_data=questions,
+            status="in_progress"
+        )
+        db.add(interview)
+        await db.commit()
+        await db.refresh(interview)
+
+        # 保存第一道题
+        first_question = questions[0]["question"]
+        msg = InterviewMessage(
+            interview_id=interview.id,
+            role="interviewer",
+            content=first_question,
+            question_index=0
+        )
+        db.add(msg)
+        await db.commit()
+
+        return {
+            "interview_id": interview.id,
+            "first_question": first_question,
+            "question_index": 0,
+            "total_questions": len(questions)
+        }
 
 
 interview_service = InterviewService()
