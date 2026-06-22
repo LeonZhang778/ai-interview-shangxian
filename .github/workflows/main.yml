@@ -22,5 +22,6 @@ jobs:
           script: |
             docker login --username=${{ secrets.ACR_USERNAME }} --password="${{ secrets.ACR_PASSWORD }}" ${{ secrets.ACR_REGISTRY }}
             docker pull ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
+            docker tag ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest ai-interview-backend-app:latest
             cd /home/deploy/ai-interview/ai-interview-backend
             docker compose up -d --no-deps app
