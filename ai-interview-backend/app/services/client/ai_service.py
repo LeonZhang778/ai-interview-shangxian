@@ -1,8 +1,29 @@
 import json
 import logging
+import asyncio
 from typing import Dict, List, Optional
 from openai import AsyncOpenAI
 from app.core.config import settings
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
+from app.prompts.interview import (
+    RESUME_PARSE_PROMPT,
+    RESUME_ANALYZE_PROMPT,
+    INTERN_LEVEL_HINT,
+    NORMAL_LEVEL_HINT,
+    GENERATE_QUESTIONS_PROMPT,
+    INTERN_POSITION_HINT,
+    NORMAL_POSITION_HINT,
+    GENERATE_QUESTIONS_FROM_EXPERIENCE_PROMPT,
+    EVALUATE_PROMPT,
+    EVALUATE_STREAM_PROMPT,
+    REPORT_PROMPT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,46 +37,89 @@ client = AsyncOpenAI(
 class AIService:
     """智谱 GLM AI 服务 - 面试模拟核心"""
 
-    # 低质量回答关键词
-    LOW_QUALITY_KEYWORDS = ["不知道", "不会", "不清楚", "没了解", "没学过", "跳过", "下一题", "不会答", "答不上", "不会说", "不记得"]
-    LOW_QUALITY_THRESHOLD = 3  # 低于此字数视为低质量
+    # 诚实跳过的关键词（坦诚说不会，应该给机会）
+    HONEST_SKIP_KEYWORDS = ["不会", "不太了解", "不太清楚", "没学过", "没接触过", "不记得", "跳过"]
+    # 胡说八道的关键词（空洞回答）
+    EMPTY_TALK_KEYWORDS = ["嗯", "对", "是的", "好的", "知道了"]
 
     @staticmethod
-    def pre_score(answer: str) -> Optional[float]:
-        """预判断：明显的低质量回答直接返回低分，不调用 AI"""
+    def pre_score(answer: str) -> Optional[tuple]:
+        """
+        预判断：分级评分，区分诚实跳过和胡说八道
+
+        Returns:
+            None: 继续 AI 评估
+            (score, skip_type): 直接返回分数和类型
+        """
         text = answer.strip()
+
+        # 空回答 → 1 分
         if not text:
-            return 1.0
-        if len(text) < AIService.LOW_QUALITY_THRESHOLD:
-            return 1.0
-        for kw in AIService.LOW_QUALITY_KEYWORDS:
-            if kw in text:
-                return 1.0
-        return None
+            return (1.0, "empty")
+
+        # 太短（< 3 字）→ 1 分
+        if len(text) < 3:
+            return (1.0, "too_short")
+
+        # 空洞回答（只有"嗯"、"对"等）→ 1 分
+        if text in AIService.EMPTY_TALK_KEYWORDS:
+            return (1.0, "empty_talk")
+
+        # 诚实跳过：只有"不知道"没有其他内容 → 3 分（给机会，不重罚）
+        for kw in AIService.HONEST_SKIP_KEYWORDS:
+            if kw in text and len(text) < 15:
+                return (3.0, "honest_skip")
+
+        # 诚实跳过但尝试解释："不太清楚，但我觉得应该是..." → 4 分
+        for kw in AIService.HONEST_SKIP_KEYWORDS:
+            if kw in text and len(text) >= 15:
+                return (4.0, "partial_attempt")
+
+        return None  # 继续 AI 评估
 
     @staticmethod
-    def post_process_score(score: float, answer: str) -> float:
-        """对 AI 返回的分数做合理性校验"""
+    def post_process_score(score: float, answer: str, skip_type: str = None) -> float:
+        """
+        对 AI 返回的分数做合理性校验
+
+        Args:
+            score: AI 返回的分数
+            answer: 候选人回答
+            skip_type: pre_score 返回的跳过类型
+        """
         text = answer.strip()
-        # 回答很短但分数很高 → 降分
-        if len(text) < 6 and score > 5:
-            score = min(score, 3.0)
-        # 包含"不知道"等关键词但分数 > 3 → 降到 2
-        for kw in AIService.LOW_QUALITY_KEYWORDS:
-            if kw in text and score > 3:
-                score = 2.0
-                break
+
+        # 诚实跳过的分数保护：不低于 3 分
+        if skip_type == "honest_skip":
+            return max(3.0, min(5.0, score))
+        if skip_type == "partial_attempt":
+            return max(4.0, min(6.0, score))
+
+        # 胡说八道（很短但没说不会）→ 低分
+        if len(text) < 10 and score > 4:
+            return min(score, 3.0)
+
         return max(1.0, min(10.0, round(score, 1)))
 
     @staticmethod
+    @retry(
+        retry=retry_if_exception_type((ConnectionError, TimeoutError, Exception)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=1, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     async def _chat(messages: list, temperature: float = 0.7) -> str:
-        """基础对话补全调用"""
+        """基础对话补全调用，带 tenacity 重试 + 超时保护"""
         try:
-            response = await client.chat.completions.create(
-                model=settings.AI_MODEL,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=4096
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model=settings.AI_MODEL,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=4096
+                ),
+                timeout=30.0,
             )
             msg = response.choices[0].message
             content = msg.content
@@ -70,24 +134,33 @@ class AIService:
             result = content.strip()
             logger.info(f"AI 响应前 200 字: {result[:200]}")
             return result
+        except asyncio.TimeoutError:
+            logger.error("AI API 调用超时 (30s)")
+            raise TimeoutError("AI API 调用超时")
         except Exception as e:
             logger.error(f"AI API 调用失败: {e}")
             raise
 
     @staticmethod
     async def _chat_stream(messages: list, temperature: float = 0.7):
-        """流式对话补全调用，逐块返回文本"""
+        """流式对话补全调用，逐块返回文本，带超时保护"""
         try:
-            stream = await client.chat.completions.create(
-                model=settings.AI_MODEL,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=4096,
-                stream=True
+            stream = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model=settings.AI_MODEL,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=4096,
+                    stream=True
+                ),
+                timeout=30.0,
             )
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
+        except asyncio.TimeoutError:
+            logger.error("AI 流式 API 调用超时 (30s)")
+            raise TimeoutError("AI 流式 API 调用超时")
         except Exception as e:
             logger.error(f"AI 流式 API 调用失败: {e}")
             raise
@@ -127,71 +200,57 @@ class AIService:
         raise ValueError(f"无法从 AI 响应中提取 JSON")
 
     @staticmethod
+    def _format_history(chat_history: list) -> str:
+        """格式化对话历史"""
+        history_text = ""
+        for msg in chat_history[-6:]:  # 保留最近6条消息，控制 token 用量
+            role = "面试官" if msg["role"] == "interviewer" else "候选人"
+            history_text += f"{role}: {msg['content']}\n"
+        return history_text
+
+    @staticmethod
     async def parse_resume(resume_text: str) -> dict:
-        """解析简历文本，提取结构化信息（姓名、学历、技能、经历等）"""
+        """解析简历文本，提取结构化信息（姓名、学历、技能、经历等），带 LLM 缓存"""
+        from app.services.common.redis import redis_client
+
+        # 检查缓存
+        cache_key = f"parse:{resume_text[:500]}"
+        cached = await redis_client.get_llm_cache("parse", cache_key)
+        if cached:
+            return cached
+
         messages = [
-            {
-                "role": "system",
-                "content": (
-                    "你是一个专业的简历分析师。请解析简历内容，提取结构化信息。"
-                    "必须返回纯JSON格式（不要markdown代码块），包含以下字段：\n"
-                    '{"name": "姓名", "education": "学历信息", '
-                    '"skills": ["技能列表"], "experience": ["工作/实习经历"], '
-                    '"projects": ["项目经历"], "summary": "一句话总结候选人背景"}'
-                )
-            },
-            {
-                "role": "user",
-                "content": f"请解析以下简历内容：\n\n{resume_text}"
-            }
+            {"role": "system", "content": RESUME_PARSE_PROMPT["system"]},
+            {"role": "user", "content": RESUME_PARSE_PROMPT["user"].format(resume_text=resume_text)},
         ]
         result = await AIService._chat(messages, temperature=0.3)
-        return AIService._extract_json(result)
+        parsed = AIService._extract_json(result)
+
+        # 写入缓存（TTL 1 小时）
+        await redis_client.set_llm_cache("parse", cache_key, parsed, ttl=3600)
+        return parsed
 
     @staticmethod
     async def analyze_resume(parsed_resume: dict, target_position: str) -> dict:
         """分析简历质量，给出评分、优劣势和改进建议"""
-        # 判断是否为实习岗位，调整评价标准
         is_intern = any(kw in target_position.lower() for kw in ["实习", "intern"])
-        if is_intern:
-            level_hint = (
-                "【重要】目标岗位是实习岗位，候选人是在校学生，请严格按实习生标准评价。\n"
-                "禁止事项：\n"
-                "- 禁止在weaknesses中提及'缺少实习经验'、'缺少工作经验'、'没有实际工作经验'等类似表述\n"
-                "- 禁止因为项目是个人项目或校内项目而扣分，这对实习生来说是正常的\n"
-                "- 禁止要求候选人具备线上生产环境经验\n"
-                "评价重点：技术基础扎实度、项目完成度和技术深度、学习能力、编码能力。\n"
-                "个人项目和校内项目同样能体现技术能力，请公正评价项目质量本身。\n"
-            )
-        else:
-            level_hint = (
-                "目标岗位是正式岗位，请按社招标准评价。\n"
-                "重点关注：工作经验、项目深度、技术广度、解决复杂问题的能力。\n"
-            )
+        level_hint = INTERN_LEVEL_HINT if is_intern else NORMAL_LEVEL_HINT
+
         messages = [
             {
                 "role": "system",
-                "content": (
-                    f"你是一个资深HR和职业规划师，请针对{target_position}岗位分析这份简历。\n"
-                    f"{level_hint}"
-                    "必须返回纯JSON格式（不要markdown代码块），包含以下字段：\n"
-                    '{"overall_score": 7.5, '
-                    '"strengths": ["优势1", "优势2", "优势3"], '
-                    '"weaknesses": ["不足1", "不足2", "不足3"], '
-                    '"suggestions": ["具体改进建议1", "具体改进建议2", "具体改进建议3"], '
-                    '"keyword_match": ["匹配的关键技能1", "匹配的关键技能2"], '
-                    '"missing_keywords": ["缺少的关键技能1", "缺少的关键技能2"], '
-                    '"summary": "一段话总结简历质量和改进方向，100字以内"}'
-                    "\n评分标准：9-10优秀，7-8良好，5-6一般，3-4较差，1-2很差"
-                )
+                "content": RESUME_ANALYZE_PROMPT["system"].format(
+                    target_position=target_position,
+                    level_hint=level_hint,
+                ),
             },
             {
                 "role": "user",
-                "content": (
-                    f"目标岗位：{target_position}\n"
-                    f"简历内容：{json.dumps(parsed_resume, ensure_ascii=False)}"
-                )
-            }
+                "content": RESUME_ANALYZE_PROMPT["user"].format(
+                    target_position=target_position,
+                    resume_json=json.dumps(parsed_resume, ensure_ascii=False),
+                ),
+            },
         ]
         result = await AIService._chat(messages, temperature=0.4)
         return AIService._extract_json(result)
@@ -203,7 +262,9 @@ class AIService:
         difficulty: str,
         count: int
     ) -> list:
-        """根据简历和目标岗位生成面试题目"""
+        """根据简历和目标岗位生成面试题目，带 LLM 缓存"""
+        from app.services.common.redis import redis_client
+
         difficulty_map = {
             "easy": "初级，侧重基础知识和简单项目经验",
             "medium": "中级，涵盖技术深度和项目设计思路",
@@ -211,52 +272,39 @@ class AIService:
         }
         difficulty_desc = difficulty_map.get(difficulty, difficulty_map["medium"])
 
-        # 根据岗位名称判断是实习还是正式岗位，调整出题策略
         is_intern = any(kw in target_position for kw in ["实习", "intern", "Intern"])
-        position_hint = ""
-        if is_intern:
-            position_hint = (
-                "\n注意：这是实习岗位面试，候选人可能是在校学生，请适当降低难度：\n"
-                "- 侧重基础知识（语言基础、数据结构、常用框架）\n"
-                "- 项目经验题以学习过程和思路为主，不要求生产级方案\n"
-                "- 不要出过于深入的系统设计和高并发优化题\n"
-                "- 可以考察学习能力和成长潜力\n"
-            )
-        else:
-            position_hint = (
-                "\n注意：这是正式岗位面试，请按正常标准出题：\n"
-                "- 要求候选人有扎实的技术基础和实际项目经验\n"
-                "- 可以涉及系统设计、性能优化、线上问题排查等\n"
-                "- 考察解决实际问题的能力和技术深度\n"
-            )
+        position_hint = INTERN_POSITION_HINT if is_intern else NORMAL_POSITION_HINT
+
+        # 检查缓存
+        cache_key = f"questions:{target_position}:{difficulty}:{count}:{json.dumps(parsed_resume, ensure_ascii=False)[:200]}"
+        cached = await redis_client.get_llm_cache("questions", cache_key)
+        if cached:
+            return cached
 
         messages = [
             {
                 "role": "system",
-                "content": (
-                    f"你是一个资深技术面试官，正在面试{target_position}岗位。\n"
-                    f"面试难度：{difficulty_desc}\n"
-                    f"{position_hint}\n"
-                    "请根据候选人背景生成面试题。要求：\n"
-                    "1. 结合候选人的项目经验和技术栈提问\n"
-                    "2. 第一题是自我介绍\n"
-                    "3. 覆盖技术深度、项目经验、基础知识\n"
-                    "4. 返回纯JSON数组格式（不要markdown代码块）\n"
-                    '格式：[{"index": 0, "question": "题目内容", "category": "分类"}]\n'
-                    "分类包括：self-intro, project, technical, coding, system-design"
-                )
+                "content": GENERATE_QUESTIONS_PROMPT["system"].format(
+                    target_position=target_position,
+                    difficulty_desc=difficulty_desc,
+                    position_hint=position_hint,
+                ),
             },
             {
                 "role": "user",
-                "content": (
-                    f"候选人简历信息：{json.dumps(parsed_resume, ensure_ascii=False)}\n"
-                    f"目标岗位：{target_position}\n"
-                    f"请生成{count}道面试题。"
-                )
-            }
+                "content": GENERATE_QUESTIONS_PROMPT["user"].format(
+                    resume_json=json.dumps(parsed_resume, ensure_ascii=False),
+                    target_position=target_position,
+                    count=count,
+                ),
+            },
         ]
         result = await AIService._chat(messages, temperature=0.7)
-        return AIService._extract_json(result)
+        questions = AIService._extract_json(result)
+
+        # 写入缓存（TTL 1 小时）
+        await redis_client.set_llm_cache("questions", cache_key, questions, ttl=3600)
+        return questions
 
     @staticmethod
     async def generate_questions_from_experience(
@@ -266,35 +314,39 @@ class AIService:
         content: str,
         count: int = 5
     ) -> list:
-        """根据面经内容生成同类型面试题"""
+        """根据面经内容生成同类型面试题，带 LLM 缓存"""
+        from app.services.common.redis import redis_client
+
+        cache_key = f"exp_questions:{company}:{position}:{count}"
+        cached = await redis_client.get_llm_cache("exp_questions", cache_key)
+        if cached:
+            return cached
+
         messages = [
             {
                 "role": "system",
-                "content": (
-                    f"你是一个资深技术面试官，正在为{company}公司的{position}岗位准备面试题。\n"
-                    "以下是一篇面经，请根据面经内容生成同类型、同难度的面试题。\n"
-                    "要求：\n"
-                    "1. 问题类型覆盖面经中提到的考察方向\n"
-                    "2. 难度与面经描述匹配\n"
-                    "3. 不要照搬面经原文，而是生成同类型的新问题\n"
-                    "4. 返回纯JSON数组格式（不要markdown代码块）\n"
-                    '格式：[{"index": 0, "question": "题目内容", "category": "分类"}]\n'
-                    "分类包括：technical, project, coding, system-design, behavioral"
-                )
+                "content": GENERATE_QUESTIONS_FROM_EXPERIENCE_PROMPT["system"].format(
+                    company=company,
+                    position=position,
+                ),
             },
             {
                 "role": "user",
-                "content": (
-                    f"面经标题：{title}\n"
-                    f"公司：{company}\n"
-                    f"岗位：{position}\n"
-                    f"面经内容：\n{content[:3000]}\n\n"
-                    f"请生成{count}道面试题。"
-                )
-            }
+                "content": GENERATE_QUESTIONS_FROM_EXPERIENCE_PROMPT["user"].format(
+                    title=title,
+                    company=company,
+                    position=position,
+                    content=content[:3000],
+                    count=count,
+                ),
+            },
         ]
         result = await AIService._chat(messages, temperature=0.7)
-        return AIService._extract_json(result)
+        questions = AIService._extract_json(result)
+
+        # 写入缓存（TTL 1 小时）
+        await redis_client.set_llm_cache("exp_questions", cache_key, questions, ttl=3600)
+        return questions
 
     @staticmethod
     async def evaluate_answer(
@@ -304,47 +356,81 @@ class AIService:
         chat_history: list,
         next_question: Optional[str] = None
     ) -> dict:
-        """评估候选人的回答，返回评分和反馈"""
-        history_text = ""
-        for msg in chat_history[-6:]:  # 保留最近6条消息，控制 token 用量
-            role = "面试官" if msg["role"] == "interviewer" else "候选人"
-            history_text += f"{role}: {msg['content']}\n"
+        """评估候选人的回答，返回评分和反馈，带 LLM 缓存"""
+        from app.services.common.redis import redis_client
 
+        # 检查缓存
+        cache_key = f"evaluate:{question}:{answer}"
+        cached = await redis_client.get_llm_cache("evaluate", cache_key)
+        if cached:
+            return cached
+
+        history_text = AIService._format_history(chat_history)
         messages = [
-            {
-                "role": "system",
-                "content": (
-                    "你是一个资深技术面试官，正在评估候选人的回答。\n"
-                    "请返回纯JSON格式（不要markdown代码块）：\n"
-                    '{"score": 7.5, "feedback": "简短反馈50字以内", '
-                    '"follow_up": false}\n'
-                    "评分标准：\n"
-                    "- 9-10: 回答非常出色，有深度有见解，能举一反三\n"
-                    "- 7-8: 回答良好，基本正确，覆盖了核心要点\n"
-                    "- 5-6: 回答一般，有明显不足，但至少尝试回答了\n"
-                    "- 3-4: 回答较差，理解有误，只回答了部分内容\n"
-                    "- 1-2: 基本没有回答到点上，或答非所问\n\n"
-                    "【重要规则】以下情况必须给 1-2 分：\n"
-                    "- 候选人明确表示'不知道'、'不会'、'没了解过'、'不清楚'\n"
-                    "- 回答内容为空或只有几个字（如'嗯'、'对'、'是的'）\n"
-                    "- 回答与问题完全无关\n"
-                    "- 候选人要求跳过该题目\n\n"
-                    "你必须严格按标准打分，不要给'同情分'。如果候选人没有回答问题，分数必须低于 3。"
-                )
-            },
+            {"role": "system", "content": EVALUATE_PROMPT["system"]},
             {
                 "role": "user",
-                "content": (
-                    f"候选人背景：{json.dumps(resume_context, ensure_ascii=False)}\n"
-                    f"对话历史：\n{history_text}\n"
-                    f"当前问题：{question}\n"
-                    f"候选人回答：{answer}\n"
-                    "请评估这个回答。"
-                )
-            }
+                "content": EVALUATE_PROMPT["user"].format(
+                    resume_context=json.dumps(resume_context, ensure_ascii=False),
+                    history_text=history_text,
+                    question=question,
+                    answer=answer,
+                ),
+            },
         ]
         result = await AIService._chat(messages, temperature=0.1)
-        return AIService._extract_json(result)
+        evaluation = AIService._extract_json(result)
+
+        # 写入缓存（TTL 30 分钟）
+        await redis_client.set_llm_cache("evaluate", cache_key, evaluation, ttl=1800)
+        return evaluation
+
+    @staticmethod
+    def _fallback_evaluate(answer: str) -> dict:
+        """
+        评估降级逻辑（预判断 → 兜底），供 evaluate_node 和 evaluate_answer_with_fallback 共用。
+
+        Returns:
+            {"score": float, "feedback": str, "follow_up": False, "skip_type": str}
+        """
+        # Level 2: 预判断降级
+        pre_result = AIService.pre_score(answer)
+        if pre_result is not None:
+            score, skip_type = pre_result
+            logger.info(f"[Level 2] 降级到预判断评分: {skip_type}")
+            feedback = {
+                "honest_skip": "AI 暂时不可用，已使用基础评分。坦诚说会不会被重罚。",
+                "partial_attempt": "AI 暂时不可用，已使用基础评分。",
+            }.get(skip_type, "AI 暂时不可用，已使用基础评分。")
+            return {"score": score, "feedback": feedback, "follow_up": False, "skip_type": skip_type}
+
+        # Level 3: 兜底
+        logger.warning("[Level 3] 所有评估方案失败，使用兜底分数")
+        return {"score": 5.0, "feedback": "评估服务暂时不可用，请稍后查看详细反馈。", "follow_up": False, "skip_type": None}
+
+    @staticmethod
+    async def evaluate_answer_with_fallback(
+        question: str,
+        answer: str,
+        resume_context: dict,
+        chat_history: list
+    ) -> dict:
+        """评估回答（带三级容错：正常调用 → 预判断降级 → 兜底分数）"""
+
+        # Level 0: 尝试正常调用（带缓存）
+        try:
+            result = await AIService.evaluate_answer(
+                question=question,
+                answer=answer,
+                resume_context=resume_context,
+                chat_history=chat_history,
+            )
+            return result
+        except Exception as e:
+            logger.warning(f"[Level 1] AI 评估失败: {e}")
+
+        # Level 2-3: 共享降级逻辑
+        return AIService._fallback_evaluate(answer)
 
     @staticmethod
     async def evaluate_answer_stream(
@@ -354,43 +440,18 @@ class AIService:
         chat_history: list
     ):
         """流式版本：评估回答并逐块输出评语，最后输出 JSON 评分"""
-        history_text = ""
-        for msg in chat_history[-6:]:
-            role = "面试官" if msg["role"] == "interviewer" else "候选人"
-            history_text += f"{role}: {msg['content']}\n"
-
+        history_text = AIService._format_history(chat_history)
         messages = [
-            {
-                "role": "system",
-                "content": (
-                    "你是一个资深技术面试官，正在评估候选人的回答。\n"
-                    "请先用自然语言给出详细点评（100字左右），然后换行输出评分JSON。\n"
-                    "格式要求：\n"
-                    "先输出点评文字，然后另起一行输出：\n"
-                    '```json\n{"score": 7.5}\n```\n\n'
-                    "评分标准：\n"
-                    "- 9-10: 回答非常出色，有深度有见解\n"
-                    "- 7-8: 回答良好，基本正确\n"
-                    "- 5-6: 回答一般，有明显不足，但至少尝试回答了\n"
-                    "- 3-4: 回答较差，理解有误\n"
-                    "- 1-2: 基本没有回答到点上，或答非所问\n\n"
-                    "【重要规则】以下情况必须给 1-2 分：\n"
-                    "- 候选人明确表示'不知道'、'不会'、'没了解过'、'不清楚'\n"
-                    "- 回答内容为空或只有几个字\n"
-                    "- 回答与问题完全无关\n"
-                    "你必须严格按标准打分，不要给'同情分'。"
-                )
-            },
+            {"role": "system", "content": EVALUATE_STREAM_PROMPT["system"]},
             {
                 "role": "user",
-                "content": (
-                    f"候选人背景：{json.dumps(resume_context, ensure_ascii=False)}\n"
-                    f"对话历史：\n{history_text}\n"
-                    f"当前问题：{question}\n"
-                    f"候选人回答：{answer}\n"
-                    "请评估这个回答。"
-                )
-            }
+                "content": EVALUATE_STREAM_PROMPT["user"].format(
+                    resume_context=json.dumps(resume_context, ensure_ascii=False),
+                    history_text=history_text,
+                    question=question,
+                    answer=answer,
+                ),
+            },
         ]
         async for chunk in AIService._chat_stream(messages, temperature=0.1):
             yield chunk
@@ -401,7 +462,9 @@ class AIService:
         target_position: str,
         questions_and_scores: list
     ) -> dict:
-        """根据面试记录生成综合评估报告"""
+        """根据面试记录生成综合评估报告，带 LLM 缓存"""
+        from app.services.common.redis import redis_client
+
         qa_text = ""
         for item in questions_and_scores:
             qa_text += (
@@ -410,28 +473,25 @@ class AIService:
                 f"得分：{item.get('score', 'N/A')}\n\n"
             )
 
+        cache_key = f"report:{target_position}:{qa_text}"
+        cached = await redis_client.get_llm_cache("report", cache_key)
+        if cached:
+            return cached
+
         messages = [
-            {
-                "role": "system",
-                "content": (
-                    "你是一个资深技术面试官，请根据面试记录生成综合评估报告。\n"
-                    "返回纯JSON格式（不要markdown代码块）：\n"
-                    '{"summary": "总体评价100字以内", '
-                    '"strengths": ["优势1", "优势2"], '
-                    '"weaknesses": ["不足1", "不足2"], '
-                    '"suggestions": ["建议1", "建议2"], '
-                    '"hire_recommendation": "建议录用/待定/不建议录用"}'
-                )
-            },
+            {"role": "system", "content": REPORT_PROMPT["system"]},
             {
                 "role": "user",
-                "content": (
-                    f"候选人背景：{json.dumps(parsed_resume, ensure_ascii=False)}\n"
-                    f"目标岗位：{target_position}\n"
-                    f"面试记录：\n{qa_text}\n"
-                    "请生成综合评估报告。"
-                )
-            }
+                "content": REPORT_PROMPT["user"].format(
+                    resume_context=json.dumps(parsed_resume, ensure_ascii=False),
+                    target_position=target_position,
+                    qa_text=qa_text,
+                ),
+            },
         ]
         result = await AIService._chat(messages, temperature=0.5)
-        return AIService._extract_json(result)
+        report = AIService._extract_json(result)
+
+        # 写入缓存（TTL 1 小时）
+        await redis_client.set_llm_cache("report", cache_key, report, ttl=3600)
+        return report

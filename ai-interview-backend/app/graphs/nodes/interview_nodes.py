@@ -132,34 +132,16 @@ async def evaluate_node(state: dict) -> dict:
         last_error = str(e)
         logger.warning(f"[evaluate_node] AI 评估失败: {e}")
 
-    # Level 2: 预判断降级
-    pre_result = AIService.pre_score(answer)
-    if pre_result is not None:
-        score, skip_type = pre_result
-        feedback = {
-            "honest_skip": "AI 暂时不可用，已使用基础评分。坦诚说会不会被重罚。",
-            "partial_attempt": "AI 暂时不可用，已使用基础评分。",
-        }.get(skip_type, "AI 暂时不可用，已使用基础评分。")
-        if chunk_queue:
-            await chunk_queue.put(feedback)
-        return {
-            "evaluation": {"score": score, "feedback": feedback, "follow_up": False},
-            "score": score,
-            "feedback": feedback,
-            "skip_type": skip_type,
-            "error": last_error,
-        }
-
-    # Level 3: 兜底
-    logger.warning("[evaluate_node] 所有评估方案失败，使用兜底分数")
-    fallback = "评估服务暂时不可用，请稍后查看详细反馈。"
+    # Level 2-3: 共享降级逻辑
+    fallback_result = AIService._fallback_evaluate(answer)
     if chunk_queue:
-        await chunk_queue.put(fallback)
+        await chunk_queue.put(fallback_result["feedback"])
     return {
-        "evaluation": {"score": 5.0, "feedback": fallback, "follow_up": False},
-        "score": 5.0,
-        "feedback": fallback,
-        "error": "所有评估方案失败",
+        "evaluation": {"score": fallback_result["score"], "feedback": fallback_result["feedback"], "follow_up": False},
+        "score": fallback_result["score"],
+        "feedback": fallback_result["feedback"],
+        "skip_type": fallback_result.get("skip_type"),
+        "error": last_error,
     }
 
 

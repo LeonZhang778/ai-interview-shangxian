@@ -38,6 +38,7 @@ class InterviewState(TypedDict):
     interview_id: int
     user_id: int
     answer: str
+    db: object  # AsyncSession，数据库连接
     chunk_queue: object  # asyncio.Queue | None，流式输出用
 
     # 上下文（由 load_context 填充）
@@ -72,8 +73,15 @@ class InterviewState(TypedDict):
 # 图构建
 # ---------------------------------------------------------------------------
 
+def _route_after_evaluate(state: dict) -> str:
+    """评估后的路由：成功走 success，降级/失败走 fallback"""
+    if state.get("error"):
+        return "fallback"
+    return "success"
+
+
 def build_interview_graph() -> StateGraph:
-    """构建面试流程图"""
+    """构建面试流程图（带条件边路由）"""
     graph = StateGraph(InterviewState)
 
     graph.add_node("load_context", load_context_node)
@@ -83,7 +91,14 @@ def build_interview_graph() -> StateGraph:
 
     graph.add_edge(START, "load_context")
     graph.add_edge("load_context", "evaluate")
-    graph.add_edge("evaluate", "generate_next")
+    graph.add_conditional_edges(
+        "evaluate",
+        _route_after_evaluate,
+        {
+            "success": "generate_next",
+            "fallback": "generate_next",
+        },
+    )
     graph.add_edge("generate_next", "save_results")
     graph.add_edge("save_results", END)
 
