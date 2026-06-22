@@ -12,6 +12,10 @@ from app.exceptions.http_exceptions import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
 
+# LangGraph 面试状态机（编译一次，全局复用）
+from app.graphs.interview_graph import build_interview_graph, interview_graph_stream
+interview_graph = build_interview_graph()
+
 
 class InterviewService:
 
@@ -88,8 +92,8 @@ class InterviewService:
         interview_id: int,
         answer: str
     ) -> Dict:
-        """提交当前题目的回答并获取 AI 评估"""
-        # 获取面试记录
+        """提交当前题目的回答并获取 AI 评估（通过 LangGraph 执行）"""
+        # 前置校验
         query = select(Interview).where(
             Interview.id == interview_id,
             Interview.user_id == user_id
@@ -102,155 +106,37 @@ class InterviewService:
         if interview.status == "completed":
             raise ValidationError(message="面试已结束")
 
-        # 获取上下文（简历或面经）
-        parsed_resume = {}
-        if interview.resume_id:
-            resume_query = select(Resume).where(Resume.id == interview.resume_id)
-            resume_result = await db.execute(resume_query)
-            resume = resume_result.scalar_one_or_none()
-            parsed_resume = json.loads(resume.parsed_content) if resume and resume.parsed_content else {}
-        elif interview.experience_id:
-            from app.models.experience import Experience
-            exp = await db.get(Experience, interview.experience_id)
-            if exp:
-                parsed_resume = {"summary": f"面经：{exp.title}", "skills": [exp.company, exp.position]}
+        # 执行图
+        graph_result = await interview_graph.ainvoke({
+            "interview_id": interview_id,
+            "user_id": user_id,
+            "answer": answer,
+            "db": db,
+            # 以下字段由 load_context 节点填充
+            "current_question": "",
+            "parsed_resume": {},
+            "chat_history": [],
+            "questions": [],
+            "current_index": 0,
+            "target_position": "",
+            "resume_id": None,
+            "experience_id": None,
+            # 以下字段由 evaluate / generate_next 节点填充
+            "evaluation": {},
+            "score": 0.0,
+            "feedback": "",
+            "skip_type": None,
+            "next_question": None,
+            "is_finished": False,
+            "overall_score": 0.0,
+            "error": None,
+            "result": {},
+        })
 
-        # 获取对话历史
-        msg_query = select(InterviewMessage).where(
-            InterviewMessage.interview_id == interview_id
-        ).order_by(InterviewMessage.id)
-        msg_result = await db.execute(msg_query)
-        messages = msg_result.scalars().all()
-        chat_history = [{"role": m.role, "content": m.content} for m in messages]
-
-        # 当前题目
-        current_index = interview.current_question_index
-        questions = interview.questions_data
-        current_question = questions[current_index]["question"]
-
-        # 保存候选人回答
-        candidate_msg = InterviewMessage(
-            interview_id=interview_id,
-            role="candidate",
-            content=answer,
-            question_index=current_index
-        )
-        db.add(candidate_msg)
-
-        # 预判断：低质量回答直接给分，不调用 AI
-        pre_score = AIService.pre_score(answer)
-        if pre_score is not None:
-            score = pre_score
-            feedback = "回答内容过短或未尝试回答，请尽量给出自己的理解和思路。"
-        else:
-            # 调用 AI 评估回答
-            evaluation = await AIService.evaluate_answer(
-                question=current_question,
-                answer=answer,
-                resume_context=parsed_resume,
-                chat_history=chat_history
-            )
-            score = float(evaluation.get("score", 1.0))
-            feedback = evaluation.get("feedback", "")
-            # 分数后处理
-            score = AIService.post_process_score(score, answer)
-
-        # 更新候选人消息的评分
-        candidate_msg.score = Decimal(str(score))
-        candidate_msg.feedback = feedback
-
-        # 检查是否为最后一题
-        next_index = current_index + 1  #current_index=4  索引是从 0 开始的
-        is_finished = next_index >= interview.total_questions # next_index=5 >= 5
-
-        response = {
-            "score": score,
-            "feedback": feedback,
-            "question_index": current_index,
-            "is_finished": is_finished,
-            "next_question": None
-        }
-
-        if is_finished:
-            # 生成最终报告
-            interview.status = "completed"
-            interview.current_question_index = next_index
-
-            # 计算总分
-            all_scores = []
-            score_query = select(InterviewMessage).where(
-                InterviewMessage.interview_id == interview_id,
-                InterviewMessage.role == "candidate",
-                InterviewMessage.score.isnot(None)
-            )
-            score_result = await db.execute(score_query)
-            scored_msgs = score_result.scalars().all()
-            all_scores = [float(m.score) for m in scored_msgs]
-            all_scores.append(score)  # 加上当前评分
-
-            # 加权平均：低分项权重更大
-            weights = [max(1, 11 - s) for s in all_scores]
-            overall = round(sum(s * w for s, w in zip(all_scores, weights)) / sum(weights), 1) if all_scores else 0
-            interview.overall_score = Decimal(str(overall))
-
-            # 生成评估报告
-            qa_data = []
-            for i, q in enumerate(questions):
-                q_msgs = [m for m in messages if m.role == "candidate" and m.question_index == i]
-                qa_data.append({
-                    "question": q["question"],
-                    "answer": q_msgs[0].content if q_msgs else answer if i == current_index else "未回答",
-                    "score": float(q_msgs[0].score) if q_msgs and q_msgs[0].score else score if i == current_index else 0
-                })
-
-            try:
-                report = await AIService.generate_report(
-                    parsed_resume=parsed_resume,
-                    target_position=interview.target_position,
-                    questions_and_scores=qa_data
-                )
-                # 将每题评分加入报告
-                report["question_scores"] = [
-                    {"question": q["question"], "score": qa["score"], "feedback": ""}
-                    for q, qa in zip(questions, qa_data)
-                ]
-                interview.report = json.dumps(report, ensure_ascii=False)
-            except Exception as e:
-                logger.error(f"报告生成失败: {e}")
-                interview.report = json.dumps({"summary": "报告生成失败", "strengths": [], "weaknesses": [], "suggestions": []})
-
-        else:
-            # 进入下一题
-            interview.current_question_index = next_index
-            next_question = questions[next_index]["question"]
-            response["next_question"] = next_question
-
-            # 保存下一题作为面试官消息
-            interviewer_msg = InterviewMessage(
-                interview_id=interview_id,
-                role="interviewer",
-                content=next_question,
-                question_index=next_index
-            )
-            db.add(interviewer_msg)
-
-        await db.commit()
-
-        # 面试完成通知
-        if is_finished:
-            try:
-                from app.services.client.notification_service import notification_service
-                await notification_service.create_notification(
-                    db=db, user_id=user_id,
-                    title="面试已完成",
-                    content=f"你的「{interview.target_position}」面试已结束，得分 {overall} 分，点击查看报告",
-                    notification_type="interview",
-                    related_id=interview.id, related_type="interview"
-                )
-            except Exception as e:
-                logger.warning(f"发送面试完成通知失败: {e}")
-
-        return response
+        result = graph_result["result"]
+        if result.get("error"):
+            raise NotFoundError(message=result["error"])
+        return result
 
     @staticmethod
     async def submit_answer_stream(
@@ -259,10 +145,8 @@ class InterviewService:
         interview_id: int,
         answer: str
     ):
-        """流式提交回答 - 通过 SSE 逐块推送 AI 评语"""
-        import re
-
-        # 获取面试记录
+        """流式提交回答 - 通过 LangGraph + asyncio.Queue 实现实时 token 流"""
+        # 前置校验
         query = select(Interview).where(
             Interview.id == interview_id,
             Interview.user_id == user_id
@@ -277,156 +161,32 @@ class InterviewService:
             yield f"data: {json.dumps({'type': 'error', 'content': '面试已结束'})}\n\n"
             return
 
-        # 获取上下文（简历或面经）
-        parsed_resume = {}
-        if interview.resume_id:
-            resume_query = select(Resume).where(Resume.id == interview.resume_id)
-            resume_result = await db.execute(resume_query)
-            resume = resume_result.scalar_one_or_none()
-            parsed_resume = json.loads(resume.parsed_content) if resume and resume.parsed_content else {}
-        elif interview.experience_id:
-            from app.models.experience import Experience
-            exp = await db.get(Experience, interview.experience_id)
-            if exp:
-                parsed_resume = {"summary": f"面经：{exp.title}", "skills": [exp.company, exp.position]}
-
-        # 获取对话历史
-        msg_query = select(InterviewMessage).where(
-            InterviewMessage.interview_id == interview_id
-        ).order_by(InterviewMessage.id)
-        msg_result = await db.execute(msg_query)
-        messages = msg_result.scalars().all()
-        chat_history = [{"role": m.role, "content": m.content} for m in messages]
-
-        current_index = interview.current_question_index
-        questions = interview.questions_data
-        current_question = questions[current_index]["question"]
-
-        # 保存候选人回答
-        candidate_msg = InterviewMessage(
-            interview_id=interview_id,
-            role="candidate",
-            content=answer,
-            question_index=current_index
-        )
-        db.add(candidate_msg)
-        await db.flush()
-
-        # 预判断：低质量回答直接给分，不调用 AI
-        pre_score = AIService.pre_score(answer)
-        if pre_score is not None:
-            score = pre_score
-            feedback = "回答内容过短或未尝试回答，请尽量给出自己的理解和思路。"
-            yield f"data: {json.dumps({'type': 'chunk', 'content': feedback}, ensure_ascii=False)}\n\n"
-        else:
-            # 流式评估回答
-            full_text = ""
-            async for chunk in AIService.evaluate_answer_stream(
-                question=current_question,
-                answer=answer,
-                resume_context=parsed_resume,
-                chat_history=chat_history
-            ):
-                full_text += chunk
-                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk}, ensure_ascii=False)}\n\n"
-
-            # 从流式文本中提取评分
-            score = 1.0
-            feedback = full_text.strip()
-            json_match = re.search(r'\{[^}]*"score"\s*:\s*([\d.]+)[^}]*\}', full_text)
-            if json_match:
-                try:
-                    score = float(json_match.group(1))
-                    # 从反馈中移除 JSON 块
-                    feedback = re.sub(r'```json\s*\{[^}]*\}\s*```', '', feedback).strip()
-                    feedback = re.sub(r'\{[^}]*"score"[^}]*\}', '', feedback).strip()
-                except (ValueError, IndexError):
-                    pass
-            # 分数后处理
-            score = AIService.post_process_score(score, answer)
-
-        candidate_msg.score = Decimal(str(score))
-        candidate_msg.feedback = feedback[:200]
-
-        # 检查是否为最后一题
-        next_index = current_index + 1
-        is_finished = next_index >= interview.total_questions
-
-        if is_finished:
-            interview.status = "completed"
-            interview.current_question_index = next_index
-
-            # 计算总分
-            all_scores = []
-            score_query = select(InterviewMessage).where(
-                InterviewMessage.interview_id == interview_id,
-                InterviewMessage.role == "candidate",
-                InterviewMessage.score.isnot(None)
-            )
-            score_result = await db.execute(score_query)
-            scored_msgs = score_result.scalars().all()
-            all_scores = [float(m.score) for m in scored_msgs]
-            if candidate_msg.score:
-                all_scores.append(float(candidate_msg.score))
-            # 加权平均：低分项权重更大
-            weights = [max(1, 11 - s) for s in all_scores]
-            overall = round(sum(s * w for s, w in zip(all_scores, weights)) / sum(weights), 1) if all_scores else 0
-            interview.overall_score = Decimal(str(overall))
-
-            # 生成评估报告
-            qa_data = []
-            for i, q in enumerate(questions):
-                q_msgs = [m for m in messages if m.role == "candidate" and m.question_index == i]
-                qa_data.append({
-                    "question": q["question"],
-                    "answer": q_msgs[0].content if q_msgs else answer if i == current_index else "未回答",
-                    "score": float(q_msgs[0].score) if q_msgs and q_msgs[0].score else score if i == current_index else 0
-                })
-            try:
-                report = await AIService.generate_report(
-                    parsed_resume=parsed_resume,
-                    target_position=interview.target_position,
-                    questions_and_scores=qa_data
-                )
-                report["question_scores"] = [
-                    {"question": q["question"], "score": qa["score"], "feedback": ""}
-                    for q, qa in zip(questions, qa_data)
-                ]
-                interview.report = json.dumps(report, ensure_ascii=False)
-            except Exception as e:
-                logger.error(f"报告生成失败: {e}")
-                interview.report = json.dumps({"summary": "报告生成失败", "strengths": [], "weaknesses": [], "suggestions": []})
-
-            await db.commit()
-
-            # 面试完成通知
-            try:
-                from app.services.client.notification_service import notification_service
-                await notification_service.create_notification(
-                    db=db, user_id=user_id,
-                    title="面试已完成",
-                    content=f"你的「{interview.target_position}」面试已结束，得分 {overall} 分，点击查看报告",
-                    notification_type="interview",
-                    related_id=interview.id, related_type="interview"
-                )
-            except Exception as e:
-                logger.warning(f"发送面试完成通知失败: {e}")
-
-            yield f"data: {json.dumps({'type': 'done', 'score': score, 'feedback': feedback[:200], 'is_finished': True, 'question_index': current_index}, ensure_ascii=False)}\n\n"
-        else:
-            # 进入下一题
-            interview.current_question_index = next_index
-            next_question = questions[next_index]["question"]
-
-            interviewer_msg = InterviewMessage(
-                interview_id=interview_id,
-                role="interviewer",
-                content=next_question,
-                question_index=next_index
-            )
-            db.add(interviewer_msg)
-            await db.commit()
-            yield f"data: {json.dumps({'type': 'done', 'score': score, 'feedback': feedback[:200], 'is_finished': False, 'next_question': next_question, 'question_index': current_index}, ensure_ascii=False)}\n\n"
+        # 流式执行图（evaluate 节点内部 LLM token 通过 queue 实时输出）
+        async for event in interview_graph_stream({
+            "interview_id": interview_id,
+            "user_id": user_id,
+            "answer": answer,
+            "db": db,
+            "chunk_queue": None,  # 由 interview_graph_stream 注入
+            "current_question": "",
+            "parsed_resume": {},
+            "chat_history": [],
+            "questions": [],
+            "current_index": 0,
+            "target_position": "",
+            "resume_id": None,
+            "experience_id": None,
+            "evaluation": {},
+            "score": 0.0,
+            "feedback": "",
+            "skip_type": None,
+            "next_question": None,
+            "is_finished": False,
+            "overall_score": 0.0,
+            "error": None,
+            "result": {},
+        }):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     @staticmethod
     async def get_report(
