@@ -47,6 +47,12 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: celery -A app.core.celery_app inspect ping --timeout=5 | grep -q "pong"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   celery-beat:
     image: crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
@@ -66,6 +72,12 @@ services:
         condition: service_healthy
       app:
         condition: service_healthy
+    healthcheck:
+      test: python -c "import pathlib; pathlib.Path('celerybeat-schedule').stat()"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   postgres:
     image: postgres:16-alpine
