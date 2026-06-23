@@ -95,7 +95,21 @@ async def evaluate_node(state: dict) -> dict:
     chat_history = state["chat_history"]
     chunk_queue = state.get("chunk_queue")  # 可选：用于流式输出
 
-    # Level 0: 尝试流式 AI 评估
+    # Level 0: 低质量/坦诚跳过回答直接基础评分，避免浪费 AI 调用
+    pre_result = AIService.pre_score(answer)
+    if pre_result is not None:
+        score, skip_type = pre_result
+        feedback = AIService.pre_score_feedback(skip_type)
+        if chunk_queue:
+            await chunk_queue.put(feedback)
+        return {
+            "evaluation": {"score": score, "feedback": feedback, "follow_up": False, "pre_scored": True},
+            "score": score,
+            "feedback": feedback,
+            "skip_type": skip_type,
+        }
+
+    # Level 1: 尝试流式 AI 评估
     last_error = None
     try:
         full_text = ""
@@ -137,11 +151,16 @@ async def evaluate_node(state: dict) -> dict:
     if chunk_queue:
         await chunk_queue.put(fallback_result["feedback"])
     return {
-        "evaluation": {"score": fallback_result["score"], "feedback": fallback_result["feedback"], "follow_up": False},
+        "evaluation": {
+            "score": fallback_result["score"],
+            "feedback": fallback_result["feedback"],
+            "follow_up": False,
+            "fallback": True,
+            "error": last_error,
+        },
         "score": fallback_result["score"],
         "feedback": fallback_result["feedback"],
         "skip_type": fallback_result.get("skip_type"),
-        "error": last_error,
     }
 
 
@@ -221,20 +240,38 @@ async def save_results_node(state: dict) -> dict:
         )
         score_result = await db.execute(score_query)
         scored_msgs = score_result.scalars().all()
-        all_scores = [float(m.score) for m in scored_msgs]
+        answers_by_index = {}
+        for msg in scored_msgs:
+            if msg.question_index is None or msg.score is None:
+                continue
+            answers_by_index[int(msg.question_index)] = {
+                "answer": msg.content,
+                "score": float(msg.score),
+                "feedback": msg.feedback or "",
+            }
+
+        # 当前回答还未 commit，显式写入映射，避免报告漏掉最后一题或依赖 autoflush。
+        answers_by_index[current_index] = {
+            "answer": answer,
+            "score": float(score),
+            "feedback": feedback,
+        }
+
+        all_scores = [item["score"] for item in answers_by_index.values()]
 
         overall_score = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
         interview.overall_score = Decimal(str(overall_score))
 
         # 生成评估报告
-        chat_history = state["chat_history"]
         qa_data = []
         for i, q in enumerate(questions):
-            q_msgs = [m for m in chat_history if m.get("role") == "candidate"]
+            question_text = q.get("question", str(q)) if isinstance(q, dict) else str(q)
+            answer_info = answers_by_index.get(i)
             qa_data.append({
-                "question": q["question"],
-                "answer": q_msgs[0]["content"] if q_msgs and i < len(q_msgs) else answer if i == current_index else "未回答",
-                "score": score if i == current_index else 0,
+                "question": question_text,
+                "answer": answer_info["answer"] if answer_info else "未回答",
+                "score": answer_info["score"] if answer_info else 0,
+                "feedback": answer_info["feedback"] if answer_info else "",
             })
 
         try:
@@ -244,8 +281,8 @@ async def save_results_node(state: dict) -> dict:
                 questions_and_scores=qa_data,
             )
             report["question_scores"] = [
-                {"question": q["question"], "score": qa["score"], "feedback": ""}
-                for q, qa in zip(questions, qa_data)
+                {"question": qa["question"], "score": qa["score"], "feedback": qa.get("feedback", "")}
+                for qa in qa_data
             ]
             interview.report = json.dumps(report, ensure_ascii=False)
         except Exception as e:

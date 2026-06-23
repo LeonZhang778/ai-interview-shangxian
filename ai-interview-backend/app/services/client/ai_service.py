@@ -38,7 +38,7 @@ class AIService:
     """智谱 GLM AI 服务 - 面试模拟核心"""
 
     # 诚实跳过的关键词（坦诚说不会，应该给机会）
-    HONEST_SKIP_KEYWORDS = ["不会", "不太了解", "不太清楚", "没学过", "没接触过", "不记得", "跳过"]
+    HONEST_SKIP_KEYWORDS = ["不知道", "不会", "不清楚", "不太了解", "不太清楚", "没学过", "没接触过", "不记得", "跳过"]
     # 胡说八道的关键词（空洞回答）
     EMPTY_TALK_KEYWORDS = ["嗯", "对", "是的", "好的", "知道了"]
 
@@ -57,10 +57,6 @@ class AIService:
         if not text:
             return (1.0, "empty")
 
-        # 太短（< 3 字）→ 1 分
-        if len(text) < 3:
-            return (1.0, "too_short")
-
         # 空洞回答（只有"嗯"、"对"等）→ 1 分
         if text in AIService.EMPTY_TALK_KEYWORDS:
             return (1.0, "empty_talk")
@@ -75,7 +71,23 @@ class AIService:
             if kw in text and len(text) >= 15:
                 return (4.0, "partial_attempt")
 
+        # 太短（< 3 字）→ 1 分。放在诚实跳过之后，避免“不会”被误判为过短。
+        if len(text) < 3:
+            return (1.0, "too_short")
+
         return None  # 继续 AI 评估
+
+    @staticmethod
+    def pre_score_feedback(skip_type: str) -> str:
+        """预判断评分的用户可见反馈。"""
+        feedback_map = {
+            "empty": "回答为空，请尽量给出你的理解和思路。",
+            "too_short": "回答内容过短，请尽量补充关键思路、技术细节或项目例子。",
+            "empty_talk": "回答内容过于空泛，请尝试说明你的判断依据和解决思路。",
+            "honest_skip": "已记录为坦诚跳过，这类回答会给基础分；后续题目可以继续补充你的思路。",
+            "partial_attempt": "已记录为部分尝试回答，建议继续补充技术细节、取舍依据或项目例子。",
+        }
+        return feedback_map.get(skip_type, "已使用基础评分，请继续完成后续题目。")
 
     @staticmethod
     def post_process_score(score: float, answer: str, skip_type: str = None) -> float:

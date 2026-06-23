@@ -130,8 +130,8 @@ test.describe('面试评分机制测试', () => {
       return
     }
 
-    // 提交一个很短的回答
-    const shortAnswer = '不知道'
+    // 提交一个空洞短回答
+    const shortAnswer = '嗯'
     console.log(`Submitting short answer: "${shortAnswer}"`)
 
     const answerRes = await request.post(`${BASE}/api/v1/interviews/${interviewId}/answer`, {
@@ -141,13 +141,13 @@ test.describe('面试评分机制测试', () => {
     const answerData = await answerRes.json()
     console.log('Short answer response:', JSON.stringify(answerData.data, null, 2))
 
-    // 验证：短回答应该得低分
+    // 验证：空洞短回答应该得低分
     const score = answerData.data?.score
     console.log(`Score: ${score}`)
-    expect(score).toBeLessThanOrEqual(2)
+    expect(score).toBe(1)
   })
 
-  test('测试"不知道"回答应得1分', async ({ request }) => {
+  test('测试坦诚跳过回答应得基础分', async ({ request }) => {
     const loginRes = await request.post(`${BASE}/api/v1/auth/guest`)
     const loginData = await loginRes.json()
     const token = loginData.data.access_token
@@ -163,14 +163,14 @@ test.describe('面试评分机制测试', () => {
 
     const startRes = await request.post(`${BASE}/api/v1/interviews/start`, {
       headers: { Authorization: `Bearer ${token}` },
-      data: { resume_id: resumeId, target_position: '后端开发', difficulty: 'easy', total_questions: 3 }
+      data: { resume_id: resumeId, target_position: '后端开发', difficulty: 'easy', total_questions: 4 }
     })
     const startData = await startRes.json()
     const interviewId = startData.data?.interview_id
 
     if (!interviewId) return
 
-    // 测试关键词回答
+    // 测试坦诚跳过关键词。产品规则：给基础分，但不重罚为 1 分。
     const keywords = ['不知道', '不会', '不清楚', '跳过']
     for (const kw of keywords) {
       const answerRes = await request.post(`${BASE}/api/v1/interviews/${interviewId}/answer`, {
@@ -179,7 +179,7 @@ test.describe('面试评分机制测试', () => {
       })
       const answerData = await answerRes.json()
       console.log(`"${kw}" -> score: ${answerData.data?.score}`)
-      expect(answerData.data?.score).toBe(1)
+      expect(answerData.data?.score).toBe(3)
     }
   })
 })
