@@ -124,7 +124,7 @@ onUnmounted(() => { if (cooldownTimer) clearInterval(cooldownTimer) })
 
 <style scoped>
 .auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-.auth-card { width: 440px; background: rgba(8,5,25,0.9); border: 1px solid var(--border-default); border-radius: 16px; padding: 36px; text-align: center; backdrop-filter: blur(40px); }
+.auth-card { width: 440px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 16px; padding: 36px; text-align: center; backdrop-filter: blur(40px); }
 .auth-card h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; background:var(--title-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
 .subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
 .subtitle strong { color: var(--accent-light); }

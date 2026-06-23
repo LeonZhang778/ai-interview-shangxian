@@ -225,8 +225,8 @@ watch(currentIndex, () => {
   background: rgba(255, 255, 255, 0.2);
   box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
 }
-.level-P0 .banner-close { color: rgba(255, 255, 255, 0.6); }
-.level-P0 .banner-close:hover { color: white; background: rgba(236, 72, 153, 0.2); }
+.level-P0 .banner-close { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.1); }
+.level-P0 .banner-close:hover { color: white; background: rgba(236, 72, 153, 0.3); }
 .level-P0 .banner-label {
   background: rgba(236, 72, 153, 0.25);
   color: #f9a8d4;
@@ -322,6 +322,12 @@ watch(currentIndex, () => {
 }
 :root[data-theme="light"] .level-P2 .dot { background: #cbd5e1; }
 :root[data-theme="light"] .level-P2 .dot.active { background: #6366f1; }
+:root[data-theme="light"] .level-P0 .banner-close { color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.15); }
+:root[data-theme="light"] .level-P0 .banner-close:hover { background: rgba(255, 255, 255, 0.25); }
+:root[data-theme="light"] .level-P1 .banner-close { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.12); }
+:root[data-theme="light"] .level-P1 .banner-close:hover { background: rgba(255, 255, 255, 0.22); }
+:root[data-theme="light"] .level-P2 .banner-close { color: #64748b; background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="light"] .level-P2 .banner-close:hover { color: #334155; background: rgba(0, 0, 0, 0.08); }
 
 /* === 内部布局 === */
 .banner-inner {
@@ -391,13 +397,15 @@ watch(currentIndex, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
-  background: transparent;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 
 .banner-dots {
