@@ -29,7 +29,13 @@
             <h2>创建账号</h2>
             <p class="subtitle">注册智面 AI，开始模拟面试</p>
 
-            <form @submit.prevent="handleRegister">
+            <div v-if="!regCheckLoading && !registerEnabled" class="reg-disabled-msg">
+              <p>注册功能已暂时关闭，新用户请加入候选名单等待体验资格。</p>
+              <router-link to="/waiting-list" class="btn-waiting-list">加入候选名单</router-link>
+              <router-link to="/login" class="back-login">已有账号？去登录</router-link>
+            </div>
+
+            <form v-if="registerEnabled" @submit.prevent="handleRegister">
               <div class="form-row">
                 <div class="form-group">
                   <label>姓</label>
@@ -91,6 +97,7 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { sendVerificationCode, register } from '../api/auth'
+import { getSiteInfo } from '../api/config'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -100,6 +107,8 @@ const success = ref('')
 const loading = ref(false)
 const sendingCode = ref(false)
 const sendCooldown = ref(0)
+const registerEnabled = ref(true)
+const regCheckLoading = ref(true)
 let cooldownTimer = null
 
 // Refs
@@ -316,9 +325,14 @@ function onResize() {
   if (c2) { c2.width = window.innerWidth; c2.height = window.innerHeight }
 }
 
-onMounted(() => {
+onMounted(async () => {
   initStars()
   initParticles()
+  try {
+    const info = await getSiteInfo()
+    registerEnabled.value = info.register_enabled !== false
+  } catch (_) {}
+  regCheckLoading.value = false
   const card = authCard.value
   if (card) {
     card.addEventListener('mousemove', onCardMouseMove)
@@ -776,6 +790,41 @@ h2 {
   transition: width 0.3s;
 }
 .auth-links a:hover::after { width: 100%; }
+
+.reg-disabled-msg {
+  text-align: center;
+  padding: 20px 0;
+}
+.reg-disabled-msg p {
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.btn-waiting-list {
+  display: inline-block;
+  padding: 12px 32px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s;
+  box-shadow: 0 4px 16px rgba(6,182,212,0.3);
+}
+.btn-waiting-list:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(6,182,212,0.4);
+}
+.back-login {
+  display: block;
+  margin-top: 16px;
+  color: #6b7280;
+  font-size: 13px;
+  text-decoration: none;
+}
+.back-login:hover { color: #a855f7; }
 
 @media (max-width: 480px) {
   .card-body { padding: 28px 20px; }

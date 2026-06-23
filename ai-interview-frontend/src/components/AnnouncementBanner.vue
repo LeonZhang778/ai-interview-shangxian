@@ -42,19 +42,18 @@
               <polyline points="9 18 15 12 9 6"/>
             </svg>
           </router-link>
-
-          <!-- 关闭按钮 (P0 不可关闭) -->
-          <button
-            v-if="currentAnnouncement.level !== 'P0'"
-            class="banner-close"
-            @click.stop="closeBanner"
-            aria-label="关闭公告"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
         </div>
+
+        <!-- 关闭按钮 (所有级别可关闭) -->
+        <button
+          class="banner-close"
+          @click.stop="closeBanner"
+          aria-label="关闭公告"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
 
         <!-- P1/P2 多条轮播指示器 -->
         <div v-if="announcements.length > 1" class="banner-dots">
@@ -226,6 +225,8 @@ watch(currentIndex, () => {
   background: rgba(255, 255, 255, 0.2);
   box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
 }
+.level-P0 .banner-close { color: rgba(255, 255, 255, 0.6); }
+.level-P0 .banner-close:hover { color: white; background: rgba(236, 72, 153, 0.2); }
 .level-P0 .banner-label {
   background: rgba(236, 72, 153, 0.25);
   color: #f9a8d4;

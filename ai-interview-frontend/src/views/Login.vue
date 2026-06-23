@@ -52,7 +52,8 @@
 
             <div class="auth-links">
               <router-link to="/forgot-password">忘记密码？</router-link>
-              <router-link to="/register">还没有账号？<strong>立即注册</strong></router-link>
+              <router-link v-if="registerEnabled" to="/register">还没有账号？<strong>立即注册</strong></router-link>
+              <router-link v-else to="/waiting-list">想要体验？<strong>加入候选名单</strong></router-link>
             </div>
 
             <div class="divider">或</div>
@@ -73,6 +74,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { login, guestLogin } from '../api/auth'
 import { getProfile } from '../api/user'
+import { getSiteInfo } from '../api/config'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -81,6 +83,7 @@ const password = ref('')
 const error = ref('')
 const loading = ref(false)
 const guestLoading = ref(false)
+const registerEnabled = ref(true)
 
 // Refs
 const starCanvas = ref(null)
@@ -287,9 +290,13 @@ function onResize() {
   if (c2) { c2.width = window.innerWidth; c2.height = window.innerHeight }
 }
 
-onMounted(() => {
+onMounted(async () => {
   initStars()
   initParticles()
+  try {
+    const info = await getSiteInfo()
+    registerEnabled.value = info.register_enabled !== false
+  } catch (_) {}
   const card = authCard.value
   if (card) {
     card.addEventListener('mousemove', onCardMouseMove)

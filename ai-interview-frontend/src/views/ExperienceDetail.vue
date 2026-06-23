@@ -39,7 +39,14 @@
       </div>
 
       <!-- 文章内容 -->
-      <div class="article-body" v-html="renderedContent"></div>
+      <div class="article-body-wrapper">
+        <div class="article-toolbar">
+          <button class="toolbar-btn" @click="copyArticle">
+            {{ copyStatus === 'done' ? '已复制' : copyStatus === 'fail' ? '复制失败' : '复制文章' }}
+          </button>
+        </div>
+        <div class="article-body" v-html="renderedContent"></div>
+      </div>
 
       <!-- 互动区 -->
       <div class="interaction-bar">
@@ -202,6 +209,26 @@ const collected = ref(false)
 
 const practiceCount = ref(5)
 const practiceLoading = ref(false)
+const copyStatus = ref('idle')
+
+async function copyArticle() {
+  if (!experience.value?.content) return
+  try {
+    await navigator.clipboard.writeText(experience.value.content)
+    copyStatus.value = 'done'
+    setTimeout(() => { copyStatus.value = 'idle' }, 2000)
+  } catch {
+    // fallback: create textarea
+    const ta = document.createElement('textarea')
+    ta.value = experience.value.content
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    copyStatus.value = 'done'
+    setTimeout(() => { copyStatus.value = 'idle' }, 2000)
+  }
+}
 
 const comments = ref([])
 const commentTotal = ref(0)
@@ -382,8 +409,20 @@ onMounted(() => {
 .level-tag { background: rgba(6,182,212,0.08); color: var(--accent-cyan); padding: 3px 10px; border-radius: 12px; font-size: 12px; }
 .round-tag { background: var(--bg-hover); color: var(--accent-purple); padding: 3px 10px; border-radius: 12px; font-size: 12px; }
 
+.article-body-wrapper {
+  max-width: 800px; margin: 20px auto;
+}
+.article-toolbar {
+  display: flex; justify-content: flex-end; margin-bottom: 8px; padding: 0;
+}
+.toolbar-btn {
+  padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border-default); background: var(--bg-card);
+  color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+}
+.toolbar-btn:hover { border-color: rgba(139,92,246,0.3); color: var(--accent-purple); background: rgba(139,92,246,0.06); }
 .article-body {
-  max-width: 800px; margin: 20px auto; padding: 24px 20px;
+  padding: 24px 20px;
   background: var(--bg-card); border: 1px solid var(--border-default);
   border-radius: 14px; font-size: 15px; line-height: 1.8; color: var(--text-secondary);
 }
@@ -396,6 +435,11 @@ onMounted(() => {
 .article-body :deep(code) { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'Courier New', monospace; color: var(--accent-light); }
 .article-body :deep(pre) { background: rgba(0,0,0,0.4); color: var(--text-primary); padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; border: 1px solid var(--border-default); }
 .article-body :deep(pre code) { background: none; padding: 0; color: inherit; }
+.article-body :deep(svg) { max-width: 100%; height: auto; display: inline-block; vertical-align: middle; }
+.article-body :deep(img) { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
+.article-body :deep(table) { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+.article-body :deep(th), .article-body :deep(td) { border: 1px solid var(--border-default); padding: 8px 12px; text-align: left; }
+.article-body :deep(th) { background: var(--bg-hover); font-weight: 600; }
 .article-body :deep(strong) { font-weight: 700; color: var(--text-primary); }
 .article-body :deep(a) { color: var(--accent-primary); text-decoration: none; }
 .article-body :deep(a:hover) { text-decoration: underline; }
