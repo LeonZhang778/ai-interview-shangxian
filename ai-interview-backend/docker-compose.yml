@@ -4,7 +4,7 @@
 
 services:
   app:
-    image: ai-interview-backend-app:latest
+    image: crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian-app:latest
     container_name: ai-interview-app
     restart: unless-stopped
     env_file:
@@ -29,10 +29,9 @@ services:
       start_period: 40s
 
   celery-worker:
-    image: ai-interview-backend-celery-worker:latest
+    image: crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian-celery-worker:latest
     container_name: ai-interview-celery-worker
     restart: unless-stopped
-    command: celery -A app.core.celery_app worker --loglevel=info
     env_file:
       - .env
     environment:
@@ -49,10 +48,9 @@ services:
         condition: service_healthy
 
   celery-beat:
-    image: ai-interview-backend-celery-beat:latest
+    image: crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian-celery-beat:latest
     container_name: ai-interview-celery-beat
     restart: unless-stopped
-    command: celery -A app.core.celery_app beat --loglevel=info
     env_file:
       - .env
     environment:

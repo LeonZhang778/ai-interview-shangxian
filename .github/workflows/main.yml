@@ -21,10 +21,12 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             docker login --username=${{ secrets.ACR_USERNAME }} --password="${{ secrets.ACR_PASSWORD }}" ${{ secrets.ACR_REGISTRY }}
-            docker pull ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
-            docker tag ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest ai-interview-backend-app:latest
+            REGISTRY=${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian
+            docker pull $REGISTRY-app:latest
+            docker pull $REGISTRY-celery-worker:latest
+            docker pull $REGISTRY-celery-beat:latest
             cd /home/deploy/ai-interview/ai-interview-backend
-            docker compose up -d --no-deps app
+            docker compose up -d --no-deps app celery-worker celery-beat
 
       # 健康检查：等容器启动后验证服务是否正常
       - name: Health check
