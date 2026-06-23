@@ -37,7 +37,7 @@ jobs:
             echo "等待容器启动..."
             sleep 10
             for i in 1 2 3 4 5; do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8006/api/v1/config/health 2>/dev/null)
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/api/v1/config/health 2>/dev/null)
               if [ "$STATUS" = "200" ]; then
                 echo "健康检查通过 (HTTP $STATUS)"
                 exit 0
