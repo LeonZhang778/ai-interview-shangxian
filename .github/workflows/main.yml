@@ -27,7 +27,7 @@ jobs:
             git stash || true
             git pull origin main
             cd ai-interview-backend
-            docker compose up -d --no-deps app celery-worker celery-beat
+            docker compose up -d --force-recreate --no-deps app celery-worker celery-beat
 
       # 健康检查：等容器启动后验证服务是否正常
       - name: Health check
