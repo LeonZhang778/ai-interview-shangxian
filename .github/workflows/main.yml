@@ -20,13 +20,13 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -e
             docker login --username=${{ secrets.ACR_USERNAME }} --password="${{ secrets.ACR_PASSWORD }}" ${{ secrets.ACR_REGISTRY }}
-            REGISTRY=${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian
-            docker pull $REGISTRY-app:latest
-            docker pull $REGISTRY-celery-worker:latest
-            docker pull $REGISTRY-celery-beat:latest
-            cd /home/deploy/ai-interview && git pull origin main
-            cd /home/deploy/ai-interview/ai-interview-backend
+            docker pull ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
+            cd /home/deploy/ai-interview
+            git stash || true
+            git pull origin main
+            cd ai-interview-backend
             docker compose up -d --no-deps app celery-worker celery-beat
 
       # 健康检查：等容器启动后验证服务是否正常
