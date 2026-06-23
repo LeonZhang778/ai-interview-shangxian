@@ -70,6 +70,8 @@ class ResumeService:
             logger.error(f"AI 简历解析失败: {e}")
             resume.status = "failed"
             await db.commit()
+            if '429' in str(e):
+                raise ValidationError(message="AI 服务当前请求量过大，请稍后重试")
             raise
 
         return {

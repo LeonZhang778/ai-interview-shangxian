@@ -724,8 +724,8 @@ class ExperienceService:
                 query = query.where(UserCollection.group_id == group_id)
 
         # 总数
-        count_query = select(func.count()).select_from(
-            select(UserCollection).where(UserCollection.user_id == user_id).subquery()
+        count_query = select(func.count()).select_from(UserCollection).where(
+            UserCollection.user_id == user_id
         )
         if group_id is not None:
             if group_id == 0:
@@ -759,7 +759,7 @@ class ExperienceService:
                     "view_count": exp.view_count,
                     "like_count": exp.like_count,
                     "collect_count": exp.collect_count,
-                    "author_name": exp.author.nickname if exp.author and not exp.is_anonymous else "匿名用户",
+                    "author_name": (exp.author.first_name or exp.author.email.split("@")[0]) if exp.author and not exp.is_anonymous else "匿名用户",
                     "tags": [t.tag for t in exp.tags] if exp.tags else [],
                     "created_at": exp.created_at.strftime("%Y-%m-%d %H:%M") if exp.created_at else None,
                 }
@@ -786,7 +786,7 @@ class ExperienceService:
         # 统计每个分组的收藏数
         items = []
         for g in groups:
-            count_query = select(func.count()).where(
+            count_query = select(func.count()).select_from(UserCollection).where(
                 UserCollection.user_id == user_id,
                 UserCollection.group_id == g.id
             )
@@ -800,7 +800,7 @@ class ExperienceService:
             })
 
         # 未分组数量
-        ungrouped_query = select(func.count()).where(
+        ungrouped_query = select(func.count()).select_from(UserCollection).where(
             UserCollection.user_id == user_id,
             UserCollection.group_id.is_(None)
         )

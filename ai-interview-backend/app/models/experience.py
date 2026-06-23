@@ -54,6 +54,7 @@ class UserCollection(BaseModel):
     group_id = Column(Integer, ForeignKey("collection_groups.id", ondelete="SET NULL"), nullable=True, index=True)
 
     group = relationship("CollectionGroup", back_populates="collections")
+    experience = relationship("Experience", backref="collections")
 
 
 class UserLike(BaseModel):

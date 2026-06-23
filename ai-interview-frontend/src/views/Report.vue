@@ -150,7 +150,7 @@
       <!-- 操作 -->
       <div style="text-align:center;margin-top:24px;margin-bottom:40px">
         <button @click="handleShareImage" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px">
-          {{ shareStatus === 'generating' ? '生成中...' : shareStatus === 'done' ? '已复制到剪贴板' : '📸 截图分享' }}
+          截图分享
         </button>
         <router-link to="/resume/upload" class="btn-primary" style="display:inline-block;padding:10px 24px;color:white;border-radius:8px;margin-right:12px">
           再来一次
@@ -159,6 +159,25 @@
           返回首页
         </router-link>
       </div>
+
+      <!-- 截图预览弹窗 -->
+      <Teleport to="body">
+        <div v-if="previewImage" class="preview-overlay" @click.self="closePreview">
+          <div class="preview-modal">
+            <div class="preview-header">
+              <span>截图预览</span>
+              <button class="preview-close" @click="closePreview">&times;</button>
+            </div>
+            <div class="preview-body">
+              <img :src="previewImage" class="preview-img" alt="截图预览" />
+            </div>
+            <div class="preview-footer">
+              <button class="btn-copy" @click="copyPreviewImage">复制到剪贴板</button>
+              <a :href="previewImage" download="interview-report.png" class="btn-primary" style="display:inline-block;padding:10px 20px;color:white;border-radius:8px;text-decoration:none;font-size:14px">下载图片</a>
+            </div>
+          </div>
+        </div>
+      </Teleport>
     </div>
 
     <div v-else class="card" style="text-align:center;padding:60px;max-width:500px;margin:60px auto;color:var(--text-muted)">
@@ -186,6 +205,7 @@ const shareLinkStatus = ref('idle')
 const shareToken = ref(null)
 const isShared = ref(false)
 const copyStatus = ref('idle')
+const previewImage = ref(null)
 
 const shareUrl = computed(() => {
   if (!shareToken.value) return ''
@@ -228,25 +248,36 @@ async function handleShareImage() {
       backgroundColor: '#4f46e5',
       scale: 2
     })
-    canvas.toBlob(async (blob) => {
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-        shareStatus.value = 'done'
-        setTimeout(() => { shareStatus.value = 'idle' }, 3000)
-      } catch {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'interview-report.png'
-        a.click()
-        URL.revokeObjectURL(url)
-        shareStatus.value = 'done'
-        setTimeout(() => { shareStatus.value = 'idle' }, 3000)
-      }
-    })
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+    const url = URL.createObjectURL(blob)
+    previewImage.value = url
+    shareStatus.value = 'idle'
   } catch (e) {
     console.error(e)
     shareStatus.value = 'idle'
+  }
+}
+
+function closePreview() {
+  if (previewImage.value) {
+    URL.revokeObjectURL(previewImage.value)
+    previewImage.value = null
+  }
+}
+
+async function copyPreviewImage() {
+  if (!previewImage.value) return
+  try {
+    const resp = await fetch(previewImage.value)
+    const blob = await resp.blob()
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+    copyStatus.value = 'done'
+    setTimeout(() => { copyStatus.value = 'idle' }, 2000)
+  } catch {
+    const a = document.createElement('a')
+    a.href = previewImage.value
+    a.download = 'interview-report.png'
+    a.click()
   }
 }
 
@@ -285,7 +316,12 @@ async function generateQRCode(text) {
 // 最小 QR Code 编码器（支持数字/字母/字节模式）
 function encodeQR(text) {
   const data = encodeData(text)
-  const version = Math.max(1, Math.ceil((data.length + 10) / 4)) // 简化版本选择
+  // QR版本选择：根据数据bit数查表（byte mode, EC level L）
+  // 版本1=152 bits, 版本2=272, 版本3=440, 版本4=640, 版本5=864,
+  // 版本6=1088, 版本7=1248, 版本8=1552, 版本9=1856, 版本10=2192
+  const versionCaps = [0, 152, 272, 440, 640, 864, 1088, 1248, 1552, 1856, 2192]
+  let version = 1
+  while (version < versionCaps.length && data.length > versionCaps[version]) version++
   const moduleCount = version * 4 + 17
   const matrix = Array.from({ length: moduleCount }, () => Array(moduleCount).fill(null))
   const reserved = Array.from({ length: moduleCount }, () => Array(moduleCount).fill(false))
@@ -877,5 +913,67 @@ ul li::before {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+/* 截图预览弹窗 */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.preview-modal {
+  background: var(--bg-surface);
+  border-radius: 16px;
+  max-width: 450px;
+  width: 90%;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-default);
+}
+.preview-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.preview-close:hover {
+  color: var(--text-primary);
+}
+.preview-body {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+.preview-img {
+  max-width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.preview-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-default);
+  justify-content: center;
+}
+.preview-footer .btn-copy {
+  flex: 1;
+  text-align: center;
 }
 </style>
