@@ -25,3 +25,26 @@ jobs:
             docker tag ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest ai-interview-backend-app:latest
             cd /home/deploy/ai-interview/ai-interview-backend
             docker compose up -d --no-deps app
+
+      # 健康检查：等容器启动后验证服务是否正常
+      - name: Health check
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            echo "等待容器启动..."
+            sleep 10
+            for i in 1 2 3 4 5; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8006/api/v1/config/health 2>/dev/null)
+              if [ "$STATUS" = "200" ]; then
+                echo "健康检查通过 (HTTP $STATUS)"
+                exit 0
+              fi
+              echo "第 $i 次检查失败 (HTTP $STATUS)，等待 5 秒重试..."
+              sleep 5
+            done
+            echo "健康检查失败，打印容器日志："
+            docker logs ai-interview-app --tail 30
+            exit 1
