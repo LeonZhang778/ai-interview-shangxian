@@ -8,11 +8,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 等 ACR 构建完成（给 ACR 一点时间）
       - name: Wait for ACR build
         run: sleep 120
 
-      # SSH 到服务器拉取新镜像并重启
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
@@ -21,15 +19,32 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
-            docker login --username=${{ secrets.ACR_USERNAME }} --password="${{ secrets.ACR_PASSWORD }}" ${{ secrets.ACR_REGISTRY }}
+
+            echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+              --username="${{ secrets.ACR_USERNAME }}" \
+              --password-stdin \
+              ${{ secrets.ACR_REGISTRY }}
+
             docker pull ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
+
             cd /home/deploy/ai-interview
             git stash || true
             git pull origin main
+
             cd ai-interview-backend
             docker compose up -d --force-recreate --no-deps app celery-worker celery-beat
 
-      # 健康检查：等容器启动后验证服务是否正常
+            for i in $(seq 1 12); do
+              APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
+              if [ "$APP_HEALTH" = "healthy" ]; then
+                break
+              fi
+              echo "Waiting for app container health ($i/12): $APP_HEALTH"
+              sleep 5
+            done
+
+            docker compose up -d --build --force-recreate --no-deps nginx
+
       - name: Health check
         uses: appleboy/ssh-action@v1
         with:
@@ -37,17 +52,34 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            echo "等待容器启动..."
-            sleep 10
-            for i in 1 2 3 4 5; do
+            set -e
+
+            echo "Waiting for containers..."
+            sleep 8
+
+            for i in $(seq 1 12); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/api/v1/config/health 2>/dev/null)
               if [ "$STATUS" = "200" ]; then
-                echo "健康检查通过 (HTTP $STATUS)"
+                echo "Health check passed (HTTP $STATUS)"
                 exit 0
               fi
-              echo "第 $i 次检查失败 (HTTP $STATUS)，等待 5 秒重试..."
+
+              APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
+              DIRECT_STATUS=$(docker exec ai-interview-app python -c "import os, urllib.request; port=os.getenv('API_PORT','8006'); print(urllib.request.urlopen(f'http://localhost:{port}/api/v1/config/health', timeout=3).status)" 2>/dev/null || echo "failed")
+              echo "Health check $i/12 failed: nginx HTTP $STATUS, app health $APP_HEALTH, direct app HTTP $DIRECT_STATUS"
               sleep 5
             done
-            echo "健康检查失败，打印容器日志："
-            docker logs ai-interview-app --tail 30
+
+            echo "Health check failed. Container status:"
+            docker ps -a --filter name=ai-interview
+
+            echo "App logs:"
+            docker logs ai-interview-app --tail 30 || true
+
+            echo "Nginx logs:"
+            docker logs ai-interview-nginx --tail 50 || true
+
+            echo "Nginx error log:"
+            docker exec ai-interview-nginx sh -c 'tail -n 50 /var/log/nginx/error.log' || true
+
             exit 1

@@ -109,7 +109,8 @@ services:
       - ../ai-interview-frontend/dist:/usr/share/nginx/html/frontend:ro
       - ../ai-interview-admin/dist:/usr/share/nginx/html/admin:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
 volumes:
   postgres-data:
