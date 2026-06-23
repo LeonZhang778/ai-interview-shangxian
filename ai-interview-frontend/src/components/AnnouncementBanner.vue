@@ -225,8 +225,8 @@ watch(currentIndex, () => {
   background: rgba(255, 255, 255, 0.2);
   box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
 }
-.level-P0 .banner-close { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.1); }
-.level-P0 .banner-close:hover { color: white; background: rgba(236, 72, 153, 0.3); }
+.level-P0 .banner-close { color: white; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.2); }
+.level-P0 .banner-close:hover { background: rgba(236, 72, 153, 0.4); }
 .level-P0 .banner-label {
   background: rgba(236, 72, 153, 0.25);
   color: #f9a8d4;
@@ -258,8 +258,8 @@ watch(currentIndex, () => {
   background: rgba(6, 182, 212, 0.2);
   color: #67e8f9;
 }
-.level-P1 .banner-close { color: rgba(255, 255, 255, 0.5); }
-.level-P1 .banner-close:hover { color: white; background: rgba(6, 182, 212, 0.15); }
+.level-P1 .banner-close { color: white; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.15); }
+.level-P1 .banner-close:hover { background: rgba(6, 182, 212, 0.25); }
 .level-P1 .dot { background: rgba(255, 255, 255, 0.2); }
 .level-P1 .dot.active { background: #67e8f9; box-shadow: 0 0 6px rgba(6, 182, 212, 0.5); }
 
@@ -282,8 +282,8 @@ watch(currentIndex, () => {
 .level-P2 .banner-detail-btn:hover {
   background: rgba(139, 92, 246, 0.2);
 }
-.level-P2 .banner-close { color: #6b7280; }
-.level-P2 .banner-close:hover { color: #c4b5fd; background: rgba(139, 92, 246, 0.1); }
+.level-P2 .banner-close { color: #94a3b8; background: rgba(139, 92, 246, 0.12); border: 1px solid rgba(139, 92, 246, 0.15); }
+.level-P2 .banner-close:hover { color: #c4b5fd; background: rgba(139, 92, 246, 0.2); }
 .level-P2 .dot { background: rgba(139, 92, 246, 0.25); }
 .level-P2 .dot.active { background: #a78bfa; }
 
@@ -322,12 +322,12 @@ watch(currentIndex, () => {
 }
 :root[data-theme="light"] .level-P2 .dot { background: #cbd5e1; }
 :root[data-theme="light"] .level-P2 .dot.active { background: #6366f1; }
-:root[data-theme="light"] .level-P0 .banner-close { color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.15); }
-:root[data-theme="light"] .level-P0 .banner-close:hover { background: rgba(255, 255, 255, 0.25); }
-:root[data-theme="light"] .level-P1 .banner-close { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.12); }
-:root[data-theme="light"] .level-P1 .banner-close:hover { background: rgba(255, 255, 255, 0.22); }
-:root[data-theme="light"] .level-P2 .banner-close { color: #64748b; background: rgba(0, 0, 0, 0.05); }
-:root[data-theme="light"] .level-P2 .banner-close:hover { color: #334155; background: rgba(0, 0, 0, 0.08); }
+:root[data-theme="light"] .level-P0 .banner-close { color: white; background: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.25); }
+:root[data-theme="light"] .level-P0 .banner-close:hover { background: rgba(255, 255, 255, 0.35); }
+:root[data-theme="light"] .level-P1 .banner-close { color: white; background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.2); }
+:root[data-theme="light"] .level-P1 .banner-close:hover { background: rgba(255, 255, 255, 0.3); }
+:root[data-theme="light"] .level-P2 .banner-close { color: #475569; background: rgba(0, 0, 0, 0.08); border-color: rgba(0, 0, 0, 0.1); }
+:root[data-theme="light"] .level-P2 .banner-close:hover { color: #1e293b; background: rgba(0, 0, 0, 0.12); }
 
 /* === 内部布局 === */
 .banner-inner {
@@ -399,13 +399,15 @@ watch(currentIndex, () => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
   margin-left: 4px;
+  color: white;
 }
 
 .banner-dots {
