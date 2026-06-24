@@ -32,6 +32,7 @@ jobs:
             git pull origin main
 
             cd ai-interview-backend
+            docker compose stop app celery-worker celery-beat || true
             docker compose up -d --force-recreate --no-deps app celery-worker celery-beat
 
             for i in $(seq 1 12); do
