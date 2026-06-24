@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.api.client.deps import get_current_user
+from app.api.rate_limit import check_ai_rate_limit
 from app.schemas.client.interview import InterviewStart, AnswerSubmit
 from app.services.client.interview_service import interview_service
 from app.schemas.response import ApiResponse
@@ -48,6 +49,7 @@ async def start_interview(
     db: AsyncSession = Depends(get_db)
 ):
     """开始新的 AI 面试会话"""
+    await check_ai_rate_limit(current_user)
     result = await interview_service.start_interview(
         db=db,
         user_id=current_user.id,
@@ -67,6 +69,7 @@ async def submit_answer(
     db: AsyncSession = Depends(get_db)
 ):
     """提交当前题目的回答"""
+    await check_ai_rate_limit(current_user)
     result = await interview_service.submit_answer(
         db=db,
         user_id=current_user.id,
@@ -84,6 +87,7 @@ async def submit_answer_stream(
     db: AsyncSession = Depends(get_db)
 ):
     """提交回答并通过 SSE 流式返回 AI 评估"""
+    await check_ai_rate_limit(current_user)
     generator = interview_service.submit_answer_stream(
         db=db,
         user_id=current_user.id,
@@ -164,9 +168,10 @@ async def get_analysis(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """面试历史对比分析"""
+    """面试历史对比分析 - 增强版"""
     import json
-    from sqlalchemy import select, func
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import select, func, cast, Date
     from app.models.interview import Interview
 
     # 查询已完成的面试
@@ -185,31 +190,44 @@ async def get_analysis(
             "score_trend": [],
             "dimension_avg": {},
             "weakest_dimension": None,
-            "improvement_rate": 0
+            "improvement_rate": 0,
+            "company_stats": [],
+            "position_stats": [],
+            "score_distribution": {"low": 0, "mid": 0, "high": 0},
+            "time_distribution": {"weekday": 0, "weekend": 0},
+            "recent_activity": []
         })
 
-    # 分数趋势
+    # ========== 分数趋势 ==========
     score_trend = []
     for i in interviews:
         if i.overall_score:
             score_trend.append({
                 "date": i.created_at.strftime("%Y-%m-%d"),
                 "score": float(i.overall_score),
-                "position": i.target_position or "未知"
+                "position": i.target_position or "未知",
+                "company": i.company or "未知"
             })
 
-    # 维度分析（从报告中提取）
+    # ========== 维度分析（从报告中提取真实维度） ==========
     dimension_scores = {}
     for i in interviews:
         if i.report:
             try:
                 report = json.loads(i.report)
-                question_scores = report.get("question_scores", [])
-                for qs in question_scores:
-                    category = qs.get("question", "")[:20]
-                    score = qs.get("score", 0)
-                    if category:
-                        dimension_scores.setdefault(category, []).append(float(score))
+                # 尝试从 dimension_scores 获取
+                dims = report.get("dimension_scores", {})
+                if dims:
+                    for dim_name, dim_score in dims.items():
+                        dimension_scores.setdefault(dim_name, []).append(float(dim_score))
+                else:
+                    # 回退到 question_scores 按类别聚合
+                    question_scores = report.get("question_scores", [])
+                    for qs in question_scores:
+                        category = qs.get("category") or qs.get("question", "")[:20]
+                        score = qs.get("score", 0)
+                        if category:
+                            dimension_scores.setdefault(category, []).append(float(score))
             except (json.JSONDecodeError, TypeError):
                 pass
 
@@ -221,7 +239,74 @@ async def get_analysis(
     # 最弱维度
     weakest = min(dimension_avg, key=dimension_avg.get) if dimension_avg else None
 
-    # 进步率（最后3次 vs 前3次）
+    # ========== 按公司统计 ==========
+    company_map = {}
+    for i in interviews:
+        company = i.company or "未知"
+        if company not in company_map:
+            company_map[company] = {"count": 0, "scores": []}
+        company_map[company]["count"] += 1
+        if i.overall_score:
+            company_map[company]["scores"].append(float(i.overall_score))
+
+    company_stats = [
+        {
+            "company": name,
+            "count": info["count"],
+            "avg_score": round(sum(info["scores"]) / len(info["scores"]), 1) if info["scores"] else 0
+        }
+        for name, info in sorted(company_map.items(), key=lambda x: x[1]["count"], reverse=True)
+    ]
+
+    # ========== 按岗位统计 ==========
+    position_map = {}
+    for i in interviews:
+        position = i.target_position or "未知"
+        if position not in position_map:
+            position_map[position] = {"count": 0, "scores": []}
+        position_map[position]["count"] += 1
+        if i.overall_score:
+            position_map[position]["scores"].append(float(i.overall_score))
+
+    position_stats = [
+        {
+            "position": name,
+            "count": info["count"],
+            "avg_score": round(sum(info["scores"]) / len(info["scores"]), 1) if info["scores"] else 0
+        }
+        for name, info in sorted(position_map.items(), key=lambda x: x[1]["count"], reverse=True)
+    ]
+
+    # ========== 分数段分布 ==========
+    score_distribution = {"low": 0, "mid": 0, "high": 0}
+    for i in interviews:
+        if i.overall_score:
+            s = float(i.overall_score)
+            if s >= 80:
+                score_distribution["high"] += 1
+            elif s >= 60:
+                score_distribution["mid"] += 1
+            else:
+                score_distribution["low"] += 1
+
+    # ========== 时间分布（工作日 vs 周末） ==========
+    weekday_count = 0
+    weekend_count = 0
+    for i in interviews:
+        if i.created_at.weekday() < 5:
+            weekday_count += 1
+        else:
+            weekend_count += 1
+
+    # ========== 最近活跃度（最近 7 天每天的面试次数） ==========
+    now = datetime.now(timezone.utc)
+    recent_activity = []
+    for days_ago in range(6, -1, -1):
+        day = (now - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+        count = sum(1 for i in interviews if i.created_at.strftime("%Y-%m-%d") == day)
+        recent_activity.append({"date": day, "count": count})
+
+    # ========== 进步率 ==========
     improvement_rate = 0
     if len(score_trend) >= 4:
         first_half = [s["score"] for s in score_trend[:len(score_trend)//2]]
@@ -237,6 +322,11 @@ async def get_analysis(
         "score_trend": score_trend,
         "dimension_avg": dimension_avg,
         "weakest_dimension": weakest,
-        "improvement_rate": improvement_rate
+        "improvement_rate": improvement_rate,
+        "company_stats": company_stats,
+        "position_stats": position_stats,
+        "score_distribution": score_distribution,
+        "time_distribution": {"weekday": weekday_count, "weekend": weekend_count},
+        "recent_activity": recent_activity
     })
 
