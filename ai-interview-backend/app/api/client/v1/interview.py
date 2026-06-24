@@ -205,8 +205,7 @@ async def get_analysis(
             score_trend.append({
                 "date": i.created_at.strftime("%Y-%m-%d"),
                 "score": float(i.overall_score),
-                "position": i.target_position or "未知",
-                "company": i.company or "未知"
+                "position": i.target_position or "未知"
             })
 
     # ========== 维度分析（从报告中提取真实维度） ==========
@@ -239,23 +238,24 @@ async def get_analysis(
     # 最弱维度
     weakest = min(dimension_avg, key=dimension_avg.get) if dimension_avg else None
 
-    # ========== 按公司统计 ==========
-    company_map = {}
+    # ========== 按难度统计 ==========
+    difficulty_map = {}
     for i in interviews:
-        company = i.company or "未知"
-        if company not in company_map:
-            company_map[company] = {"count": 0, "scores": []}
-        company_map[company]["count"] += 1
+        difficulty = i.difficulty or "未知"
+        if difficulty not in difficulty_map:
+            difficulty_map[difficulty] = {"count": 0, "scores": []}
+        difficulty_map[difficulty]["count"] += 1
         if i.overall_score:
-            company_map[company]["scores"].append(float(i.overall_score))
+            difficulty_map[difficulty]["scores"].append(float(i.overall_score))
 
+    difficulty_labels = {"easy": "简单", "medium": "中等", "hard": "困难"}
     company_stats = [
         {
-            "company": name,
+            "company": difficulty_labels.get(name, name),
             "count": info["count"],
             "avg_score": round(sum(info["scores"]) / len(info["scores"]), 1) if info["scores"] else 0
         }
-        for name, info in sorted(company_map.items(), key=lambda x: x[1]["count"], reverse=True)
+        for name, info in sorted(difficulty_map.items(), key=lambda x: x[1]["count"], reverse=True)
     ]
 
     # ========== 按岗位统计 ==========

@@ -57,7 +57,7 @@
       <!-- 双列布局：公司统计 + 岗位统计 -->
       <div class="dual-chart-row">
         <div v-if="data.company_stats && data.company_stats.length > 0" class="chart-section">
-          <h2>公司统计</h2>
+          <h2>难度统计</h2>
           <div ref="companyChart" class="chart-container"></div>
         </div>
         <div v-if="data.position_stats && data.position_stats.length > 0" class="chart-section">
