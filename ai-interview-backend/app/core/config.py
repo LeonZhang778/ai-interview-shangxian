@@ -76,6 +76,23 @@ class Settings(BaseSettings):
     AI_API_KEY: str = ""
     AI_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
     AI_MODEL: str = "glm-4.7-flash"
+    AI_TIMEOUT: int = 30
+    AI_MAX_RETRIES: int = 3
+    AI_RETRY_MIN_WAIT: int = 1
+    AI_RETRY_MAX_WAIT: int = 10
+
+    # LLM 缓存 TTL（秒）
+    LLM_CACHE_TTL_PARSE: int = 3600
+    LLM_CACHE_TTL_EVALUATE: int = 1800
+    LLM_CACHE_TTL_QUESTIONS: int = 3600
+    LLM_CACHE_TTL_REPORT: int = 3600
+
+    # 面试会话缓存
+    INTERVIEW_SESSION_TTL: int = 7200
+
+    # API 限流
+    RATE_LIMIT_REQUESTS: int = 30
+    RATE_LIMIT_WINDOW: int = 60
 
     class Config:
         env_file = ".env"
