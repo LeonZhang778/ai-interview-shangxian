@@ -52,6 +52,26 @@ ai-interview-backend/docker-compose-linux-x86_64
 .DS_Store
 Thumbs.db
 
+# ---------- 调试/临时脚本 ----------
+debug_*.py
+check_*.py
+run_debug.py
+deploy_fix.py
+rebuild_deploy.py
+test_api_script.py
+test_bug_fixes.py
+test_delete_experience.py
+test_interaction.py
+test_new_features.py
+test_new_features_result.png
+test_notification_e2e.py
+test_admin_features.py
+test_admin_*.png
+screenshot_*.png
+full_page_*.png
+admin_experiences*.png
+test_*.png
+
 # ---------- 其他 ----------
 *.log
 *.bak
