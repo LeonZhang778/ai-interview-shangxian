@@ -4,7 +4,7 @@
 
 services:
   app:
-    image: crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
+    image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
     container_name: ai-interview-app
     restart: unless-stopped
     env_file:
@@ -29,7 +29,7 @@ services:
       start_period: 40s
 
   celery-worker:
-    image: crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
+    image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
     container_name: ai-interview-celery-worker
     restart: unless-stopped
     command: celery -A app.core.celery_app worker --loglevel=info
@@ -55,7 +55,7 @@ services:
       start_period: 40s
 
   celery-beat:
-    image: crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
+    image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
     container_name: ai-interview-celery-beat
     restart: unless-stopped
     command: celery -A app.core.celery_app beat --loglevel=info

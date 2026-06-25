@@ -4,60 +4,53 @@ on:
   push:
     branches: [main]
 
+env:
+  IMAGE_REPOSITORY: ${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian
+  IMAGE_TAG: ${{ github.sha }}
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Wait for ACR build (polling digest)
-        uses: appleboy/ssh-action@v1
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to ACR
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 10m
-          script: |
-            set -e
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
-            ACR_IMAGE="${{ secrets.ACR_REGISTRY }}/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest"
+      - name: Build backend image
+        run: |
+          docker build \
+            -t "$IMAGE_REPOSITORY:$IMAGE_TAG" \
+            -t "$IMAGE_REPOSITORY:latest" \
+            ./ai-interview-backend
 
-            echo "${{ secrets.ACR_PASSWORD }}" | docker login \
-              --username="${{ secrets.ACR_USERNAME }}" --password-stdin \
-              ${{ secrets.ACR_REGISTRY }}
-
-            OLD_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$ACR_IMAGE" 2>/dev/null | grep -o 'sha256:[a-f0-9]*' || echo "none")
-            echo "Current digest: $OLD_DIGEST"
-
-            # Polling is best-effort. ACR may rebuild successfully and still keep the same digest
-            # when the pushed commit does not change Docker build output.
-            for i in $(seq 1 20); do
-              docker pull "$ACR_IMAGE" 2>/dev/null || true
-              NEW_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$ACR_IMAGE" 2>/dev/null | grep -o 'sha256:[a-f0-9]*' || echo "none")
-
-              if [ "$NEW_DIGEST" != "none" ] && [ "$NEW_DIGEST" != "$OLD_DIGEST" ]; then
-                echo "New image available! digest: $NEW_DIGEST"
-                break
-              fi
-
-              echo "Waiting for ACR build ($i/20): digest unchanged, retrying in 15s..."
-              sleep 15
-            done
-
-            FINAL_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$ACR_IMAGE" 2>/dev/null | grep -o 'sha256:[a-f0-9]*' || echo "none")
-            if [ "$FINAL_DIGEST" = "$OLD_DIGEST" ]; then
-              echo "Digest unchanged after polling. ACR may still have rebuilt identical image content."
-              echo "Proceeding with deploy using current latest image."
-            else
-              echo "Proceeding with updated digest: $FINAL_DIGEST"
-            fi
+      - name: Push backend image
+        run: |
+          docker push "$IMAGE_REPOSITORY:$IMAGE_TAG"
+          docker push "$IMAGE_REPOSITORY:latest"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
+        env:
+          BACKEND_IMAGE: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          DEPLOY_COMMIT: ${{ github.sha }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
+          command_timeout: 12m
+          envs: BACKEND_IMAGE,DEPLOY_COMMIT
           script: |
             set -e
+
+            echo "Deploy commit: $DEPLOY_COMMIT"
+            echo "Deploy image: $BACKEND_IMAGE"
 
             cd /home/deploy/ai-interview
             git stash || true
@@ -66,9 +59,14 @@ jobs:
             git log -1 --oneline
 
             cd ai-interview-backend
-            docker compose stop app celery-worker celery-beat || true
-            docker compose up -d --force-recreate --no-deps app celery-worker celery-beat
+            export BACKEND_IMAGE="$BACKEND_IMAGE"
 
+            docker pull "$BACKEND_IMAGE"
+            docker image inspect "$BACKEND_IMAGE" --format 'Pulled image={{.Id}}'
+
+            docker compose stop app celery-worker celery-beat || true
+
+            docker compose up -d --force-recreate --no-deps app
             for i in $(seq 1 12); do
               APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
               if [ "$APP_HEALTH" = "healthy" ]; then
@@ -78,6 +76,15 @@ jobs:
               sleep 5
             done
 
+            APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
+            if [ "$APP_HEALTH" != "healthy" ]; then
+              echo "App failed to become healthy."
+              docker logs ai-interview-app --tail 100 || true
+              exit 1
+            fi
+
+            docker compose up -d --force-recreate --no-deps celery-worker
+            docker compose up -d --force-recreate --no-deps celery-beat
             docker compose up -d --build --force-recreate --no-deps nginx
 
             echo "Container summary:"
@@ -104,7 +111,7 @@ jobs:
             sleep 8
 
             for i in $(seq 1 12); do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/api/v1/config/health 2>/dev/null)
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/api/v1/config/health 2>/dev/null || echo "000")
               if [ "$STATUS" = "200" ]; then
                 echo "Health check passed (HTTP $STATUS)"
                 exit 0
@@ -120,7 +127,13 @@ jobs:
             docker ps -a --filter name=ai-interview
 
             echo "App logs:"
-            docker logs ai-interview-app --tail 30 || true
+            docker logs ai-interview-app --tail 50 || true
+
+            echo "Worker logs:"
+            docker logs ai-interview-celery-worker --tail 50 || true
+
+            echo "Beat logs:"
+            docker logs ai-interview-celery-beat --tail 50 || true
 
             echo "Nginx logs:"
             docker logs ai-interview-nginx --tail 50 || true
