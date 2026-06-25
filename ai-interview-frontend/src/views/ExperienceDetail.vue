@@ -190,13 +190,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { getExperienceDetail, likeExperience, collectExperience, getInteractionStatus, getComments, createComment, deleteComment } from '../api/experience'
 import { startPractice } from '../api/interview'
 import { useAuthStore } from '../stores/auth'
-import { marked } from 'marked'
 import StarryBackground from '../components/StarryBackground.vue'
-
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-})
+import { renderExperienceContent } from '../utils/experienceContent'
 
 const route = useRoute()
 const router = useRouter()
@@ -240,7 +235,7 @@ const replyContent = ref('')
 
 const renderedContent = computed(() => {
   if (!experience.value?.content) return ''
-  return marked.parse(experience.value.content)
+  return renderExperienceContent(experience.value.content)
 })
 
 async function fetchDetail() {
@@ -422,9 +417,15 @@ onMounted(() => {
 }
 .toolbar-btn:hover { border-color: rgba(139,92,246,0.3); color: var(--accent-purple); background: rgba(139,92,246,0.06); }
 .article-body {
-  padding: 24px 20px;
-  background: var(--bg-card); border: 1px solid var(--border-default);
-  border-radius: 14px; font-size: 15px; line-height: 1.8; color: var(--text-secondary);
+  padding: 28px 24px;
+  background: color-mix(in srgb, var(--bg-card) 92%, white 8%);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--text-secondary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  overflow-wrap: anywhere;
 }
 .article-body :deep(h1) { font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 24px 0 12px; }
 .article-body :deep(h2) { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 20px 0 10px; }
@@ -432,17 +433,43 @@ onMounted(() => {
 .article-body :deep(p) { margin: 0 0 12px; }
 .article-body :deep(ul) { padding-left: 20px; margin: 8px 0 12px; }
 .article-body :deep(li) { margin-bottom: 6px; }
-.article-body :deep(code) { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'Courier New', monospace; color: var(--accent-light); }
-.article-body :deep(pre) { background: rgba(0,0,0,0.4); color: var(--text-primary); padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; border: 1px solid var(--border-default); }
+.article-body :deep(blockquote) {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border-left: 4px solid var(--accent-primary);
+  background: color-mix(in srgb, var(--bg-hover) 80%, white 20%);
+  color: var(--text-primary);
+  border-radius: 0 12px 12px 0;
+}
+.article-body :deep(code) {
+  background: color-mix(in srgb, var(--bg-hover) 82%, white 18%);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  color: var(--accent-light);
+}
+.article-body :deep(pre) {
+  background: #111827;
+  color: #f3f4f6;
+  padding: 16px;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
 .article-body :deep(pre code) { background: none; padding: 0; color: inherit; }
-.article-body :deep(svg) { max-width: 100%; height: auto; display: inline-block; vertical-align: middle; }
+.article-body :deep(svg) { display: none !important; }
 .article-body :deep(img) { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
 .article-body :deep(table) { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
 .article-body :deep(th), .article-body :deep(td) { border: 1px solid var(--border-default); padding: 8px 12px; text-align: left; }
-.article-body :deep(th) { background: var(--bg-hover); font-weight: 600; }
+.article-body :deep(th) { background: color-mix(in srgb, var(--bg-hover) 78%, white 22%); font-weight: 600; color: var(--text-primary); }
 .article-body :deep(strong) { font-weight: 700; color: var(--text-primary); }
 .article-body :deep(a) { color: var(--accent-primary); text-decoration: none; }
 .article-body :deep(a:hover) { text-decoration: underline; }
+.article-body :deep(*) {
+  max-width: 100%;
+}
 
 .interaction-bar { max-width: 800px; margin: 0 auto 20px; display: flex; gap: 12px; padding: 0 20px; }
 .interact-btn {

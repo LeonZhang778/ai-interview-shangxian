@@ -5,7 +5,7 @@ from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload, joinedload
 from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment, CollectionGroup
 from app.models.user import User
-from app.exceptions.http_exceptions import NotFoundError
+from app.exceptions.http_exceptions import NotFoundError, AuthorizationError
 
 logger = logging.getLogger(__name__)
 
@@ -508,6 +508,94 @@ class ExperienceService:
         ]
 
         return {"items": items, "total": total, "page": page, "size": size}
+
+    @staticmethod
+    async def get_my_experience_detail(
+        db: AsyncSession,
+        user_id: int,
+        experience_id: int,
+    ) -> Dict:
+        """获取当前用户自己的投稿详情"""
+        query = (
+            select(Experience)
+            .where(Experience.id == experience_id)
+            .options(selectinload(Experience.tags))
+        )
+        result = await db.execute(query)
+        experience = result.scalar_one_or_none()
+
+        if not experience:
+            raise NotFoundError(message="面经不存在")
+        if experience.author_id != user_id:
+            raise AuthorizationError(message="只能查看自己的投稿")
+
+        return {
+            "id": experience.id,
+            "title": experience.title,
+            "company": experience.company,
+            "position": experience.position,
+            "level": experience.level,
+            "round": experience.round,
+            "content": experience.content,
+            "summary": experience.summary,
+            "status": experience.status,
+            "is_anonymous": experience.is_anonymous,
+            "tags": [t.tag for t in experience.tags],
+            "created_at": experience.created_at.strftime("%Y-%m-%d %H:%M") if experience.created_at else None,
+        }
+
+    @staticmethod
+    async def update_my_experience(
+        db: AsyncSession,
+        user_id: int,
+        experience_id: int,
+        title: str,
+        company: str,
+        position: str,
+        content: str,
+        level: Optional[str] = None,
+        round_: Optional[str] = None,
+        summary: Optional[str] = None,
+        tags: Optional[list] = None,
+        is_anonymous: bool = False,
+    ) -> Dict:
+        """更新当前用户自己的投稿，并重新置为待审核"""
+        query = (
+            select(Experience)
+            .where(Experience.id == experience_id)
+            .options(selectinload(Experience.tags))
+        )
+        result = await db.execute(query)
+        experience = result.scalar_one_or_none()
+
+        if not experience:
+            raise NotFoundError(message="面经不存在")
+        if experience.author_id != user_id:
+            raise AuthorizationError(message="只能修改自己的投稿")
+
+        experience.title = title
+        experience.company = company
+        experience.position = position
+        experience.content = content
+        experience.level = level
+        experience.round = round_
+        experience.summary = summary or content[:200]
+        experience.is_anonymous = is_anonymous
+        experience.status = "pending"
+
+        for tag in list(experience.tags):
+            await db.delete(tag)
+        await db.flush()
+
+        for tag_name in tags or []:
+            clean_tag = str(tag_name).strip()
+            if clean_tag:
+                db.add(ExperienceTag(experience_id=experience.id, tag=clean_tag))
+
+        await db.commit()
+        await db.refresh(experience)
+
+        return {"id": experience.id, "status": experience.status}
 
 
     @staticmethod

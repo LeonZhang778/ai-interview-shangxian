@@ -2,8 +2,8 @@
   <StarryBackground />
   <div class="submit-page">
     <div class="page-header">
-      <h1>投稿面经</h1>
-      <p>分享你的真实面试经历，帮助更多人备战面试</p>
+      <h1>{{ isEditMode ? '编辑面经' : '投稿面经' }}</h1>
+      <p>{{ isEditMode ? '修改后的内容会重新进入审核流程，请确认信息准确' : '分享真实面试经历，帮助更多人准备面试' }}</p>
     </div>
 
     <div class="form-container">
@@ -11,21 +11,21 @@
         <div class="form-row">
           <div class="form-group">
             <label>标题 <span class="required">*</span></label>
-            <input v-model="form.title" type="text" placeholder="例：字节跳动后端开发一面凉经" required />
+            <input v-model="form.title" type="text" placeholder="例如：字节跳动后端开发一面总结" required />
           </div>
         </div>
 
         <div class="form-row form-row-2">
           <div class="form-group">
             <label>公司 <span class="required">*</span></label>
-            <input v-model="form.company" type="text" placeholder="例：字节跳动" required list="company-list" />
+            <input v-model="form.company" type="text" placeholder="例如：字节跳动" required list="company-list" />
             <datalist id="company-list">
               <option v-for="c in commonCompanies" :key="c" :value="c" />
             </datalist>
           </div>
           <div class="form-group">
             <label>岗位 <span class="required">*</span></label>
-            <input v-model="form.position" type="text" placeholder="例：后端开发" required list="position-list" />
+            <input v-model="form.position" type="text" placeholder="例如：后端开发" required list="position-list" />
             <datalist id="position-list">
               <option v-for="p in commonPositions" :key="p" :value="p" />
             </datalist>
@@ -51,7 +51,7 @@
 
         <div class="form-group">
           <label>摘要</label>
-          <textarea v-model="form.summary" rows="2" placeholder="简要概述面试经历（不填则自动截取正文前200字）"></textarea>
+          <textarea v-model="form.summary" rows="2" placeholder="可选；为空时会自动截取正文前 200 字"></textarea>
         </div>
 
         <div class="form-group">
@@ -59,12 +59,12 @@
           <div class="editor-toolbar">
             <button type="button" @click="insertFormat('**', '**')" title="加粗">B</button>
             <button type="button" @click="insertFormat('*', '*')" title="斜体"><em>I</em></button>
-            <button type="button" @click="insertFormat('```\n', '\n```')" title="代码块">&lt;/&gt;</button>
+            <button type="button" @click="insertFormat('```\\n', '\\n```')" title="代码块">&lt;/&gt;</button>
             <button type="button" @click="insertFormat('> ', '')" title="引用">"</button>
             <button type="button" @click="insertFormat('- ', '')" title="列表">-</button>
             <button type="button" @click="insertFormat('### ', '')" title="标题">H</button>
             <span class="toolbar-divider"></span>
-            <button type="button" @click="fileInput.click()" title="从文件导入">导入</button>
+            <button type="button" @click="fileInput?.click()" title="从文本文件导入">导入</button>
             <input ref="fileInput" type="file" accept=".txt,.md,.text,.markdown" style="display:none" @change="handleFileImport" />
             <span class="toolbar-divider"></span>
             <span class="char-count">{{ form.content.length }} 字</span>
@@ -72,18 +72,13 @@
               {{ showPreview ? '编辑' : '预览' }}
             </button>
           </div>
+
           <textarea
             v-if="!showPreview"
             ref="contentRef"
             v-model="form.content"
             rows="14"
-            placeholder="请详细描述你的面试过程，包括：
-- 面试官问了哪些问题
-- 你是怎么回答的
-- 有没有遇到什么特别的情况
-- 你的感受和建议
-
-支持 Markdown 格式"
+            placeholder="请按 Markdown 书写，例如：面试流程、题目、回答思路、复盘建议。系统会清理复杂 HTML 与 SVG，避免详情页样式异常。"
             required
           ></textarea>
           <div v-else class="markdown-preview" v-html="renderedContent"></div>
@@ -114,14 +109,14 @@
         <div class="form-group anonymous-row">
           <label class="switch-label">
             <input type="checkbox" v-model="form.is_anonymous" />
-            <span class="switch-text">匿名发布（不显示我的用户名）</span>
+            <span class="switch-text">匿名发布</span>
           </label>
         </div>
 
         <div class="form-actions">
-          <button type="button" class="btn-draft" @click="saveDraft">保存草稿</button>
+          <button v-if="!isEditMode" type="button" class="btn-draft" @click="saveDraft">保存草稿</button>
           <button type="submit" class="btn-submit" :disabled="submitting">
-            {{ submitting ? '提交中...' : '提交审核' }}
+            {{ submitting ? '提交中...' : (isEditMode ? '保存并重新提交审核' : '提交审核') }}
           </button>
         </div>
       </form>
@@ -131,18 +126,19 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { submitExperience } from '../api/experience'
-import { marked } from 'marked'
+import { useRoute, useRouter } from 'vue-router'
+import { submitExperience, getMyExperienceDetail, updateMyExperience } from '../api/experience'
 import StarryBackground from '../components/StarryBackground.vue'
+import { renderExperienceContent } from '../utils/experienceContent'
 
-marked.setOptions({ breaks: true, gfm: true })
-
+const route = useRoute()
 const router = useRouter()
 const contentRef = ref(null)
+const fileInput = ref(null)
 const showPreview = ref(false)
 const submitting = ref(false)
 const tagInput = ref('')
+const isEditMode = computed(() => Boolean(route.params.id))
 
 const form = reactive({
   title: '',
@@ -162,18 +158,14 @@ const commonCompanies = ['字节跳动', '腾讯', '阿里巴巴', '美团', '�
 const commonPositions = ['后端开发', '前端开发', '算法工程师', '测试开发', '产品经理', '数据分析', '运维工程师', '客户端开发', 'Java开发', 'Python开发']
 const suggestedTags = ['算法', '系统设计', '数据库', '网络', '操作系统', '项目经验', 'HR面', '手撕代码', '八股文', '场景题']
 
-const renderedContent = computed(() => {
-  return marked.parse(form.content || '')
-})
-
-const fileInput = ref(null)
+const renderedContent = computed(() => renderExperienceContent(form.content || ''))
 
 function handleFileImport(event) {
-  const file = event.target.files[0]
+  const file = event.target.files?.[0]
   if (!file) return
   const reader = new FileReader()
   reader.onload = (e) => {
-    form.content = e.target.result
+    form.content = String(e.target?.result || '')
   }
   reader.readAsText(file)
   event.target.value = ''
@@ -217,12 +209,19 @@ async function handleSubmit() {
     alert('请填写必填项')
     return
   }
+
   submitting.value = true
   try {
-    await submitExperience(form)
-    localStorage.removeItem('experience-draft')
-    alert('投稿成功！内容将进入审核队列，审核通过后会展示在面经广场。')
-    router.push('/experiences')
+    if (isEditMode.value) {
+      await updateMyExperience(route.params.id, form)
+      alert('面经已更新，并重新进入审核队列')
+      router.push('/my/experiences')
+    } else {
+      await submitExperience(form)
+      localStorage.removeItem('experience-draft')
+      alert('投稿成功，内容将进入审核队列')
+      router.push('/experiences')
+    }
   } catch (e) {
     alert(e.response?.data?.message || '提交失败，请重试')
   } finally {
@@ -230,13 +229,39 @@ async function handleSubmit() {
   }
 }
 
+async function loadEditData() {
+  try {
+    const data = await getMyExperienceDetail(route.params.id)
+    Object.assign(form, {
+      title: data.title || '',
+      company: data.company || '',
+      position: data.position || '',
+      content: data.content || '',
+      level: data.level || '',
+      round: data.round || '',
+      summary: data.summary || '',
+      tags: Array.isArray(data.tags) ? [...data.tags] : [],
+      is_anonymous: !!data.is_anonymous
+    })
+  } catch {
+    alert('加载投稿失败')
+    router.push('/my/experiences')
+  }
+}
+
 onMounted(() => {
+  if (isEditMode.value) {
+    loadEditData()
+    return
+  }
+
   const draft = localStorage.getItem('experience-draft')
   if (draft) {
     try {
-      const d = JSON.parse(draft)
-      Object.assign(form, d)
-    } catch {}
+      Object.assign(form, JSON.parse(draft))
+    } catch {
+      // ignore malformed draft
+    }
   }
 })
 </script>
@@ -310,7 +335,6 @@ form {
 }
 
 input[type="text"],
-input[type="number"],
 select,
 textarea {
   width: 100%;
@@ -346,6 +370,7 @@ textarea {
   border: 1px solid var(--border-default);
   border-radius: 8px 8px 0 0;
   border-bottom: none;
+  flex-wrap: wrap;
 }
 
 .editor-toolbar + textarea,
@@ -379,6 +404,8 @@ textarea {
   font-size: 12px;
   color: var(--text-dim);
   padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .preview-toggle.active {
@@ -388,7 +415,7 @@ textarea {
 
 .markdown-preview {
   min-height: 300px;
-  padding: 12px 14px;
+  padding: 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
@@ -396,10 +423,19 @@ textarea {
   font-size: 14px;
 }
 
+.markdown-preview :deep(svg) {
+  display: none !important;
+}
+
+.markdown-preview :deep(*) {
+  max-width: 100%;
+}
+
 .markdown-preview :deep(pre) {
-  background: var(--bg-base);
+  background: #111827;
+  color: #f3f4f6;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow-x: auto;
 }
 
@@ -412,9 +448,21 @@ textarea {
 
 .markdown-preview :deep(blockquote) {
   border-left: 3px solid var(--accent-primary);
-  padding-left: 12px;
-  margin: 8px 0;
-  color: var(--text-muted);
+  padding: 10px 12px;
+  margin: 10px 0;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.markdown-preview :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-preview :deep(th),
+.markdown-preview :deep(td) {
+  border: 1px solid var(--border-default);
+  padding: 8px 10px;
 }
 
 .tags-input {
@@ -531,10 +579,6 @@ textarea {
   border: 1px solid var(--border-default);
   cursor: pointer;
   transition: all 0.2s;
-}
-
-.btn-draft:hover {
-  border-color: var(--border-hover);
 }
 
 .btn-submit {

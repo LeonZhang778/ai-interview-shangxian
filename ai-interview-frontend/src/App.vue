@@ -4,11 +4,12 @@
       <AnnouncementBanner />
       <nav class="navbar" v-if="authStore.token">
         <div class="nav-content">
-          <router-link to="/dashboard" class="nav-logo">🎯 智面</router-link>
+          <router-link to="/dashboard" class="nav-logo">智面</router-link>
           <div class="nav-links">
             <router-link to="/experiences">面经广场</router-link>
+            <router-link to="/my/experiences">我的投稿</router-link>
             <router-link to="/collections">我的收藏</router-link>
-            <router-link to="/image-studio">AI 画图</router-link>
+            <router-link to="/image-studio">AI 绘图</router-link>
             <router-link to="/dashboard">面试记录</router-link>
             <router-link to="/analysis">面试分析</router-link>
             <router-link to="/resume/upload">上传简历</router-link>
@@ -29,16 +30,18 @@
       </nav>
       <nav class="navbar" v-else>
         <div class="nav-content">
-          <router-link to="/" class="nav-logo">🎯 智面</router-link>
+          <router-link to="/" class="nav-logo">智面</router-link>
           <div class="nav-links">
             <ThemeToggle />
           </div>
         </div>
       </nav>
     </div>
+
     <div v-if="authStore.isGuest" class="guest-banner">
-      <span>游客模式</span>，<router-link to="/register">注册账号</router-link>可永久保存面试记录
+      <span>游客模式</span>，<router-link to="/register">注册账号</router-link> 可永久保存面试记录
     </div>
+
     <router-view />
     <BugReportBanner />
   </div>
@@ -61,15 +64,16 @@ const avatarError = ref(false)
 const unreadCount = ref(0)
 let unreadTimer = null
 
-// Initialize theme
-const { theme } = useTheme()
+useTheme()
 
 async function fetchUnreadCount() {
   if (!authStore.token) return
   try {
     const data = await getUnreadCount()
     unreadCount.value = data.count
-  } catch (e) { /* ignore */ }
+  } catch {
+    // ignore
+  }
 }
 
 onMounted(async () => {
@@ -79,8 +83,8 @@ onMounted(async () => {
       const data = await getProfile()
       authStore.setUserInfo(data)
       avatarError.value = false
-    } catch (e) {
-      // 忽略
+    } catch {
+      // ignore
     }
     fetchUnreadCount()
     unreadTimer = setInterval(fetchUnreadCount, 60000)
@@ -104,6 +108,7 @@ async function logout() {
   top: 0;
   z-index: 100;
 }
+
 .navbar {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-default);
@@ -111,14 +116,16 @@ async function logout() {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
+
 .nav-content {
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 56px;
 }
+
 .nav-logo {
   font-size: 18px;
   font-weight: 700;
@@ -126,23 +133,30 @@ async function logout() {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
   font-size: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
+
 .nav-links a {
   color: var(--text-secondary);
   transition: color 0.2s;
 }
+
 .nav-links a:hover {
   color: var(--accent-light);
 }
+
 .nav-links a.router-link-active {
   color: var(--accent-primary);
   font-weight: 600;
 }
+
 .nav-user-link {
   color: var(--text-secondary);
   font-size: 13px;
@@ -151,15 +165,18 @@ async function logout() {
   align-items: center;
   gap: 6px;
 }
+
 .nav-user-link:hover {
   color: var(--accent-light);
 }
+
 .nav-avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   object-fit: cover;
 }
+
 .nav-avatar-placeholder {
   width: 28px;
   height: 28px;
@@ -170,6 +187,7 @@ async function logout() {
   justify-content: center;
   font-size: 14px;
 }
+
 .guest-banner {
   background: var(--amber-bg);
   color: var(--amber);
@@ -178,18 +196,24 @@ async function logout() {
   font-size: 13px;
   border-bottom: 1px solid rgba(245,158,11,0.15);
 }
+
 .guest-banner a {
   color: var(--accent-primary);
   font-weight: 600;
   text-decoration: underline;
 }
+
 .nav-bell-link {
   position: relative;
   display: flex;
   align-items: center;
   text-decoration: none;
 }
-.bell-icon { font-size: 18px; }
+
+.bell-icon {
+  font-size: 18px;
+}
+
 .bell-badge {
   position: absolute;
   top: -6px;
@@ -207,6 +231,7 @@ async function logout() {
   justify-content: center;
   line-height: 1;
 }
+
 .btn-logout {
   padding: 6px 14px;
   font-size: 13px;
@@ -217,9 +242,27 @@ async function logout() {
   cursor: pointer;
   transition: all 0.2s;
 }
+
 .btn-logout:hover {
   background: var(--red-bg);
   color: var(--red);
   border-color: rgba(239,68,68,0.2);
+}
+
+@media (max-width: 900px) {
+  .navbar {
+    padding: 8px 14px;
+  }
+
+  .nav-content {
+    height: auto;
+    align-items: flex-start;
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .nav-links {
+    gap: 12px;
+  }
 }
 </style>

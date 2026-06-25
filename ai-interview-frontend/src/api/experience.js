@@ -44,6 +44,14 @@ export function getMyExperiences(params) {
   return api.get('/experiences/my/submissions', { params })
 }
 
+export function getMyExperienceDetail(id) {
+  return api.get(`/experiences/my/submissions/${id}`)
+}
+
+export function updateMyExperience(id, data) {
+  return api.put(`/experiences/my/submissions/${id}`, data)
+}
+
 // ==================== 收藏夹分组 ====================
 
 export function getMyCollections(params) {
