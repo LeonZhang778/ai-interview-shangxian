@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /experiences
+Allow: /experiences/*
+Disallow: /dashboard
+Disallow: /resume
+Disallow: /interview
+Disallow: /profile
+Disallow: /admin
+
+Sitemap: http://8.166.120.119/sitemap.xml
