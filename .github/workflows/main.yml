@@ -87,6 +87,15 @@ jobs:
             docker compose up -d --force-recreate --no-deps celery-beat
             docker compose up -d --build --force-recreate --no-deps nginx
 
+            # Deploy host Nginx config (SSL termination + reverse proxy to Docker Nginx)
+            echo "Deploying host Nginx config..."
+            mkdir -p /var/www/letsencrypt
+            cp /home/deploy/ai-interview/deploy/host-nginx/ai-interview.conf /etc/nginx/sites-available/ai-interview
+            rm -f /etc/nginx/sites-enabled/default
+            ln -sf /etc/nginx/sites-available/ai-interview /etc/nginx/sites-enabled/ai-interview
+            nginx -t && systemctl reload nginx || systemctl start nginx
+            echo "Host Nginx deployed OK"
+
             echo "Container summary:"
             docker compose ps
             echo "App container:"
