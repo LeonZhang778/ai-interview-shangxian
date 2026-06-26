@@ -116,7 +116,7 @@ services:
     container_name: ai-interview-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ../ai-interview-frontend/dist:/usr/share/nginx/html/frontend:ro
       - ../ai-interview-admin/dist:/usr/share/nginx/html/admin:ro
