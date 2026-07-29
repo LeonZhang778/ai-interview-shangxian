@@ -84,7 +84,12 @@
 
         <!-- 内容 -->
         <div class="form-group">
-          <label>内容 <span class="required">*</span> <span class="hint">支持 Markdown 语法</span></label>
+          <label>
+            内容 <span class="required">*</span>
+            <span class="hint">支持 Markdown 语法</span>
+            <button type="button" class="btn-import" @click="fileInput?.click()">📄 导入 Markdown / 文本</button>
+            <input ref="fileInput" type="file" accept=".txt,.md,.text,.markdown" style="display:none" @change="handleFileImport" />
+          </label>
           <textarea
             v-model="form.content"
             placeholder="用 Markdown 记录你的学习内容..."
@@ -121,6 +126,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const isEditMode = computed(() => !!route.params.id)
+const fileInput = ref(null)
 
 const form = ref({
   title: '',
@@ -130,6 +136,17 @@ const form = ref({
   status: 'draft',
   tags: '',
 })
+
+function handleFileImport(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    form.value.content = String(e.target?.result || '')
+  }
+  reader.readAsText(file)
+  event.target.value = ''
+}
 
 const typeOptions = [
   { value: 'note', label: '笔记' },
@@ -272,6 +289,21 @@ label {
   font-size: 12px;
   font-weight: 400;
   color: var(--text-muted);
+}
+.btn-import {
+  margin-left: 12px;
+  padding: 4px 10px;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 6px;
+  color: var(--accent-light);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-import:hover {
+  background: rgba(99,102,241,0.2);
 }
 
 .form-input {

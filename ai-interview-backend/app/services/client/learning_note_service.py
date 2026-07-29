@@ -84,7 +84,12 @@ class LearningNoteService:
         if note_type:
             conditions.append(LearningNote.note_type == note_type)
         if keyword:
-            conditions.append(LearningNote.title.ilike(f"%{keyword}%"))
+            from sqlalchemy import or_
+            conditions.append(or_(
+                LearningNote.title.ilike(f"%{keyword}%"),
+                LearningNote.content.ilike(f"%{keyword}%"),
+                LearningNote.tags.ilike(f"%{keyword}%")
+            ))
 
         if sort == "popular":
             query = select(LearningNote).where(*conditions).order_by(desc(LearningNote.view_count))
