@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.client.deps import get_current_user
+from app.api.client.deps import get_current_user, get_current_user_optional
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.response import ApiResponse
@@ -115,11 +115,11 @@ async def get_note_stats(
 @router.get("/{note_id}")
 async def get_note_detail(
     note_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     result = await learning_note_service.get_note_detail(
-        db=db, note_id=note_id, user_id=current_user.id
+        db=db, note_id=note_id, user_id=current_user.id if current_user else None
     )
     return ApiResponse.success(data=result)
 
