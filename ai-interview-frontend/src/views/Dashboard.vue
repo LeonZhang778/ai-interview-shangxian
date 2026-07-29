@@ -15,10 +15,10 @@
     <!-- 快捷入口 -->
     <div class="quick-entries">
       <router-link to="/learning-notes" class="quick-entry-card">
-        <span class="entry-icon">📝</span>
+        <span class="entry-icon">📚</span>
         <div class="entry-info">
           <span class="entry-title">学习笔记</span>
-          <span class="entry-desc">复盘面试、记录错题</span>
+          <span class="entry-desc">查看广场 / 创建笔记</span>
         </div>
       </router-link>
       <router-link to="/collections" class="quick-entry-card">

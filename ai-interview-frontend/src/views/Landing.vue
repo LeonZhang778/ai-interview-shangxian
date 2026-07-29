@@ -57,6 +57,8 @@
     <footer class="footer">
       <p>{{ siteName }} &copy; 2026 &mdash; {{ siteSlogan }}</p>
       <p class="footer-links">
+        <router-link to="/experiences">面经广场</router-link>
+        <router-link to="/learning-notes">学习笔记</router-link>
         <router-link to="/login">登录</router-link>
         <router-link to="/register">注册</router-link>
         <a v-if="contactEmail" :href="`mailto:${contactEmail}`">反馈建议</a>
@@ -104,6 +106,7 @@ const features = [
   { icon: '💬', title: '实时对话', desc: '像真人面试一样多轮对话，支持追问和深入探讨' },
   { icon: '📊', title: '即时评分', desc: '每道题实时评分（1-10 分），给出具体改进建议' },
   { icon: '📝', title: '综合报告', desc: '面试结束生成详细评估报告，含录用建议和提升方向' },
+  { icon: '📚', title: '学习笔记', desc: '沉淀面试知识点，支持公开分享，形成广场互助学习' },
   { icon: '🔄', title: '反复练习', desc: '不限次数练习，每次题目不同，持续提升面试技巧' }
 ]
 
@@ -375,10 +378,12 @@ async function handleGuest() {
   .hero h1 { font-size: 28px; }
   .feature-grid { grid-template-columns: 1fr 1fr; }
 }
+@media (max-width: 640px) {
+  .feature-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 480px) {
   .hero h1 { font-size: 24px; }
   .hero-desc { font-size: 15px; }
-  .feature-grid { grid-template-columns: 1fr; }
   .btn-glow, .btn-outline { width: 100%; text-align: center; }
 }
 </style>

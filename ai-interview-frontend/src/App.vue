@@ -7,6 +7,7 @@
           <router-link to="/dashboard" class="nav-logo">智面</router-link>
           <div class="nav-links">
             <router-link to="/experiences">面经广场</router-link>
+            <router-link to="/learning-notes">学习笔记</router-link>
             <router-link to="/my/experiences">我的投稿</router-link>
             <router-link to="/collections">我的收藏</router-link>
             <router-link to="/image-studio">AI 绘图</router-link>
@@ -32,6 +33,10 @@
         <div class="nav-content">
           <router-link to="/" class="nav-logo">智面</router-link>
           <div class="nav-links">
+            <router-link to="/experiences">面经广场</router-link>
+            <router-link to="/learning-notes">学习笔记</router-link>
+            <router-link to="/login">登录</router-link>
+            <router-link to="/register">注册</router-link>
             <ThemeToggle />
           </div>
         </div>
