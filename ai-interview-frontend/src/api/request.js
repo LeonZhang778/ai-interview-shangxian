@@ -14,12 +14,13 @@ api.interceptors.request.use(config => {
   const isPublicApi = publicPaths.some(p =>
     typeof p === 'string' ? config.url?.startsWith(p) : p.test(config.url || '')
   )
-  // 公开接口：未登录时不携带 token，避免残留无效 token 导致 403
-  if (authStore.token && !isPublicApi) {
-    config.headers.Authorization = `Bearer ${authStore.token}`
-  }
-  if (isPublicApi && !authStore.token && config.headers.Authorization) {
+  // 公开接口（广场、公开笔记详情）不携带 token，避免游客/过期 token 导致后端 403
+  if (isPublicApi) {
     delete config.headers.Authorization
+    return config
+  }
+  if (authStore.token) {
+    config.headers.Authorization = `Bearer ${authStore.token}`
   }
   return config
 })
