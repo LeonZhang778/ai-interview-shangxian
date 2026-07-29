@@ -6,6 +6,7 @@ from .resume import Resume
 from .interview import Interview
 from .interview_message import InterviewMessage
 from .experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment, CollectionGroup
+from .learning_note import LearningNote
 from .image_task import ImageTask
 from .announcement import Announcement
 from .setting import SystemSetting
@@ -14,4 +15,4 @@ from .audit_log import AuditLog
 from .page_view import PageView
 from .notification import Notification
 
-__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "CollectionGroup", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView", "Notification"]
+__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "CollectionGroup", "LearningNote", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView", "Notification"]

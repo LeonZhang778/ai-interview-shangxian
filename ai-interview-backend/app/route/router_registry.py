@@ -58,6 +58,11 @@ CLIENT_ROUTES = [
         tags=["client-experience"]
     ),
     RouteConfig(
+        module_path="app.api.client.v1.learning_note",
+        prefix=f"{settings.API_V1_STR}/learning-notes",
+        tags=["client-learning-note"]
+    ),
+    RouteConfig(
         module_path="app.api.client.v1.image",
         prefix=f"{settings.API_V1_STR}/images",
         tags=["client-image"]

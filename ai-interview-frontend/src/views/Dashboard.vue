@@ -12,6 +12,31 @@
       游客模式下数据临时保存，<router-link to="/register" style="color:var(--accent-primary);font-weight:600">注册账号</router-link>后永久保留
     </div>
 
+    <!-- 快捷入口 -->
+    <div class="quick-entries">
+      <router-link to="/learning-notes" class="quick-entry-card">
+        <span class="entry-icon">📝</span>
+        <div class="entry-info">
+          <span class="entry-title">学习笔记</span>
+          <span class="entry-desc">复盘面试、记录错题</span>
+        </div>
+      </router-link>
+      <router-link to="/collections" class="quick-entry-card">
+        <span class="entry-icon">⭐</span>
+        <div class="entry-info">
+          <span class="entry-title">我的收藏</span>
+          <span class="entry-desc">整理收藏的面经</span>
+        </div>
+      </router-link>
+      <router-link to="/experiences" class="quick-entry-card">
+        <span class="entry-icon">📚</span>
+        <div class="entry-info">
+          <span class="entry-title">面经广场</span>
+          <span class="entry-desc">浏览真实面经</span>
+        </div>
+      </router-link>
+    </div>
+
     <div v-if="loading" class="loading">加载中...</div>
 
     <div v-else-if="interviews.length === 0" class="empty card">
@@ -105,6 +130,57 @@ async function handleDelete(interviewId) {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-muted);
+}
+
+/* 快捷入口 */
+.quick-entries {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.quick-entry-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.quick-entry-card:hover {
+  border-color: rgba(99,102,241,0.3);
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-2px);
+}
+.entry-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.entry-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.entry-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.entry-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .quick-entries {
+    grid-template-columns: 1fr;
+  }
 }
 .interview-list {
   display: flex;

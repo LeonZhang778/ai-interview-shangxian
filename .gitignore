@@ -18,6 +18,8 @@ stop.ps1
 # ---------- IDE ----------
 .vscode/
 .idea/
+.codepus/
+.codepus-todos.json
 
 # ---------- Python ----------
 __pycache__/

@@ -147,6 +147,18 @@
         </button>
       </div>
 
+      <!-- 保存到学习笔记 -->
+      <div class="card save-note-panel" style="margin-top:16px">
+        <h3 style="margin-bottom:12px;color:var(--accent-light)">📝 保存到学习笔记</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+          将本次面试结果自动生成复盘笔记草稿，含逐题记录、错题标记和 AI 改进建议
+        </p>
+        <button @click="handleSaveToNote" class="btn-generate" :disabled="noteStatus === 'loading'">
+          {{ noteStatus === 'loading' ? '生成中...' : '生成学习笔记' }}
+        </button>
+        <p v-if="noteMessage" :class="['note-msg', noteMessageType]">{{ noteMessage }}</p>
+      </div>
+
       <!-- 操作 -->
       <div style="text-align:center;margin-top:24px;margin-bottom:40px">
         <button @click="handleShareImage" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px">
@@ -189,11 +201,13 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getReport, shareInterview, unshareInterview } from '../api/interview'
+import { generateFromInterview } from '../api/learningNote'
 import StarryBackground from '../components/StarryBackground.vue'
 
 const route = useRoute()
+const router = useRouter()
 const interviewId = route.params.id
 const data = ref(null)
 const report = ref(null)
@@ -206,6 +220,9 @@ const shareToken = ref(null)
 const isShared = ref(false)
 const copyStatus = ref('idle')
 const previewImage = ref(null)
+const noteStatus = ref('idle')
+const noteMessage = ref('')
+const noteMessageType = ref('')
 
 const shareUrl = computed(() => {
   if (!shareToken.value) return ''
@@ -531,6 +548,31 @@ async function copyShareLink() {
     document.body.removeChild(input)
     copyStatus.value = 'done'
     setTimeout(() => { copyStatus.value = 'idle' }, 2000)
+  }
+}
+
+async function handleSaveToNote() {
+  if (noteStatus.value === 'loading') return
+  noteStatus.value = 'loading'
+  noteMessage.value = ''
+  try {
+    const res = await generateFromInterview({
+      interview_id: interviewId,
+      note_type: 'review',
+    })
+    noteMessage.value = res.message || '学习笔记草稿已生成'
+    noteMessageType.value = 'success'
+    // 若返回笔记 id，3 秒后跳转或保留查看链接
+    if (res.id) {
+      setTimeout(() => {
+        router.push(`/learning-notes/${res.id}`)
+      }, 1500)
+    }
+  } catch (e) {
+    noteMessage.value = e.response?.data?.detail || '生成失败，请重试'
+    noteMessageType.value = 'error'
+  } finally {
+    noteStatus.value = 'idle'
   }
 }
 </script>
@@ -913,6 +955,22 @@ ul li::before {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+/* 保存到学习笔记 */
+.save-note-panel {
+  margin-top: 16px;
+}
+.note-msg {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.note-msg.success {
+  color: #10b981;
+}
+.note-msg.error {
+  color: #ef4444;
 }
 
 /* 截图预览弹窗 */

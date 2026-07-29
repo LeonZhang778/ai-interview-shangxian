@@ -322,6 +322,21 @@ async def save_results_node(state: dict) -> dict:
         except Exception as e:
             logger.warning(f"发送面试完成通知失败: {e}")
 
+        # 面试结果回流：自动生成学习笔记草稿（review 复盘类型）
+        # 失败不影响主流程，仅记录警告
+        try:
+            from app.services.client.learning_note_service import learning_note_service
+            await learning_note_service.generate_from_interview(
+                db=db,
+                user_id=user_id,
+                interview_id=interview_id,
+                note_type="review",
+                title=f"{state['target_position']} 面试复盘",
+                visibility="private",
+            )
+        except Exception as e:
+            logger.warning(f"自动生成学习笔记草稿失败: {e}")
+
     # 组装最终结果
     result = {
         "score": score,
