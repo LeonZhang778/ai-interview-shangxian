@@ -68,6 +68,9 @@
               @click="form.status = 'published'"
             >发布</span>
           </div>
+          <p v-if="form.visibility === 'public' && form.status === 'draft'" class="hint warn">
+            当前为“公开但草稿”状态，仅自己可见；选择“发布”后才会进入公开广场。
+          </p>
         </div>
 
         <!-- 标签 -->
@@ -289,6 +292,10 @@ label {
   font-size: 12px;
   font-weight: 400;
   color: var(--text-muted);
+}
+.hint.warn {
+  color: #f59e0b;
+  margin-top: 4px;
 }
 .btn-import {
   margin-left: 12px;
