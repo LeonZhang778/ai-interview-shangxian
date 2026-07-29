@@ -67,6 +67,10 @@ jobs:
             docker compose stop app celery-worker celery-beat || true
 
             docker compose up -d --force-recreate --no-deps app
+            sleep 5
+            echo "Running DB migrations..."
+            docker exec ai-interview-app alembic upgrade head || true
+            echo "Migrations done."
             for i in $(seq 1 12); do
               APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
               if [ "$APP_HEALTH" = "healthy" ]; then

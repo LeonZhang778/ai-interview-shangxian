@@ -185,7 +185,7 @@ async function handleSubmit() {
     }
     router.push('/learning-notes')
   } catch (e) {
-    error.value = e.response?.data?.detail || '保存失败，请重试'
+    error.value = e.message || '保存失败，请重试'
     console.error(e)
   } finally {
     saving.value = false
