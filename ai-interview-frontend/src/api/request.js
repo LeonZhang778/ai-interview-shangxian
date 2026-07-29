@@ -10,8 +10,16 @@ const api = axios.create({
 // 请求拦截器 - 自动带上 token
 api.interceptors.request.use(config => {
   const authStore = useAuthStore()
-  if (authStore.token) {
+  const publicPaths = ['/learning-notes/public', /^\/learning-notes\/\d+$/]
+  const isPublicApi = publicPaths.some(p =>
+    typeof p === 'string' ? config.url?.startsWith(p) : p.test(config.url || '')
+  )
+  // 公开接口：未登录时不携带 token，避免残留无效 token 导致 403
+  if (authStore.token && !isPublicApi) {
     config.headers.Authorization = `Bearer ${authStore.token}`
+  }
+  if (isPublicApi && !authStore.token && config.headers.Authorization) {
+    delete config.headers.Authorization
   }
   return config
 })

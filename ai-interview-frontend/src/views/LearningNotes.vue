@@ -10,6 +10,7 @@
       <!-- 模式切换 -->
       <div class="mode-tabs">
         <span
+          v-if="authStore.isLoggedIn"
           class="mode-tab"
           :class="{ active: mode === 'my' }"
           @click="switchMode('my')"
@@ -23,7 +24,7 @@
         >
           公开广场
         </span>
-        <span class="mode-tab mode-add" @click="goCreate">
+        <span v-if="authStore.isLoggedIn" class="mode-tab mode-add" @click="goCreate">
           + 新建笔记
         </span>
       </div>
@@ -92,6 +93,7 @@
         <div class="empty-icon">{{ mode === 'my' ? '📝' : '🌌' }}</div>
         <p>{{ mode === 'my' ? '还没有学习笔记，去创建第一篇吧' : '公开广场还没有笔记' }}</p>
         <router-link v-if="mode === 'my'" to="/learning-notes/edit" class="btn-browse">新建笔记</router-link>
+        <router-link v-if="!authStore.isLoggedIn && mode === 'public'" to="/login" class="btn-browse">登录后创建笔记</router-link>
       </div>
 
       <div v-else class="notes-grid">
@@ -150,11 +152,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
+import { useAuthStore } from '../stores/auth'
 import { getMyNotes, getPublicNotes, getNoteStats } from '../api/learningNote'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
-const mode = ref('my')
+const mode = ref(authStore.isLoggedIn ? 'my' : 'public')
 const filterType = ref(null)
 const filterStatus = ref(null)
 const keyword = ref('')
@@ -213,6 +217,10 @@ function changePage(page) {
 }
 
 function goCreate() {
+  if (!authStore.isLoggedIn) {
+    router.push('/login')
+    return
+  }
   router.push('/learning-notes/edit')
 }
 

@@ -28,8 +28,13 @@
         </div>
       </div>
 
+      <!-- 游客提示 -->
+      <div v-if="!note.is_owner && note.visibility === 'public'" class="guest-notice">
+        🌐 公开笔记 · 无需登录即可阅读
+      </div>
+
       <!-- 面试回流关联入口 -->
-      <div v-if="note.interview_id" class="interview-link">
+      <div v-if="note.interview_id && note.is_owner" class="interview-link">
         <router-link :to="`/report/${note.interview_id}`" class="link-text">
           📋 查看关联的 AI 面试报告 →
         </router-link>
@@ -235,6 +240,15 @@ onMounted(loadData)
 }
 
 /* 面试回流关联 */
+.guest-notice {
+  margin-bottom: 20px;
+  padding: 10px 16px;
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 10px;
+  color: #10b981;
+  font-size: 13px;
+}
 .interview-link {
   margin-bottom: 20px;
   padding: 12px 16px;
