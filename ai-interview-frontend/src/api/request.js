@@ -10,12 +10,7 @@ const api = axios.create({
 // 请求拦截器 - 自动带上 token
 api.interceptors.request.use(config => {
   const authStore = useAuthStore()
-  // 公开广场接口不携带 token，避免游客/过期 token 导致 403
-  // 笔记详情 /learning-notes/:id 统一带 token（如果有），后端用 get_current_user_optional 处理游客访问
-  if (fullUrl.includes('/learning-notes/public')) {
-    delete config.headers.Authorization
-    return config
-  }
+  // 公开接口（广场、公开笔记详情）即使携带过期 token，后端用 get_current_user_optional 解析，不会 401
   if (authStore.token) {
     config.headers.Authorization = `Bearer ${authStore.token}`
   }
