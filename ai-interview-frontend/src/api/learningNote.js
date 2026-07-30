@@ -12,6 +12,11 @@ export function getPublicNotes(params) {
   return api.get('/learning-notes/public', { params })
 }
 
+// 获取公开笔记的热门标签（供广场下拉筛选）
+export function getPublicTags() {
+  return api.get('/learning-notes/public/tags')
+}
+
 // 获取笔记详情
 export function getNoteDetail(id) {
   return api.get(`/learning-notes/${id}`)
@@ -38,8 +43,8 @@ export function generateFromInterview(data) {
 }
 
 // 获取笔记统计
-export function getNoteStats() {
-  return api.get('/learning-notes/stats')
+export function getNoteStats(params) {
+  return api.get('/learning-notes/stats', { params })
 }
 
 // 搜索笔记（全文搜索）

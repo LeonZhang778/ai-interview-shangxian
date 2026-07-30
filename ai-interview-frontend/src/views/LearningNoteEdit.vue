@@ -470,14 +470,42 @@ label {
 }
 /* === bytemd 深色主题覆盖 === */
 .editor-wrapper :deep(.bytemd) {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-input);
   color: var(--text-primary);
-  border: none;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
   height: 500px;
+  transition: border-color 0.2s;
+}
+.editor-wrapper :deep(.bytemd:focus-within) {
+  border-color: var(--border-focus);
+}
+/* 全屏模式：修复文字重叠 + 背景遮挡 */
+.editor-wrapper :deep(.bytemd.bytemd-fullscreen) {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: var(--bg-surface);
+  height: 100vh !important;
+}
+.editor-wrapper :deep(.bytemd.bytemd-fullscreen .bytemd-toolbar) {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+}
+.editor-wrapper :deep(.bytemd.bytemd-fullscreen .bytemd-toolbar-icon) {
+  color: var(--text-secondary);
+}
+.editor-wrapper :deep(.bytemd.bytemd-fullscreen .bytemd-fullscreen-exit) {
+  display: inline-flex;
+  color: var(--accent-light);
 }
 .editor-wrapper :deep(.bytemd-toolbar) {
-  background: rgba(255,255,255,0.08);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  border-radius: 10px 10px 0 0;
 }
 .editor-wrapper :deep(.bytemd-toolbar-tab) {
   color: var(--text-muted);
@@ -486,23 +514,23 @@ label {
   color: var(--accent-light);
 }
 .editor-wrapper :deep(.bytemd-toolbar-icon) {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 .editor-wrapper :deep(.bytemd-toolbar-icon:hover) {
-  background: rgba(255,255,255,0.08);
+  background: var(--bg-hover);
 }
 .editor-wrapper :deep(.bytemd-toolbar-icon-active) {
   color: var(--accent-light);
 }
 .editor-wrapper :deep(.bytemd-status) {
   color: var(--text-muted);
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid var(--border-default);
 }
 .editor-wrapper :deep(.bytemd-sidebar) {
-  border-left: 1px solid rgba(255,255,255,0.1);
+  border-left: 1px solid var(--border-default);
 }
 .editor-wrapper :deep(.bytemd-split .bytemd-preview) {
-  border-left: 1px solid rgba(255,255,255,0.1);
+  border-left: 1px solid var(--border-default);
 }
 
 /* === CodeMirror 编辑区深色覆盖 === */
@@ -514,8 +542,8 @@ label {
   color: var(--text-primary) !important;
 }
 .editor-wrapper :deep(.CodeMirror-gutters) {
-  background: rgba(0,0,0,0.15) !important;
-  border-right: 1px solid rgba(255,255,255,0.06) !important;
+  background: var(--bg-input) !important;
+  border-right: 1px solid var(--border-default) !important;
 }
 .editor-wrapper :deep(.CodeMirror-linenumber) {
   color: var(--text-muted) !important;
@@ -530,7 +558,7 @@ label {
   background: rgba(99,102,241,0.3) !important;
 }
 .editor-wrapper :deep(.CodeMirror-activeline-background) {
-  background: rgba(255,255,255,0.03) !important;
+  background: var(--bg-hover) !important;
 }
 
 /* === 预览区深色覆盖 === */
@@ -547,7 +575,7 @@ label {
 .editor-wrapper :deep(.bytemd-preview .markdown-body h5),
 .editor-wrapper :deep(.bytemd-preview .markdown-body h6) {
   color: var(--text-primary);
-  border-bottom-color: rgba(255,255,255,0.1);
+  border-bottom-color: var(--border-default);
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body a) {
   color: var(--accent-light);
@@ -557,21 +585,22 @@ label {
   border-left-color: var(--accent-purple);
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body code) {
-  background: rgba(255,255,255,0.08);
+  background: var(--code-inline-bg);
   color: var(--text-primary);
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body pre) {
-  background: rgba(0,0,0,0.2);
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body pre code) {
-  color: var(--text-primary);
+  color: var(--code-text);
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body table th),
 .editor-wrapper :deep(.bytemd-preview .markdown-body table td) {
-  border-color: rgba(255,255,255,0.1);
+  border-color: var(--border-default);
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body table tr:nth-child(2n)) {
-  background: rgba(255,255,255,0.03);
+  background: var(--bg-hover);
 }
 
 .option-tabs {
@@ -641,5 +670,52 @@ label {
 }
 .btn-cancel:hover {
   background: rgba(255,255,255,0.1);
+}
+
+/* === 手机端适配 === */
+@media (max-width: 640px) {
+  .page-header {
+    padding: 20px 14px 8px;
+    gap: 10px;
+  }
+  .page-header h1 {
+    font-size: 18px;
+  }
+  .main-container {
+    padding: 0 14px;
+  }
+  .note-form {
+    gap: 14px;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 14px;
+  }
+  /* 编辑器在手机上降低高度，改为分屏纵向更舒适 */
+  .editor-wrapper :deep(.bytemd) {
+    height: 60vh;
+  }
+  .editor-wrapper :deep(.bytemd-split) {
+    flex-direction: column;
+  }
+  .editor-wrapper :deep(.bytemd-split .bytemd-preview) {
+    border-left: none;
+    border-top: 1px solid var(--border-default);
+  }
+  /* 导入按钮不挤占标题行 */
+  .btn-import {
+    margin-left: 0;
+    margin-top: 4px;
+    align-self: flex-start;
+  }
+  .form-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .btn-save,
+  .btn-cancel {
+    width: 100%;
+    padding: 12px;
+  }
 }
 </style>

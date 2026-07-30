@@ -11,8 +11,11 @@
     <div v-else class="main-container">
       <button class="back-btn" @click="goBack">← 返回</button>
 
-      <!-- 标题区 -->
-      <div class="note-header">
+      <div class="note-layout">
+        <!-- 正文 -->
+        <div class="note-content-col">
+          <!-- 标题区 -->
+          <div class="note-header">
         <h1>{{ note.title }}</h1>
         <div class="note-meta">
           <span class="meta-tag" :class="`type-${note.note_type}`">{{ typeLabel(note.note_type) }}</span>
@@ -56,12 +59,26 @@
           <button class="btn-delete" @click="handleDelete">🗑️ 删除</button>
         </div>
       </div>
+        </div>
+        <!-- 目录侧栏 -->
+        <aside v-if="tocList.length > 1" class="note-toc">
+          <div class="toc-title">📋 目录</div>
+          <ul>
+            <li
+              v-for="item in tocList"
+              :key="item.id"
+              :class="[`toc-lvl-${item.level}`, { active: activeTocId === item.id }]"
+              @click="scrollToHeading(item.id)"
+            >{{ item.text }}</li>
+          </ul>
+        </aside>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
 import { Viewer } from '@bytemd/vue-next'
@@ -81,6 +98,8 @@ const router = useRouter()
 
 const note = ref(null)
 const loading = ref(true)
+const tocList = ref([])
+const activeTocId = ref('')
 
 const typeOptions = [
   { value: 'note', label: '笔记' },
@@ -124,6 +143,8 @@ async function loadData() {
   loading.value = true
   try {
     note.value = await getNoteDetail(route.params.id)
+    await nextTick()
+    buildToc()
   } catch (e) {
     console.error(e)
     note.value = null
@@ -132,7 +153,52 @@ async function loadData() {
   }
 }
 
+// 从渲染后的 DOM 读取标题生成目录（与 bytemd 实际生成的 id 保持一致）
+function buildToc() {
+  tocList.value = []
+  activeTocId.value = ''
+  const body = document.querySelector('.note-body')
+  if (!body) return
+  const headings = body.querySelectorAll('h1, h2, h3, h4')
+  if (headings.length <= 1) return
+  const list = []
+  headings.forEach((h) => {
+    if (!h.id) return
+    list.push({
+      id: h.id,
+      text: h.textContent || '',
+      level: Number(h.tagName.slice(1)),
+    })
+  })
+  tocList.value = list
+  if (list.length) activeTocId.value = list[0].id
+  window.addEventListener('scroll', onScroll, { passive: true })
+}
+
+function scrollToHeading(id) {
+  const el = document.getElementById(id)
+  if (el) {
+    const top = el.getBoundingClientRect().top + window.scrollY - 80
+    window.scrollTo({ top, behavior: 'smooth' })
+    activeTocId.value = id
+  }
+}
+
+function onScroll() {
+  if (!tocList.value.length) return
+  const scrollY = window.scrollY + 120
+  let current = tocList.value[0].id
+  for (const item of tocList.value) {
+    const el = document.getElementById(item.id)
+    if (el && el.getBoundingClientRect().top + window.scrollY <= scrollY) {
+      current = item.id
+    }
+  }
+  activeTocId.value = current
+}
+
 onMounted(loadData)
+onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <style scoped>
@@ -162,7 +228,7 @@ onMounted(loadData)
   font-weight: 600;
 }
 .main-container {
-  max-width: 800px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: 30px 20px;
 }
@@ -318,22 +384,24 @@ onMounted(loadData)
   color: var(--text-secondary);
 }
 .note-body :deep(code) {
-  background: rgba(255,255,255,0.08);
+  background: var(--code-inline-bg);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 13px;
   font-family: 'Consolas', 'Monaco', monospace;
 }
 .note-body :deep(pre) {
-  background: rgba(0,0,0,0.3);
+  background: var(--code-bg);
   padding: 14px;
   border-radius: 8px;
   overflow-x: auto;
   margin: 12px 0;
+  border: 1px solid var(--code-border);
 }
 .note-body :deep(pre code) {
   background: transparent;
   padding: 0;
+  color: var(--code-text);
 }
 .note-body :deep(strong) {
   font-weight: 600;
@@ -394,5 +462,87 @@ onMounted(loadData)
   background: rgba(239,68,68,0.15);
   border-color: rgba(239,68,68,0.3);
   color: #ef4444;
+}
+
+/* 布局：正文 + 目录侧栏 */
+.note-layout {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+.note-content-col {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 目录侧栏 */
+.note-toc {
+  position: sticky;
+  top: 20px;
+  flex: 0 0 200px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  font-size: 13px;
+}
+.toc-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-default);
+}
+.note-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.note-toc li {
+  padding: 5px 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note-toc li:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.note-toc li.active {
+  color: var(--accent-light);
+  border-left-color: var(--accent-purple);
+}
+.toc-lvl-2 { padding-left: 18px; }
+.toc-lvl-3 { padding-left: 30px; font-size: 12px; }
+.toc-lvl-4 { padding-left: 42px; font-size: 12px; }
+
+@media (max-width: 960px) {
+  .note-layout {
+    flex-direction: column;
+  }
+  .note-toc {
+    position: static;
+    flex: none;
+    width: 100%;
+    max-height: none;
+    margin-bottom: 20px;
+    order: -1;
+  }
+  .note-toc ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .note-toc li {
+    border-left: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    background: var(--bg-card);
+  }
+  .toc-lvl-2, .toc-lvl-3, .toc-lvl-4 { padding-left: 10px; }
 }
 </style>

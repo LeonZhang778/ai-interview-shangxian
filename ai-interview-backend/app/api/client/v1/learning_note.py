@@ -117,15 +117,26 @@ async def get_my_notes(
 async def get_public_notes(
     note_type: Optional[str] = Query(None),
     keyword: Optional[str] = Query(None),
+    tag: Optional[str] = Query(None),
     sort: str = Query("latest"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db)
 ):
     result = await learning_note_service.get_public_notes(
-        db=db, note_type=note_type, keyword=keyword,
+        db=db, note_type=note_type, keyword=keyword, tag=tag,
         sort=sort, page=page, size=size
     )
+    return ApiResponse.success(data=result)
+
+
+@router.get("/public/tags")
+async def get_public_tags(
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取公开笔记的热门标签列表，供广场下拉筛选"""
+    result = await learning_note_service.get_popular_tags(db=db, limit=limit)
     return ApiResponse.success(data=result)
 
 
@@ -164,10 +175,14 @@ async def generate_from_interview(
 
 @router.get("/stats")
 async def get_note_stats(
+    status: Optional[str] = Query(None),
+    notebook_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await learning_note_service.get_note_stats(db=db, user_id=current_user.id)
+    result = await learning_note_service.get_note_stats(
+        db=db, user_id=current_user.id, status=status, notebook_id=notebook_id
+    )
     return ApiResponse.success(data=result)
 
 

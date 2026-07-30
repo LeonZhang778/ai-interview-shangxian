@@ -174,13 +174,28 @@
       <!-- 公开广场（无侧边栏） -->
       <div v-else-if="mode === 'public'" class="content-layout public-only">
         <main class="notes-content">
-          <div class="filter-bar">
-            <input
-              v-model="keyword"
-              class="search-input"
-              placeholder="搜索笔记标题..."
-              @keyup.enter="loadData"
-            />
+          <div class="filter-bar public-filter-bar">
+            <div class="search-group">
+              <input
+                v-model="keyword"
+                class="search-input"
+                placeholder="搜索笔记标题..."
+                aria-label="搜索笔记标题"
+                @keyup.enter="loadData"
+              />
+              <button class="search-btn" @click="loadData">搜索</button>
+            </div>
+            <select
+              v-if="tagOptions.length"
+              class="tag-filter"
+              v-model="selectedTag"
+              @change="switchTag(selectedTag)"
+            >
+              <option value="">全部标签</option>
+              <option v-for="t in tagOptions" :key="t.name" :value="t.name">
+                {{ t.name }} ({{ t.count }})
+              </option>
+            </select>
             <div class="status-tabs">
               <span
                 class="status-tab"
@@ -261,6 +276,7 @@ import { useAuthStore } from '../stores/auth'
 import {
   getMyNotes, getPublicNotes, getNoteStats, searchNotes,
   getNotebooks, createNotebook as createNotebookApi, updateNotebook, deleteNotebook,
+  getPublicTags,
 } from '../api/learningNote'
 
 const router = useRouter()
@@ -271,6 +287,8 @@ const filterType = ref(null)
 const filterStatus = ref(null)
 const keyword = ref('')
 const sort = ref('latest')
+const selectedTag = ref('')
+const tagOptions = ref([])
 const currentPage = ref(1)
 const pageSize = 20
 
@@ -306,6 +324,8 @@ function switchMode(m) {
   mode.value = m
   currentPage.value = 1
   activeNotebookId.value = null
+  selectedTag.value = ''
+  if (m === 'public' && tagOptions.value.length === 0) loadTags()
   loadData()
 }
 
@@ -460,6 +480,8 @@ async function loadData() {
       loadStats()
     } else {
       const params = { page: currentPage.value, size: pageSize, sort: sort.value }
+      if (filterType.value) params.note_type = filterType.value
+      if (selectedTag.value) params.tag = selectedTag.value
       const res = await getPublicNotes(params)
       notes.value = res.items || []
       total.value = res.total || 0
@@ -471,9 +493,28 @@ async function loadData() {
   }
 }
 
+async function loadTags() {
+  try {
+    const res = await getPublicTags()
+    tagOptions.value = res || []
+  } catch (e) {
+    console.error(e)
+    tagOptions.value = []
+  }
+}
+
+function switchTag(tag) {
+  selectedTag.value = tag
+  currentPage.value = 1
+  loadData()
+}
+
 async function loadStats() {
   try {
-    stats.value = await getNoteStats()
+    const params = {}
+    if (filterStatus.value) params.status = filterStatus.value
+    if (activeNotebookId.value !== null) params.notebook_id = activeNotebookId.value
+    stats.value = await getNoteStats(params)
   } catch (e) {
     console.error(e)
   }
@@ -722,18 +763,69 @@ onMounted(async () => {
 }
 .search-input {
   flex: 1;
+  min-width: 0;
   max-width: 240px;
   padding: 8px 14px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
   transition: all 0.2s;
 }
+.search-input::placeholder {
+  color: var(--text-dim);
+}
 .search-input:focus {
-  border-color: rgba(99,102,241,0.4);
+  border-color: var(--border-focus);
+  background: var(--bg-input-focus);
+}
+.search-group {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.search-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #fff;
+  background: var(--accent-gradient);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.search-btn:hover {
+  opacity: 0.9;
+}
+.search-btn:active {
+  transform: scale(0.97);
+}
+.tag-filter {
+  padding: 8px 28px 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  max-width: 180px;
+  transition: border-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.tag-filter:focus {
+  border-color: var(--border-focus);
+}
+.tag-filter option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 /* 空状态 */
@@ -891,5 +983,54 @@ onMounted(async () => {
 .page-info {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* === 手机端适配 === */
+@media (max-width: 768px) {
+  /* 我的笔记：侧边栏改为顶部折叠条 */
+  .content-layout {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .sidebar {
+    width: 100%;
+    position: static;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .notebook-tree {
+    max-height: 140px;
+  }
+  /* 筛选栏换行 */
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .type-tabs,
+  .status-tabs {
+    flex-wrap: wrap;
+  }
+  .search-group {
+    max-width: none;
+  }
+  .search-input {
+    max-width: none;
+  }
+  .tag-filter {
+    max-width: none;
+  }
+  /* 笔记卡片紧凑 */
+  .note-card {
+    padding: 12px;
+  }
+  .note-title {
+    font-size: 15px;
+  }
+  /* 分页器 */
+  .pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
 </style>

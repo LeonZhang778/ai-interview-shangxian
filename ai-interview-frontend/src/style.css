@@ -50,6 +50,11 @@
   --scrollbar-thumb: rgba(139, 92, 246, 0.25);
   --scrollbar-hover: rgba(139, 92, 246, 0.4);
 
+  --code-bg: rgba(0, 0, 0, 0.35);
+  --code-inline-bg: rgba(139, 92, 246, 0.12);
+  --code-border: rgba(255, 255, 255, 0.06);
+  --code-text: #e2e8f0;
+
   --star-opacity: 1;
 }
 
@@ -95,6 +100,11 @@
 
   --scrollbar-thumb: rgba(139, 92, 246, 0.15);
   --scrollbar-hover: rgba(139, 92, 246, 0.25);
+
+  --code-bg: #1E293B;
+  --code-inline-bg: rgba(124, 58, 237, 0.08);
+  --code-border: rgba(0, 0, 0, 0.08);
+  --code-text: #e2e8f0;
 
   --star-opacity: 0;
 }

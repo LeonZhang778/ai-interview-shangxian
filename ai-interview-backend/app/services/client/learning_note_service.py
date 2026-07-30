@@ -167,6 +167,7 @@ class LearningNoteService:
         db: AsyncSession,
         note_type: Optional[str] = None,
         keyword: Optional[str] = None,
+        tag: Optional[str] = None,
         sort: str = "latest",
         page: int = 1,
         size: int = 20
@@ -178,8 +179,15 @@ class LearningNoteService:
         ]
         if note_type:
             conditions.append(LearningNote.note_type == note_type)
+        if tag:
+            # tags 以逗号分隔存储，按单个标签精确匹配
+            conditions.append(or_(
+                LearningNote.tags == tag,
+                LearningNote.tags.ilike(f"{tag},%"),
+                LearningNote.tags.ilike(f"%,{tag}"),
+                LearningNote.tags.ilike(f"%,{tag},%"),
+            ))
         if keyword:
-            from sqlalchemy import or_
             conditions.append(or_(
                 LearningNote.title.ilike(f"%{keyword}%"),
                 LearningNote.content.ilike(f"%{keyword}%"),
@@ -219,6 +227,32 @@ class LearningNoteService:
             "last_page": ceil(total / size) if size > 0 else 0,
             "has_more": page < ceil(total / size) if size > 0 and total > 0 else False,
         }
+
+    @staticmethod
+    async def get_popular_tags(db: AsyncSession, limit: int = 50) -> List[Dict]:
+        """获取公开笔记中出现过的热门标签（按使用次数排序）"""
+        rows = await db.execute(
+            select(LearningNote.tags)
+            .where(
+                LearningNote.visibility == "public",
+                LearningNote.status == "published",
+                LearningNote.tags.isnot(None),
+                LearningNote.tags != "",
+            )
+            .order_by(desc(LearningNote.view_count))
+            .limit(500)
+        )
+        tag_count: Dict[str, int] = {}
+        for (tags_str,) in rows:
+            if not tags_str:
+                continue
+            for t in tags_str.split(","):
+                t = t.strip()
+                if t:
+                    tag_count[t] = tag_count.get(t, 0) + 1
+        # 按使用次数排序，取前 limit 个
+        sorted_tags = sorted(tag_count.items(), key=lambda x: x[1], reverse=True)[:limit]
+        return [{"name": name, "count": cnt} for name, cnt in sorted_tags]
 
     @staticmethod
     async def get_note_detail(
@@ -449,19 +483,27 @@ class LearningNoteService:
     @staticmethod
     async def get_note_stats(
         db: AsyncSession,
-        user_id: int
+        user_id: int,
+        status: Optional[str] = None,
+        notebook_id: Optional[int] = None,
     ) -> Dict:
         """获取用户笔记统计（用于学习仪表盘）"""
+        base_conditions = [LearningNote.user_id == user_id]
+        if status:
+            base_conditions.append(LearningNote.status == status)
+        if notebook_id is not None:
+            base_conditions.append(LearningNote.notebook_id == notebook_id)
+
         total = await db.scalar(
             select(func.count()).select_from(
-                select(LearningNote).where(LearningNote.user_id == user_id).subquery()
+                select(LearningNote).where(*base_conditions).subquery()
             )
         )
         by_type = {}
         type_query = select(
             LearningNote.note_type,
             func.count(LearningNote.id)
-        ).where(LearningNote.user_id == user_id).group_by(LearningNote.note_type)
+        ).where(*base_conditions).group_by(LearningNote.note_type)
         type_result = await db.execute(type_query)
         for t, c in type_result:
             by_type[t] = c
