@@ -87,10 +87,15 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/notifications",
         tags=["client-notification"]
     ),
-    RouteConfig(
+RouteConfig(
         module_path="app.api.client.v1.shared",
         prefix=f"{settings.API_V1_STR}/shared",
         tags=["client-shared"]
+    ),
+    RouteConfig(
+        module_path="app.api.client.v1.notebook",
+        prefix=f"{settings.API_V1_STR}/notebooks",
+        tags=["client-notebook"]
     ),
 ]
 

@@ -85,7 +85,7 @@
           />
         </div>
 
-        <!-- 内容 -->
+<!-- 内容 -->
         <div class="form-group">
           <label>
             内容 <span class="required">*</span>
@@ -93,12 +93,14 @@
             <button type="button" class="btn-import" @click="fileInput?.click()">📄 导入 Markdown / 文本</button>
             <input ref="fileInput" type="file" accept=".txt,.md,.text,.markdown" style="display:none" @change="handleFileImport" />
           </label>
-          <textarea
-            v-model="form.content"
-            placeholder="用 Markdown 记录你的学习内容..."
-            rows="20"
-            class="form-textarea"
-          ></textarea>
+          <div class="editor-wrapper">
+            <Editor
+              :value="form.content"
+              :plugins="plugins"
+              @change="handleEditorChange"
+              :uploadImages="handleUploadImages"
+            />
+          </div>
         </div>
 
         <!-- 错误提示 -->
@@ -120,7 +122,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
-import { createNote, updateNote, getNoteDetail } from '../api/learningNote'
+import { Editor } from '@bytemd/vue-next'
+import gfm from '@bytemd/plugin-gfm'
+import highlight from '@bytemd/plugin-highlight'
+import 'bytemd/dist/index.css'
+import 'highlight.js/styles/github-dark.css'
+import { createNote, updateNote, getNoteDetail, uploadNoteImage } from '../api/learningNote'
+
+const plugins = [
+  gfm(),
+  highlight(),
+]
 
 const route = useRoute()
 const router = useRouter()
@@ -149,6 +161,27 @@ function handleFileImport(event) {
   }
   reader.readAsText(file)
   event.target.value = ''
+}
+
+function handleEditorChange(v) {
+  form.value.content = v
+}
+
+async function handleUploadImages(files) {
+  const results = []
+  for (const file of files) {
+    try {
+      const res = await uploadNoteImage(file)
+      results.push({
+        url: res.url,
+        alt: file.name,
+        title: file.name,
+      })
+    } catch (e) {
+      console.error('图片上传失败:', e)
+    }
+  }
+  return results
 }
 
 const typeOptions = [

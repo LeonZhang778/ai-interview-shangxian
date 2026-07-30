@@ -1,7 +1,8 @@
 import json
 import logging
+from math import ceil
 from typing import Optional, Dict, List
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.learning_note import LearningNote
 from app.models.interview import Interview
@@ -13,6 +14,96 @@ logger = logging.getLogger(__name__)
 
 class LearningNoteService:
 
+@staticmethod
+    async def search_notes(
+        db: AsyncSession,
+        keyword: str,
+        user_id: Optional[int] = None,
+        note_type: Optional[str] = None,
+        page: int = 1,
+        size: int = 20,
+        scope: str = "my",
+    ) -> Dict:
+        """
+        全文搜索笔记（使用 PostgreSQL tsvector）
+
+        Args:
+            keyword: 搜索关键词
+            user_id: 用户 ID（scope=my 时必填）
+            note_type: 按类型筛选
+            page: 页码
+            size: 每页条数
+            scope: "my" 搜索我的笔记，"public" 搜索公开广场
+        """
+        query_vec = func.plainto_tsquery("simple", keyword)
+
+        conditions = [
+            LearningNote.search_vector.op("@@")(query_vec),
+        ]
+
+        if scope == "my" and user_id:
+            conditions.append(LearningNote.user_id == user_id)
+        elif scope == "public":
+            conditions.append(LearningNote.visibility == "public")
+            conditions.append(LearningNote.status == "published")
+
+        if note_type:
+            conditions.append(LearningNote.note_type == note_type)
+
+        # 相关性排序
+        rank = func.ts_rank(LearningNote.search_vector, query_vec)
+
+        # 高亮片段
+        headline = func.ts_headline(
+            "simple",
+            LearningNote.content,
+            query_vec,
+            "MaxWords=40, MinWords=15, StartSel=<mark>, StopSel=</mark>",
+        )
+
+        query = (
+            select(
+                LearningNote,
+                rank.label("relevance"),
+                headline.label("headline"),
+            )
+            .where(*conditions)
+            .order_by(desc("relevance"))
+        )
+
+        # 总数
+        total_query = select(func.count()).select_from(query.subquery())
+        total = await db.scalar(total_query) or 0
+
+        # 分页
+        offset = (page - 1) * size
+        result = await db.execute(query.offset(offset).limit(size))
+        rows = result.all()
+
+        items = []
+        for row in rows:
+            note = row[0]
+            items.append({
+                "id": note.id,
+                "title": note.title,
+                "note_type": note.note_type,
+                "tags": note.tags,
+                "view_count": note.view_count,
+                "like_count": note.like_count,
+                "relevance": float(row.relevance) if row.relevance else 0,
+                "headline": row.headline or "",
+                "created_at": note.created_at.isoformat() if note.created_at else None,
+            })
+
+        return {
+            "items": items,
+            "total": total,
+            "per_page": size,
+            "current_page": page,
+            "last_page": ceil(total / size) if size > 0 else 0,
+            "has_more": page < ceil(total / size) if size > 0 and total > 0 else False,
+        }
+
     @staticmethod
     async def get_my_notes(
         db: AsyncSession,
@@ -20,6 +111,7 @@ class LearningNoteService:
         note_type: Optional[str] = None,
         status: Optional[str] = None,
         keyword: Optional[str] = None,
+        notebook_id: Optional[int] = None,
         page: int = 1,
         size: int = 20
     ) -> Dict:
@@ -31,6 +123,8 @@ class LearningNoteService:
             conditions.append(LearningNote.status == status)
         if keyword:
             conditions.append(LearningNote.title.ilike(f"%{keyword}%"))
+        if notebook_id is not None:
+            conditions.append(LearningNote.notebook_id == notebook_id)
 
         query = select(LearningNote).where(*conditions).order_by(desc(LearningNote.updated_at))
         total_query = select(func.count()).select_from(query.subquery())
@@ -40,7 +134,7 @@ class LearningNoteService:
         result = await db.execute(query.offset(offset).limit(size))
         notes = result.scalars().all()
 
-        items = [
+items = [
             {
                 "id": n.id,
                 "title": n.title,
@@ -49,6 +143,7 @@ class LearningNoteService:
                 "status": n.status,
                 "tags": n.tags,
                 "source": n.source,
+                "notebook_id": n.notebook_id,
                 "interview_id": n.interview_id,
                 "view_count": n.view_count,
                 "like_count": n.like_count,
@@ -149,7 +244,7 @@ class LearningNoteService:
             # lazy reload 并抛 MissingGreenlet，因此必须显式 refresh
             await db.refresh(note)
 
-        return {
+return {
             "id": note.id,
             "title": note.title,
             "content": note.content,
@@ -158,6 +253,7 @@ class LearningNoteService:
             "status": note.status,
             "tags": note.tags,
             "source": note.source,
+            "notebook_id": note.notebook_id,
             "interview_id": note.interview_id,
             "view_count": note.view_count,
             "like_count": note.like_count,
@@ -166,7 +262,7 @@ class LearningNoteService:
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
         }
 
-    @staticmethod
+@staticmethod
     async def create_note(
         db: AsyncSession,
         user_id: int,
@@ -176,6 +272,7 @@ class LearningNoteService:
         visibility: str = "private",
         status: str = "draft",
         tags: Optional[str] = None,
+        notebook_id: Optional[int] = None,
         interview_id: Optional[int] = None,
         source: str = "manual"
     ) -> Dict:
@@ -188,6 +285,7 @@ class LearningNoteService:
             visibility=visibility,
             status=status,
             tags=tags,
+            notebook_id=notebook_id,
             interview_id=interview_id,
             source=source,
         )

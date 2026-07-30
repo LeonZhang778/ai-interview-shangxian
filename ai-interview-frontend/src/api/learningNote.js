@@ -41,3 +41,34 @@ export function generateFromInterview(data) {
 export function getNoteStats() {
   return api.get('/learning-notes/stats')
 }
+
+// 上传笔记图片
+export function uploadNoteImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/learning-notes/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+// ==================== 笔记本 ====================
+
+// 获取笔记本树
+export function getNotebooks() {
+  return api.get('/notebooks')
+}
+
+// 创建笔记本
+export function createNotebook(data) {
+  return api.post('/notebooks', data)
+}
+
+// 更新笔记本
+export function updateNotebook(id, data) {
+  return api.put(`/notebooks/${id}`, data)
+}
+
+// 删除笔记本
+export function deleteNotebook(id) {
+  return api.delete(`/notebooks/${id}`)
+}

@@ -70,7 +70,7 @@
               <div class="form-group">
                 <label>密码</label>
                 <div class="input-wrap">
-                  <input v-model="form.password" type="password" placeholder="至少8位，含字母+数字+特殊字符" required @focus="onInputFocus" />
+                <input v-model="form.password" type="password" placeholder="设置密码" autocomplete="new-password" @focus="onInputFocus" />
                 </div>
               </div>
               <div v-if="error" class="error-msg">
@@ -309,7 +309,7 @@ function initParticles() {
       p.vy += 0.05
       p.life -= p.decay
       pCtx.beginPath()
-      pCtx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2)
+      pCtx.arc(p.x, p.y, Math.max(0, p.r * p.life), 0, Math.PI * 2)
       pCtx.fillStyle = p.color.replace('1)', `${p.life})`)
       pCtx.fill()
     })
