@@ -84,8 +84,15 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 403 || error.response?.status === 401) {
-      authStore.logout()
-      router.push('/login')
+      // 公开接口（广场、公开笔记详情）即使返回 401/403 也不跳登录页
+      const reqUrl = (originalRequest.baseURL || '') + (originalRequest.url || '')
+      const isPublic = ['/learning-notes/public', '/experiences/'].some(p => reqUrl.includes(p))
+        || /\/learning-notes\/\d+$/.test(reqUrl)
+        || /\/experiences\/\d+$/.test(reqUrl)
+      if (!isPublic) {
+        authStore.logout()
+        router.push('/login')
+      }
     }
     const data = error.response?.data
     let msg = data?.message || error.message || '网络错误'

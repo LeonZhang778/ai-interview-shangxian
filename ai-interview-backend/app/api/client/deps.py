@@ -17,6 +17,13 @@ oauth2_scheme：生成一个依赖对象，后续接口通过 Depends(oauth2_sch
 简单说：定义了 “去哪里登录拿 token”，并提供自动解析请求头 token 的工具
 '''
 
+# 可选认证 scheme：无 Authorization 头时返回 None 而非抛 401，
+# 用于公开接口（如公开笔记详情）的游客/可选登录访问
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    auto_error=False
+)
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
@@ -41,10 +48,16 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme_optional),
     db: AsyncSession = Depends(get_db)
 ) -> User | None:
-    """获取当前用户（可选），未登录或 token 无效时返回 None"""
+    """获取当前用户（可选），未登录或 token 无效时返回 None
+
+    使用 auto_error=False 的 scheme，确保无 Authorization 头时不抛 401，
+    让游客可以访问公开接口（如公开笔记详情）。
+    """
+    if not token:
+        return None
     try:
         payload = AuthBase.verify_token(token, scope="client")
         if not payload:
