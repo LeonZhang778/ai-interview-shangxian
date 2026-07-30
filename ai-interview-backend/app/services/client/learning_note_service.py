@@ -145,6 +145,9 @@ class LearningNoteService:
         if not is_owner:
             note.view_count = (note.view_count or 0) + 1
             await db.commit()
+            # commit 会过期所有属性，async session 下再次访问会触发
+            # lazy reload 并抛 MissingGreenlet，因此必须显式 refresh
+            await db.refresh(note)
 
         return {
             "id": note.id,
