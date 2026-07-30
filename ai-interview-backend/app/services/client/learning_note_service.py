@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class LearningNoteService:
 
-@staticmethod
+    @staticmethod
     async def search_notes(
         db: AsyncSession,
         keyword: str,
@@ -134,7 +134,7 @@ class LearningNoteService:
         result = await db.execute(query.offset(offset).limit(size))
         notes = result.scalars().all()
 
-items = [
+        items = [
             {
                 "id": n.id,
                 "title": n.title,
@@ -244,7 +244,7 @@ items = [
             # lazy reload 并抛 MissingGreenlet，因此必须显式 refresh
             await db.refresh(note)
 
-return {
+        return {
             "id": note.id,
             "title": note.title,
             "content": note.content,
@@ -262,7 +262,7 @@ return {
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
         }
 
-@staticmethod
+    @staticmethod
     async def create_note(
         db: AsyncSession,
         user_id: int,

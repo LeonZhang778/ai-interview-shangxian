@@ -259,7 +259,7 @@ import StarryBackground from '../components/StarryBackground.vue'
 import NotebookTreeNode from '../components/NotebookTreeNode.vue'
 import { useAuthStore } from '../stores/auth'
 import {
-  getMyNotes, getPublicNotes, getNoteStats,
+  getMyNotes, getPublicNotes, getNoteStats, searchNotes,
   getNotebooks, createNotebook as createNotebookApi, updateNotebook, deleteNotebook,
 } from '../api/learningNote'
 
@@ -430,6 +430,24 @@ async function handleDelete(id) {
 async function loadData() {
   loading.value = true
   try {
+    const kw = keyword.value.trim()
+
+    // 有搜索关键词时使用全文搜索
+    if (kw) {
+      const params = {
+        keyword: kw,
+        page: currentPage.value,
+        size: pageSize,
+        scope: mode.value,
+      }
+      if (filterType.value) params.note_type = filterType.value
+      const res = await searchNotes(params)
+      notes.value = res.items || []
+      total.value = res.total || 0
+      if (mode.value === 'my') loadStats()
+      return
+    }
+
     if (mode.value === 'my') {
       const params = { page: currentPage.value, size: pageSize }
       if (filterType.value) params.note_type = filterType.value
@@ -441,7 +459,6 @@ async function loadData() {
       loadStats()
     } else {
       const params = { page: currentPage.value, size: pageSize, sort: sort.value }
-      if (keyword.value.trim()) params.keyword = keyword.value.trim()
       const res = await getPublicNotes(params)
       notes.value = res.items || []
       total.value = res.total || 0

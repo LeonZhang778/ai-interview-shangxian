@@ -40,8 +40,10 @@
         </router-link>
       </div>
 
-      <!-- 正文 -->
-      <div class="note-body" v-html="renderedContent"></div>
+<!-- 正文 -->
+      <div class="note-body">
+        <Viewer :value="note.content" :plugins="plugins" />
+      </div>
 
       <!-- 底部统计 -->
       <div class="note-footer">
@@ -59,22 +61,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
-import { renderExperienceContent } from '../utils/experienceContent'
+import { Viewer } from '@bytemd/vue-next'
+import gfm from '@bytemd/plugin-gfm'
+import highlight from '@bytemd/plugin-highlight'
+import 'bytemd/dist/index.css'
+import 'highlight.js/styles/github-dark.css'
 import { getNoteDetail, deleteNote } from '../api/learningNote'
+
+const plugins = [
+  gfm(),
+  highlight(),
+]
 
 const route = useRoute()
 const router = useRouter()
 
 const note = ref(null)
 const loading = ref(true)
-
-const renderedContent = computed(() => {
-  if (!note.value?.content) return ''
-  return renderExperienceContent(note.value.content)
-})
 
 const typeOptions = [
   { value: 'note', label: '笔记' },

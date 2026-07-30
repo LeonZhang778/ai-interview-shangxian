@@ -380,6 +380,31 @@ label {
   background: rgba(255,255,255,0.07);
 }
 
+.editor-wrapper {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.editor-wrapper :deep(.bytemd) {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+  border: none;
+  height: 500px;
+}
+.editor-wrapper :deep(.bytemd-toolbar) {
+  background: rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.editor-wrapper :deep(.bytemd-status) {
+  color: var(--text-muted);
+}
+.editor-wrapper :deep(.bytemd-editor) {
+  background: transparent;
+}
+.editor-wrapper :deep(.bytemd-preview) {
+  background: transparent;
+}
+
 .option-tabs {
   display: flex;
   gap: 8px;

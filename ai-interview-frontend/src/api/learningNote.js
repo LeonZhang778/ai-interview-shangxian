@@ -42,6 +42,11 @@ export function getNoteStats() {
   return api.get('/learning-notes/stats')
 }
 
+// 搜索笔记（全文搜索）
+export function searchNotes(params) {
+  return api.get('/learning-notes/search', { params })
+}
+
 // 上传笔记图片
 export function uploadNoteImage(file) {
   const formData = new FormData()

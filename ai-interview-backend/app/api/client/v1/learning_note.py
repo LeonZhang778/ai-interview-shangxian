@@ -83,7 +83,7 @@ async def search_notes(
     current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
-"""全文搜索笔记（支持 my 和 public 两种范围）"""
+    """全文搜索笔记（支持 my 和 public 两种范围）"""
     if scope == "my" and not current_user:
         return ApiResponse.failed(message="需要登录才能搜索我的笔记", body_code=401)
     user_id = current_user.id if current_user else None
