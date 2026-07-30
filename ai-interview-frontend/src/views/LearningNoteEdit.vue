@@ -193,17 +193,6 @@ async function loadNotebooks() {
   }
 }
 
-function findNotebookName(notebooks, id) {
-  for (const nb of notebooks) {
-    if (nb.id === id) return nb.name
-    if (nb.children) {
-      const found = findNotebookName(nb.children, id)
-      if (found) return `${nb.name} / ${found}`
-    }
-  }
-  return null
-}
-
 function handleEditorChange(v) {
   form.value.content = v
 }
@@ -479,8 +468,9 @@ label {
   border-radius: 10px;
   overflow: hidden;
 }
+/* === bytemd 深色主题覆盖 === */
 .editor-wrapper :deep(.bytemd) {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.04);
   color: var(--text-primary);
   border: none;
   height: 500px;
@@ -489,14 +479,99 @@ label {
   background: rgba(255,255,255,0.08);
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
-.editor-wrapper :deep(.bytemd-status) {
+.editor-wrapper :deep(.bytemd-toolbar-tab) {
   color: var(--text-muted);
 }
+.editor-wrapper :deep(.bytemd-toolbar-tab-active) {
+  color: var(--accent-light);
+}
+.editor-wrapper :deep(.bytemd-toolbar-icon) {
+  color: var(--text-muted);
+}
+.editor-wrapper :deep(.bytemd-toolbar-icon:hover) {
+  background: rgba(255,255,255,0.08);
+}
+.editor-wrapper :deep(.bytemd-toolbar-icon-active) {
+  color: var(--accent-light);
+}
+.editor-wrapper :deep(.bytemd-status) {
+  color: var(--text-muted);
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.editor-wrapper :deep(.bytemd-sidebar) {
+  border-left: 1px solid rgba(255,255,255,0.1);
+}
+.editor-wrapper :deep(.bytemd-split .bytemd-preview) {
+  border-left: 1px solid rgba(255,255,255,0.1);
+}
+
+/* === CodeMirror 编辑区深色覆盖 === */
 .editor-wrapper :deep(.bytemd-editor) {
   background: transparent;
 }
+.editor-wrapper :deep(.CodeMirror) {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+.editor-wrapper :deep(.CodeMirror-gutters) {
+  background: rgba(0,0,0,0.15) !important;
+  border-right: 1px solid rgba(255,255,255,0.06) !important;
+}
+.editor-wrapper :deep(.CodeMirror-linenumber) {
+  color: var(--text-muted) !important;
+}
+.editor-wrapper :deep(.CodeMirror-cursor) {
+  border-left-color: var(--accent-light) !important;
+}
+.editor-wrapper :deep(.CodeMirror-selected) {
+  background: rgba(99,102,241,0.2) !important;
+}
+.editor-wrapper :deep(.CodeMirror-focused .CodeMirror-selected) {
+  background: rgba(99,102,241,0.3) !important;
+}
+.editor-wrapper :deep(.CodeMirror-activeline-background) {
+  background: rgba(255,255,255,0.03) !important;
+}
+
+/* === 预览区深色覆盖 === */
 .editor-wrapper :deep(.bytemd-preview) {
   background: transparent;
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body) {
+  color: var(--text-primary);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body h1),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h2),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h3),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h4),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h5),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h6) {
+  color: var(--text-primary);
+  border-bottom-color: rgba(255,255,255,0.1);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body a) {
+  color: var(--accent-light);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body blockquote) {
+  color: var(--text-muted);
+  border-left-color: var(--accent-purple);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body code) {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body pre) {
+  background: rgba(0,0,0,0.2);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body pre code) {
+  color: var(--text-primary);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body table th),
+.editor-wrapper :deep(.bytemd-preview .markdown-body table td) {
+  border-color: rgba(255,255,255,0.1);
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body table tr:nth-child(2n)) {
+  background: rgba(255,255,255,0.03);
 }
 
 .option-tabs {
