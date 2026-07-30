@@ -73,7 +73,22 @@
           </p>
         </div>
 
-        <!-- 标签 -->
+        <!-- 笔记本 -->
+        <div class="form-group">
+          <label>所属笔记本</label>
+          <select
+            v-model="form.notebook_id"
+            class="form-select"
+            :disabled="notebookLoading"
+          >
+            <option :value="null">不指定笔记本</option>
+            <option v-for="nb in flatNotebooks" :key="nb.id" :value="nb.id">
+              {{ nb.prefix }}{{ nb.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- 标签（逗号分隔，最多 5 个） -->
         <div class="form-group">
           <label>标签（逗号分隔，最多 5 个）</label>
           <input
@@ -127,7 +142,7 @@ import gfm from '@bytemd/plugin-gfm'
 import highlight from '@bytemd/plugin-highlight'
 import 'bytemd/dist/index.css'
 import 'highlight.js/styles/github-dark.css'
-import { createNote, updateNote, getNoteDetail, uploadNoteImage } from '../api/learningNote'
+import { createNote, updateNote, getNoteDetail, uploadNoteImage, getNotebooks } from '../api/learningNote'
 
 const plugins = [
   gfm(),
@@ -140,6 +155,8 @@ const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
+const notebookLoading = ref(false)
+const notebooks = ref([])
 const isEditMode = computed(() => !!route.params.id)
 const fileInput = ref(null)
 
@@ -150,6 +167,7 @@ const form = ref({
   visibility: 'private',
   status: 'draft',
   tags: '',
+  notebook_id: null,
 })
 
 function handleFileImport(event) {
@@ -161,6 +179,29 @@ function handleFileImport(event) {
   }
   reader.readAsText(file)
   event.target.value = ''
+}
+
+async function loadNotebooks() {
+  notebookLoading.value = true
+  try {
+    const res = await getNotebooks()
+    notebooks.value = res.tree || []
+  } catch (e) {
+    console.error('加载笔记本失败', e)
+  } finally {
+    notebookLoading.value = false
+  }
+}
+
+function findNotebookName(notebooks, id) {
+  for (const nb of notebooks) {
+    if (nb.id === id) return nb.name
+    if (nb.children) {
+      const found = findNotebookName(nb.children, id)
+      if (found) return `${nb.name} / ${found}`
+    }
+  }
+  return null
 }
 
 function handleEditorChange(v) {
@@ -192,29 +233,26 @@ const typeOptions = [
   { value: 'material', label: '资料' },
 ]
 
-function goBack() {
-  router.push('/learning-notes')
+// 将嵌套的笔记本树展平，添加路径前缀
+function flattenNotebooks(notebooks, prefix = '') {
+  const result = []
+  for (const nb of notebooks) {
+    result.push({
+      id: nb.id,
+      name: nb.name,
+      prefix: prefix ? `${prefix} / ` : '',
+    })
+    if (nb.children && nb.children.length > 0) {
+      result.push(...flattenNotebooks(nb.children, prefix ? `${prefix} / ${nb.name}` : nb.name))
+    }
+  }
+  return result
 }
 
-async function loadEditData() {
-  if (!isEditMode.value) return
-  loading.value = true
-  try {
-    const data = await getNoteDetail(route.params.id)
-    form.value = {
-      title: data.title || '',
-      content: data.content || '',
-      note_type: data.note_type || 'note',
-      visibility: data.visibility || 'private',
-      status: data.status || 'draft',
-      tags: data.tags || '',
-    }
-  } catch (e) {
-    error.value = '加载笔记失败'
-    console.error(e)
-  } finally {
-    loading.value = false
-  }
+const flatNotebooks = computed(() => flattenNotebooks(notebooks.value))
+
+function goBack() {
+  router.push('/learning-notes')
 }
 
 async function handleSubmit() {
@@ -242,6 +280,38 @@ async function handleSubmit() {
     console.error(e)
   } finally {
     saving.value = false
+  }
+}
+
+async function loadEditData() {
+  if (!isEditMode.value) {
+    // 新建笔记时，先加载笔记本列表
+    await loadNotebooks()
+    // 如果 URL query 有 notebook_id，自动选中
+    if (route.query.notebook_id) {
+      form.value.notebook_id = Number(route.query.notebook_id)
+    }
+    return
+  }
+  loading.value = true
+  try {
+    const data = await getNoteDetail(route.params.id)
+    form.value = {
+      title: data.title || '',
+      content: data.content || '',
+      note_type: data.note_type || 'note',
+      visibility: data.visibility || 'private',
+      status: data.status || 'draft',
+      tags: data.tags || '',
+      notebook_id: data.notebook_id || null,
+    }
+    // 编辑模式也加载笔记本列表以便选择器显示
+    await loadNotebooks()
+  } catch (e) {
+    error.value = '加载笔记失败'
+    console.error(e)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -359,6 +429,30 @@ label {
 .form-input:focus {
   border-color: rgba(99,102,241,0.4);
   background: rgba(255,255,255,0.07);
+}
+.form-select {
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+.form-select:focus {
+  border-color: rgba(99,102,241,0.4);
+  background-color: rgba(255,255,255,0.07);
+}
+.form-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .form-textarea {

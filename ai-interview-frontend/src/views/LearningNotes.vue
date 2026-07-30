@@ -337,7 +337,8 @@ function goCreate() {
     router.push('/login')
     return
   }
-  router.push('/learning-notes/edit')
+  const params = activeNotebookId.value !== null ? { notebook_id: activeNotebookId.value } : {}
+  router.push({ path: '/learning-notes/edit', query: params })
 }
 
 function goDetail(id) {
