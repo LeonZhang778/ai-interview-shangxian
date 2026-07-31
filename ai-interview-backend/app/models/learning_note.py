@@ -25,6 +25,8 @@ class LearningNote(BaseModel):
     # source: manual(手动创建) / interview(面试回流)
     view_count = Column(Integer, default=0)
     like_count = Column(Integer, default=0)
+    summary = Column(String(300), nullable=True)    # AI 一句话摘要，≤300 字
+    key_points = Column(Text, nullable=True)         # JSON 格式的三级要点列表
     search_vector = Column(TSVECTOR, nullable=True)  # 全文搜索向量，由数据库触发器自动维护
 
     user = relationship("User", backref="learning_notes")

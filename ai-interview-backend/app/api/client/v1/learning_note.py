@@ -9,8 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.client.deps import get_current_user, get_current_user_optional
 from app.db.session import get_db
 from app.models.user import User
+from app.models.learning_note import LearningNote
+from app.models.notebook import Notebook
 from app.schemas.response import ApiResponse
 from app.services.client.learning_note_service import learning_note_service
+from sqlalchemy import select
 
 router = APIRouter()
 
@@ -186,6 +189,20 @@ async def get_note_stats(
     return ApiResponse.success(data=result)
 
 
+@router.post("/{note_id}/summary")
+async def generate_note_summary(
+    note_id: int,
+    force: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """生成或获取笔记的 AI 摘要（含三级要点）"""
+    result = await learning_note_service.generate_summary(
+        db=db, note_id=note_id, user_id=current_user.id, force=force
+    )
+    return ApiResponse.success(data=result)
+
+
 @router.get("/{note_id}")
 async def get_note_detail(
     note_id: int,
@@ -260,7 +277,6 @@ async def export_notebook(
     """导出整个笔记本（含子笔记本）为 ZIP 文件，每个笔记一个 .md"""
     import io, zipfile
     from fastapi.responses import StreamingResponse
-    from app.models.notebook import Notebook
 
     # 收集该笔记本及其所有子孙笔记本的 ID
     notebook_ids = [notebook_id]
@@ -332,7 +348,6 @@ async def export_all_notes(
     """导出当前用户的全部笔记为 ZIP 文件"""
     import io, zipfile
     from fastapi.responses import StreamingResponse
-    from app.models.notebook import Notebook
 
     notes_query = (
         select(LearningNote, Notebook.name)

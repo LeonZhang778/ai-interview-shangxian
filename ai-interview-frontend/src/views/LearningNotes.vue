@@ -145,6 +145,7 @@
                 <div class="card-tags" v-if="note.tags">
                   <span v-for="(tag, i) in note.tags.split(',').slice(0, 4)" :key="i" class="tag">{{ tag.trim() }}</span>
                 </div>
+                <div v-if="note.summary" class="card-summary">{{ note.summary }}</div>
               </div>
               <div class="card-bottom">
                 <div class="card-stats">
@@ -242,6 +243,7 @@
                 <div class="card-tags" v-if="note.tags">
                   <span v-for="(tag, i) in note.tags.split(',').slice(0, 4)" :key="i" class="tag">{{ tag.trim() }}</span>
                 </div>
+                <div v-if="note.summary" class="card-summary">{{ note.summary }}</div>
               </div>
               <div class="card-bottom">
                 <div class="card-stats">
@@ -967,6 +969,16 @@ onMounted(async () => {
   border-radius: 4px;
   background: rgba(255,255,255,0.06);
   color: var(--text-muted);
+}
+.card-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 4px 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .card-bottom {
   display: flex;

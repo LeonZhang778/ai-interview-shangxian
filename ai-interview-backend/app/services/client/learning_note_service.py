@@ -8,6 +8,7 @@ from app.models.learning_note import LearningNote
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
+from app.prompts.learning_note import NOTE_SUMMARIZE_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,7 @@ class LearningNoteService:
                 "interview_id": n.interview_id,
                 "view_count": n.view_count,
                 "like_count": n.like_count,
+                "summary": n.summary,
                 "created_at": n.created_at.isoformat() if n.created_at else None,
                 "updated_at": n.updated_at.isoformat() if n.updated_at else None,
             }
@@ -214,6 +216,7 @@ class LearningNoteService:
                 "tags": n.tags,
                 "view_count": n.view_count,
                 "like_count": n.like_count,
+                "summary": n.summary,
                 "created_at": n.created_at.isoformat() if n.created_at else None,
             }
             for n in notes
@@ -291,6 +294,8 @@ class LearningNoteService:
             "interview_id": note.interview_id,
             "view_count": note.view_count,
             "like_count": note.like_count,
+            "summary": note.summary,
+            "key_points": json.loads(note.key_points) if note.key_points else [],
             "is_owner": is_owner,
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
@@ -512,6 +517,78 @@ class LearningNoteService:
             "total": total or 0,
             "by_type": by_type,
         }
+
+    @staticmethod
+    async def generate_summary(
+        db: AsyncSession,
+        note_id: int,
+        user_id: int,
+        force: bool = False
+    ) -> Dict:
+        """
+        为笔记生成 AI 摘要（含 LLM 缓存）
+
+        Args:
+            force: 是否强制重新生成（覆盖已有摘要）
+        """
+        from app.services.client.ai_service import AIService
+        from app.services.common.redis import redis_client
+
+        note = await db.get(LearningNote, note_id)
+        if not note or note.user_id != user_id:
+            raise NotFoundError(message="笔记不存在")
+
+        # 空笔记直接返回空结果，不调用 AI
+        if not note.content or not note.content.strip():
+            return {"summary": "", "key_points": []}
+
+        # 已有摘要且不强制重新生成，直接返回
+        if note.summary and not force:
+            return {
+                "summary": note.summary,
+                "key_points": json.loads(note.key_points) if note.key_points else [],
+            }
+
+        # 检查 LLM 缓存（防止完全相同的笔记内容重复调用 AI）
+        cache_content = note.content[:500]
+        cached = await redis_client.get_llm_cache("note_summary", cache_content)
+        if cached and not force:
+            note.summary = cached.get("summary", "")[:300]
+            note.key_points = json.dumps(cached.get("key_points", []), ensure_ascii=False)
+            await db.commit()
+            return cached
+
+        # 调用 AI 生成摘要
+        content = note.content[:3000]  # 截取前 3000 字，控制 token 用量
+        messages = [
+            {"role": "system", "content": NOTE_SUMMARIZE_PROMPT.format(
+                title=note.title, note_type=note.note_type, content=content
+            )},
+        ]
+
+        try:
+            result = await AIService._chat(messages, temperature=0.3)
+            parsed = AIService._extract_json(result)
+
+            summary = (parsed.get("summary") or "")[:300]
+            key_points = parsed.get("key_points") or []
+
+            # 保存到数据库
+            note.summary = summary
+            note.key_points = json.dumps(key_points, ensure_ascii=False)
+            await db.commit()
+
+            # 写入 LLM 缓存（TTL 7 天，笔记内容不变时无需重新生成）
+            await redis_client.set_llm_cache(
+                "note_summary", cache_content,
+                {"summary": summary, "key_points": key_points},
+                ttl=7 * 24 * 3600
+            )
+
+            return {"summary": summary, "key_points": key_points}
+        except Exception as e:
+            logger.error(f"笔记摘要生成失败: note_id={note_id}, {e}")
+            return {"summary": "", "key_points": [], "error": str(e)}
 
 
 learning_note_service = LearningNoteService()

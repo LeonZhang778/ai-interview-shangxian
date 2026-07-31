@@ -43,6 +43,25 @@
         </router-link>
       </div>
 
+      <!-- AI 摘要 + 要点速览 -->
+      <div v-if="note.is_owner" class="summary-block">
+        <div v-if="summaryLoading" class="summary-loading">AI 摘要生成中...</div>
+        <template v-else>
+          <div v-if="summary || keyPoints.length" class="summary-card">
+            <div v-if="summary" class="summary-text">{{ summary }}</div>
+            <div v-if="keyPoints.length" class="key-points">
+              <div class="key-points-title">📌 要点速览</div>
+              <ul>
+                <li v-for="(point, i) in keyPoints" :key="i">{{ point }}</li>
+              </ul>
+            </div>
+          </div>
+          <button class="btn-regenerate" @click="regenerateSummary">
+            {{ summary || keyPoints.length ? '🔄 重新生成摘要' : '✨ 生成 AI 摘要' }}
+          </button>
+        </template>
+      </div>
+
 <!-- 正文 -->
       <div class="note-body">
         <Viewer :value="note.content" :plugins="plugins" />
@@ -109,7 +128,7 @@ import gfm from '@bytemd/plugin-gfm'
 import highlight from '@bytemd/plugin-highlight'
 import 'bytemd/dist/index.css'
 import 'highlight.js/styles/github-dark.css'
-import { getNoteDetail, deleteNote } from '../api/learningNote'
+import { getNoteDetail, deleteNote, generateSummary } from '../api/learningNote'
 
 const plugins = [
   gfm(),
@@ -121,6 +140,9 @@ const router = useRouter()
 
 const note = ref(null)
 const loading = ref(true)
+const summary = ref('')
+const keyPoints = ref([])
+const summaryLoading = ref(false)
 const tocList = ref([])
 const activeTocId = ref('')
 const showTocDrawer = ref(false)
@@ -166,7 +188,11 @@ async function handleDelete() {
 async function loadData() {
   loading.value = true
   try {
-    note.value = await getNoteDetail(route.params.id)
+    const data = await getNoteDetail(route.params.id)
+    note.value = data
+    // 用详情接口已返回的摘要初始化，避免重复调用 AI
+    summary.value = data.summary || ''
+    keyPoints.value = data.key_points || []
     // bytemd Viewer 异步渲染，双重等待确保 DOM 就绪
     await nextTick()
     requestAnimationFrame(() => buildToc())
@@ -175,6 +201,21 @@ async function loadData() {
     note.value = null
   } finally {
     loading.value = false
+  }
+}
+
+// 生成或重新生成 AI 摘要（force=true 覆盖缓存）
+async function regenerateSummary() {
+  if (!note.value?.id) return
+  summaryLoading.value = true
+  try {
+    const res = await generateSummary(note.value.id, true)
+    summary.value = res.summary || ''
+    keyPoints.value = res.key_points || []
+  } catch (e) {
+    console.error('摘要生成失败:', e)
+  } finally {
+    summaryLoading.value = false
   }
 }
 
@@ -383,6 +424,67 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 }
 .link-text:hover {
   text-decoration: underline;
+}
+
+/* AI 摘要块 */
+.summary-block {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.05));
+  border: 1px solid rgba(99,102,241,0.18);
+  border-radius: 12px;
+}
+.summary-loading {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.summary-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-weight: 500;
+}
+.key-points {
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255,255,255,0.08);
+}
+.key-points-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-light);
+  margin-bottom: 6px;
+}
+.key-points ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.key-points li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.btn-regenerate {
+  margin-top: 12px;
+  padding: 6px 14px;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 8px;
+  color: var(--accent-light);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-regenerate:hover {
+  background: rgba(99,102,241,0.2);
+}
+.btn-regenerate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 正文 */

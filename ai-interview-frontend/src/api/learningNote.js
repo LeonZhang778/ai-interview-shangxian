@@ -93,6 +93,11 @@ export function generateFromInterview(data) {
   return api.post('/learning-notes/from-interview', data)
 }
 
+// 生成或获取笔记的 AI 摘要（含三级要点）
+export function generateSummary(id, force = false) {
+  return api.post(`/learning-notes/${id}/summary`, null, { params: { force } })
+}
+
 // 获取笔记统计
 export function getNoteStats(params) {
   return api.get('/learning-notes/stats', { params })
