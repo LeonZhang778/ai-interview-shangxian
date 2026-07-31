@@ -222,3 +222,152 @@ async def delete_note(
         db=db, user_id=current_user.id, note_id=note_id
     )
     return ApiResponse.success(message=result["message"])
+
+
+@router.get("/{note_id}/export")
+async def export_single_note(
+    note_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """导出单个笔记为 Markdown 文件"""
+    import io
+    from fastapi.responses import StreamingResponse
+    note = await db.get(LearningNote, note_id)
+    if not note or note.user_id != current_user.id:
+        return ApiResponse.failed(message="笔记不存在", body_code=404)
+    # 标题作为文件名，清理非法字符
+    safe_title = "".join(c for c in note.title if c not in '\\/:*?"<>|') or f"note_{note_id}"
+    md_content = f"# {note.title}\n\n"
+    if note.tags:
+        md_content += f"> 标签: {note.tags}\n\n"
+    md_content += f"> 更新时间: {note.updated_at.strftime('%Y-%m-%d %H:%M') if note.updated_at else 'N/A'}\n\n---\n\n"
+    md_content += note.content or ""
+    md_bytes = md_content.encode("utf-8")
+    return StreamingResponse(
+        io.BytesIO(md_bytes),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{safe_title}.md"'}
+    )
+
+
+@router.get("/export/notebook/{notebook_id}")
+async def export_notebook(
+    notebook_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """导出整个笔记本（含子笔记本）为 ZIP 文件，每个笔记一个 .md"""
+    import io, zipfile
+    from fastapi.responses import StreamingResponse
+    from app.models.notebook import Notebook
+
+    # 收集该笔记本及其所有子孙笔记本的 ID
+    notebook_ids = [notebook_id]
+    pending = [notebook_id]
+    while pending:
+        batch = await db.execute(
+            select(Notebook.id).where(Notebook.parent_id.in_(pending))
+        )
+        new_ids = [r[0] for r in batch.all()]
+        notebook_ids.extend(new_ids)
+        pending = new_ids
+
+    # 校验根笔记本归属
+    root_nb = await db.get(Notebook, notebook_id)
+    if not root_nb or root_nb.user_id != current_user.id:
+        return ApiResponse.failed(message="笔记本不存在", body_code=404)
+
+    # 查询这些笔记本下的所有笔记
+    notes_query = (
+        select(LearningNote, Notebook.name)
+        .outerjoin(Notebook, LearningNote.notebook_id == Notebook.id)
+        .where(
+            LearningNote.user_id == current_user.id,
+            LearningNote.notebook_id.in_(notebook_ids)
+        )
+        .order_by(LearningNote.notebook_id, LearningNote.created_at)
+    )
+    result = await db.execute(notes_query)
+    rows = result.all()
+
+    if not rows:
+        return ApiResponse.failed(message="该笔记本下没有可导出的笔记", body_code=400)
+
+    # 构建 ZIP
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        used_names = set()
+        for note, nb_name in rows:
+            safe_title = "".join(c for c in note.title if c not in '\\/:*?"<>|') or f"note_{note.id}"
+            folder = "".join(c for c in (nb_name or "未分类") if c not in '\\/:*?"<>|')
+            # 去重文件名
+            fname = f"{folder}/{safe_title}.md"
+            idx = 1
+            while fname in used_names:
+                fname = f"{folder}/{safe_title}_{idx}.md"
+                idx += 1
+            used_names.add(fname)
+            md = f"# {note.title}\n\n"
+            if note.tags:
+                md += f"> 标签: {note.tags}\n\n"
+            md += f"> 更新时间: {note.updated_at.strftime('%Y-%m-%d %H:%M') if note.updated_at else 'N/A'}\n\n---\n\n"
+            md += note.content or ""
+            zf.writestr(fname, md)
+    buf.seek(0)
+
+    safe_nb = "".join(c for c in root_nb.name if c not in '\\/:*?"<>|') or f"notebook_{notebook_id}"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{safe_nb}.zip"'}
+    )
+
+
+@router.get("/export/all")
+async def export_all_notes(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """导出当前用户的全部笔记为 ZIP 文件"""
+    import io, zipfile
+    from fastapi.responses import StreamingResponse
+    from app.models.notebook import Notebook
+
+    notes_query = (
+        select(LearningNote, Notebook.name)
+        .outerjoin(Notebook, LearningNote.notebook_id == Notebook.id)
+        .where(LearningNote.user_id == current_user.id)
+        .order_by(LearningNote.notebook_id, LearningNote.created_at)
+    )
+    result = await db.execute(notes_query)
+    rows = result.all()
+
+    if not rows:
+        return ApiResponse.failed(message="没有可导出的笔记", body_code=400)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        used_names = set()
+        for note, nb_name in rows:
+            safe_title = "".join(c for c in note.title if c not in '\\/:*?"<>|') or f"note_{note.id}"
+            folder = "".join(c for c in (nb_name or "未分类") if c not in '\\/:*?"<>|')
+            fname = f"{folder}/{safe_title}.md"
+            idx = 1
+            while fname in used_names:
+                fname = f"{folder}/{safe_title}_{idx}.md"
+                idx += 1
+            used_names.add(fname)
+            md = f"# {note.title}\n\n"
+            if note.tags:
+                md += f"> 标签: {note.tags}\n\n"
+            md += f"> 更新时间: {note.updated_at.strftime('%Y-%m-%d %H:%M') if note.updated_at else 'N/A'}\n\n---\n\n"
+            md += note.content or ""
+            zf.writestr(fname, md)
+    buf.seek(0)
+
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="all_notes.zip"'}
+    )

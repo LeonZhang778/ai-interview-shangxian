@@ -190,7 +190,9 @@ async def get_analysis(
             "score_trend": [],
             "dimension_avg": {},
             "weakest_dimension": None,
+            "weakest_dimension_details": [],
             "improvement_rate": 0,
+            "recent_scores": [],
             "company_stats": [],
             "position_stats": [],
             "score_distribution": {"low": 0, "mid": 0, "high": 0},
@@ -277,14 +279,14 @@ async def get_analysis(
         for name, info in sorted(position_map.items(), key=lambda x: x[1]["count"], reverse=True)
     ]
 
-    # ========== 分数段分布 ==========
+    # ========== 分数段分布（10 分制） ==========
     score_distribution = {"low": 0, "mid": 0, "high": 0}
     for i in interviews:
         if i.overall_score:
             s = float(i.overall_score)
-            if s >= 80:
+            if s >= 8:
                 score_distribution["high"] += 1
-            elif s >= 60:
+            elif s >= 6:
                 score_distribution["mid"] += 1
             else:
                 score_distribution["low"] += 1
@@ -306,15 +308,41 @@ async def get_analysis(
         count = sum(1 for i in interviews if i.created_at.strftime("%Y-%m-%d") == day)
         recent_activity.append({"date": day, "count": count})
 
-    # ========== 进步率 ==========
+    # ========== 进步率（10 分制，首末对比，限幅 -100% ~ +200%） ==========
+    # 改进：用最早与最近面试对比，避免对半切分导致的小样本放大；
+    # 仅当面试数 >= 2 时计算，并限制在合理区间，杜绝 +276% 这类失真值。
     improvement_rate = 0
-    if len(score_trend) >= 4:
-        first_half = [s["score"] for s in score_trend[:len(score_trend)//2]]
-        second_half = [s["score"] for s in score_trend[len(score_trend)//2:]]
-        avg_first = sum(first_half) / len(first_half)
-        avg_second = sum(second_half) / len(second_half)
-        if avg_first > 0:
-            improvement_rate = round((avg_second - avg_first) / avg_first, 2)
+    if len(score_trend) >= 2:
+        first = score_trend[0]["score"]
+        last = score_trend[-1]["score"]
+        if first > 0:
+            raw_rate = (last - first) / first
+            improvement_rate = round(max(-1.0, min(2.0, raw_rate)), 2)
+
+    # ========== 薄弱维度详情（供详情页展示具体表现） ==========
+    weakest_dimension_details = []
+    if weakest and weakest in dimension_scores:
+        details = []
+        for idx, sc in enumerate(dimension_scores[weakest]):
+            # 关联回对应面试，便于在详情页跳转
+            interview_ref = interviews[idx] if idx < len(interviews) else None
+            details.append({
+                "score": round(sc, 1),
+                "date": interview_ref.created_at.strftime("%Y-%m-%d") if interview_ref else None,
+                "interview_id": interview_ref.id if interview_ref else None,
+                "position": interview_ref.target_position if interview_ref else None,
+            })
+        weakest_dimension_details = details
+
+    # ========== 最近得分历史（点击"最近得分"查看最近 N 次得分） ==========
+    recent_scores = [
+        {
+            "date": s["date"],
+            "score": s["score"],
+            "position": s["position"],
+        }
+        for s in reversed(score_trend[-10:])
+    ]
 
     return ApiResponse.success(data={
         "total_interviews": len(interviews),
@@ -322,7 +350,9 @@ async def get_analysis(
         "score_trend": score_trend,
         "dimension_avg": dimension_avg,
         "weakest_dimension": weakest,
+        "weakest_dimension_details": weakest_dimension_details,
         "improvement_rate": improvement_rate,
+        "recent_scores": recent_scores,
         "company_stats": company_stats,
         "position_stats": position_stats,
         "score_distribution": score_distribution,
