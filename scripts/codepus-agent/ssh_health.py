@@ -29,6 +29,12 @@ CHECKS = [
     ("page_view 最近记录数",
      "docker exec ai-interview-postgres psql -U demo -d ai_interview -c 'SELECT count(*) FROM page_views;' 2>&1 | sed -n '3,4p'"),
 
+    ("新端点 /notes/suggest-tags (无token应401非404)",
+     "curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost/api/v1/notes/suggest-tags -H 'Content-Type: application/json' -d '{}' 2>&1; echo"),
+
+    ("新端点 /notes/apply-tags (无token应401非404)",
+     "curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost/api/v1/notes/apply-tags -H 'Content-Type: application/json' -d '{}' 2>&1; echo"),
+
     ("前端首页可达性",
      "curl -s -o /dev/null -w '%{http_code}' http://localhost/ 2>&1; echo"),
 
