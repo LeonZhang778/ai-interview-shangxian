@@ -19,6 +19,7 @@
     <div v-if="showMenu" class="context-menu" @mouseleave="showMenu = false">
       <div class="menu-item" @click="handleAddChild">添加子笔记本</div>
       <div class="menu-item" @click="handleRename">重命名</div>
+      <div class="menu-item" @click="handleExport">导出为 ZIP</div>
       <div class="menu-item danger" @click="handleDelete">删除</div>
     </div>
 
@@ -57,6 +58,7 @@
         @add-child="(parentId) => $emit('add-child', parentId)"
         @rename="(id) => $emit('rename', id)"
         @delete="(id) => $emit('delete', id)"
+        @export="(id) => $emit('export', id)"
         @refresh="$emit('refresh')"
       />
     </div>
@@ -71,7 +73,7 @@ const props = defineProps({
   activeId: { type: [Number, null], default: null },
 })
 
-const emit = defineEmits(['select', 'add-child', 'rename', 'delete', 'refresh'])
+const emit = defineEmits(['select', 'add-child', 'rename', 'delete', 'refresh', 'export'])
 
 const expanded = ref(true)
 const showMenu = ref(false)
@@ -138,6 +140,11 @@ function handleDelete() {
   if (confirm(`确定删除笔记本「${props.node.name}」？其中的笔记将移到上一级`)) {
     emit('delete', props.node.id)
   }
+}
+
+function handleExport() {
+  showMenu.value = false
+  emit('export', props.node.id)
 }
 </script>
 

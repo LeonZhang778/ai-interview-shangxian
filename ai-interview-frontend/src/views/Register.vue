@@ -899,4 +899,9 @@ h2 {
 :root[data-theme="light"] .orbit-ring { opacity: 0.3; }
 :root[data-theme="light"] .meteor { opacity: 0.3; }
 :root[data-theme="light"] .aurora { opacity: 0.4; }
+:root[data-theme="light"] .space-register {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #e0e7ff 100%);
+}
+:root[data-theme="light"] .star-canvas { opacity: 0.15; }
+:root[data-theme="light"] .particle-canvas { opacity: 0.25; }
 </style>

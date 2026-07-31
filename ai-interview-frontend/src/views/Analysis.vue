@@ -25,20 +25,20 @@
           <div class="stat-value">{{ data.total_interviews }}</div>
           <div class="stat-label">面试次数</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="data.recent_scores?.length && (showRecentScoresModal = true)">
           <div class="stat-icon">⭐</div>
           <div class="stat-value">{{ latestScore }}</div>
-          <div class="stat-label">最近得分</div>
+          <div class="stat-label">最近得分<span v-if="data.recent_scores?.length > 1" class="hint">查看历史 ›</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">📈</div>
           <div class="stat-value" :class="improvementClass">{{ improvementText }}</div>
           <div class="stat-label">进步率</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="data.weakest_dimension_details?.length && (showWeaknessModal = true)">
           <div class="stat-icon">💡</div>
           <div class="stat-value weakest">{{ data.weakest_dimension || '-' }}</div>
-          <div class="stat-label">薄弱维度</div>
+          <div class="stat-label">薄弱维度<span v-if="data.weakest_dimension_details?.length" class="hint">查看详情 ›</span></div>
         </div>
       </div>
 
@@ -48,9 +48,9 @@
         <div ref="trendChart" class="chart-container"></div>
       </div>
 
-      <!-- 维度分析雷达图 -->
+      <!-- 维度分析雷达图（精简：仅展示最薄弱 3 项 + 最强 1 项） -->
       <div v-if="Object.keys(data.dimension_avg).length > 0" class="chart-section">
-        <h2>维度分析</h2>
+        <h2>维度分析<span class="chart-hint">（重点维度）</span></h2>
         <div ref="radarChart" class="chart-container"></div>
       </div>
 
@@ -83,6 +83,43 @@
         <h2>最近 7 天活跃度</h2>
         <div ref="activityChart" class="chart-container"></div>
       </div>
+
+      <!-- 薄弱维度详情弹窗 -->
+      <div v-if="showWeaknessModal" class="modal-overlay" @click.self="showWeaknessModal = false">
+        <div class="modal-box">
+          <button class="modal-close" @click="showWeaknessModal = false">×</button>
+          <h3>薄弱维度详情：{{ data.weakest_dimension }}</h3>
+          <p class="modal-desc">该维度历史得分明细，点击可跳转到对应面试报告。</p>
+          <div class="detail-list">
+            <div v-for="(d, i) in data.weakest_dimension_details" :key="i" class="detail-item"
+                 @click="d.interview_id && $router.push(`/report/${d.interview_id}`)">
+              <span class="detail-score" :style="{ color: getScoreColor(d.score) }">{{ d.score }}</span>
+              <span class="detail-info">
+                <span class="detail-date">{{ d.date }}</span>
+                <span class="detail-position" v-if="d.position">{{ d.position }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最近得分历史弹窗 -->
+      <div v-if="showRecentScoresModal" class="modal-overlay" @click.self="showRecentScoresModal = false">
+        <div class="modal-box">
+          <button class="modal-close" @click="showRecentScoresModal = false">×</button>
+          <h3>最近得分历史</h3>
+          <p class="modal-desc">最近 {{ data.recent_scores.length }} 次面试得分趋势。</p>
+          <div class="detail-list">
+            <div v-for="(s, i) in data.recent_scores" :key="i" class="detail-item">
+              <span class="detail-score" :style="{ color: getScoreColor(s.score) }">{{ s.score }}</span>
+              <span class="detail-info">
+                <span class="detail-date">{{ s.date }}</span>
+                <span class="detail-position" v-if="s.position">{{ s.position }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -114,7 +151,9 @@ const data = ref({
   score_trend: [],
   dimension_avg: {},
   weakest_dimension: null,
+  weakest_dimension_details: [],
   improvement_rate: 0,
+  recent_scores: [],
   company_stats: [],
   position_stats: [],
   score_distribution: { low: 0, mid: 0, high: 0 },
@@ -122,6 +161,8 @@ const data = ref({
   recent_activity: []
 })
 const loading = ref(true)
+const showWeaknessModal = ref(false)
+const showRecentScoresModal = ref(false)
 
 // Chart refs
 const trendChart = ref(null)
@@ -154,8 +195,8 @@ const improvementClass = computed(() => {
 })
 
 function getScoreColor(score) {
-  if (score >= 80) return '#22c55e'
-  if (score >= 60) return '#f59e0b'
+  if (score >= 8) return '#22c55e'
+  if (score >= 6) return '#f59e0b'
   return '#ef4444'
 }
 
@@ -187,7 +228,7 @@ function initTrendChart() {
     yAxis: {
       type: 'value',
       min: 0,
-      max: 100,
+      max: 10,
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
       axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
     },
@@ -225,7 +266,19 @@ function initRadarChart() {
   const chart = echarts.init(radarChart.value)
   chartInstances.push(chart)
 
-  const dims = Object.entries(data.value.dimension_avg)
+  // 精简：只展示最薄弱 3 项 + 最强 1 项，突出重点而非密密麻麻全维度
+  const allDims = Object.entries(data.value.dimension_avg)
+  const sorted = [...allDims].sort((a, b) => a[1] - b[1])
+  const weakest3 = sorted.slice(0, 3)
+  const strongest1 = sorted.slice(-1)
+  // 去重合并（维度少于 4 个时全展示）
+  const seen = new Set()
+  const focus = []
+  for (const d of [...weakest3, ...strongest1]) {
+    if (!seen.has(d[0])) { seen.add(d[0]); focus.push(d) }
+  }
+  const dims = allDims.length <= 4 ? allDims : focus
+
   const option = {
     tooltip: {
       backgroundColor: 'rgba(15, 15, 25, 0.9)',
@@ -233,9 +286,9 @@ function initRadarChart() {
       textStyle: { color: '#fff' }
     },
     radar: {
-      indicator: dims.map(([name]) => ({ name, max: 100 })),
+      indicator: dims.map(([name]) => ({ name, max: 10 })),
       shape: 'polygon',
-      splitNumber: 4,
+      splitNumber: 5,
       axisName: {
         color: 'rgba(255,255,255,0.7)',
         fontSize: 12
@@ -278,7 +331,7 @@ function initCompanyChart() {
     grid: { left: 80, right: 20, top: 10, bottom: 30 },
     xAxis: {
       type: 'value',
-      max: 100,
+      max: 10,
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
       axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
     },
@@ -334,7 +387,7 @@ function initPositionChart() {
     grid: { left: 80, right: 20, top: 10, bottom: 30 },
     xAxis: {
       type: 'value',
-      max: 100,
+      max: 10,
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
       axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
     },
@@ -399,9 +452,9 @@ function initScoreDistChart() {
       itemStyle: { borderRadius: 8, borderColor: '#0f0f19', borderWidth: 2 },
       label: { show: false },
       data: [
-        { value: dist.high, name: '优秀 (80+)', itemStyle: { color: '#22c55e' } },
-        { value: dist.mid, name: '良好 (60-80)', itemStyle: { color: '#f59e0b' } },
-        { value: dist.low, name: '待提升 (<60)', itemStyle: { color: '#ef4444' } }
+        { value: dist.high, name: '优秀 (8+)', itemStyle: { color: '#22c55e' } },
+        { value: dist.mid, name: '良好 (6-8)', itemStyle: { color: '#f59e0b' } },
+        { value: dist.low, name: '待提升 (<6)', itemStyle: { color: '#ef4444' } }
       ]
     }]
   }
@@ -634,5 +687,112 @@ onUnmounted(() => {
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .stat-value { font-size: 22px; }
   .dual-chart-row { grid-template-columns: 1fr; }
+}
+
+/* 可点击卡片 */
+.stat-card.clickable {
+  cursor: pointer;
+}
+.stat-card.clickable:hover {
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.15);
+}
+.stat-label .hint {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+}
+.chart-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted, #9ca3af);
+  margin-left: 6px;
+}
+
+/* 弹窗 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-box {
+  background: var(--bg-card, #1a1a2e);
+  border: 1px solid var(--border-default, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+.modal-box h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.modal-desc {
+  font-size: 13px;
+  color: var(--text-muted, #9ca3af);
+  margin: 0 0 16px;
+}
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-muted, #9ca3af);
+  cursor: pointer;
+  line-height: 1;
+}
+.modal-close:hover { color: var(--text-primary); }
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(124, 58, 237, 0.04);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.detail-item:hover {
+  background: rgba(124, 58, 237, 0.1);
+}
+.detail-score {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  min-width: 36px;
+  text-align: center;
+}
+.detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.detail-date {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.detail-position {
+  font-size: 12px;
+  color: var(--text-muted, #9ca3af);
 }
 </style>

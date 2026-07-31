@@ -1,6 +1,57 @@
 import api from './request'
+import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 // ==================== 学习笔记 ====================
+
+// 导出单个笔记为 Markdown
+export async function exportNote(id) {
+  const authStore = useAuthStore()
+  const res = await axios.get(`/api/v1/learning-notes/${id}/export`, {
+    responseType: 'blob',
+    headers: { Authorization: `Bearer ${authStore.token}` }
+  })
+  triggerDownload(res, `${id}.md`)
+  return true
+}
+
+// 导出整个笔记本（含子笔记本）为 ZIP
+export async function exportNotebook(notebookId) {
+  const authStore = useAuthStore()
+  const res = await axios.get(`/api/v1/learning-notes/export/notebook/${notebookId}`, {
+    responseType: 'blob',
+    headers: { Authorization: `Bearer ${authStore.token}` }
+  })
+  triggerDownload(res, `notebook_${notebookId}.zip`)
+  return true
+}
+
+// 导出全部笔记为 ZIP
+export async function exportAllNotes() {
+  const authStore = useAuthStore()
+  const res = await axios.get('/api/v1/learning-notes/export/all', {
+    responseType: 'blob',
+    headers: { Authorization: `Bearer ${authStore.token}` }
+  })
+  triggerDownload(res, 'all_notes.zip')
+  return true
+}
+
+// 通用下载触发：从 Content-Disposition 提取文件名，回退用 fallback
+function triggerDownload(res, fallbackName) {
+  const cd = res.headers['content-disposition'] || ''
+  let filename = fallbackName
+  const m = cd.match(/filename="?([^"]+)"?/i)
+  if (m && m[1]) filename = decodeURIComponent(m[1])
+  const url = window.URL.createObjectURL(res.data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  window.URL.revokeObjectURL(url)
+}
 
 // 获取我的笔记列表
 export function getMyNotes(params) {

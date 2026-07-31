@@ -64,7 +64,8 @@ export const analyticsApi = {
   overview: () => api.get('/analytics/overview'),
   userTrend: (days) => api.get('/analytics/user-trend', { params: { days } }),
   interviewTrend: (days) => api.get('/analytics/interview-trend', { params: { days } }),
-  experienceRanking: () => api.get('/analytics/experience-ranking'),
+  pageviewTrend: (days) => api.get('/analytics/pageview-trend', { params: { days } }),
+  geoDistribution: () => api.get('/analytics/geo-distribution'),
   activeUsers: () => api.get('/analytics/active-users')
 }
 

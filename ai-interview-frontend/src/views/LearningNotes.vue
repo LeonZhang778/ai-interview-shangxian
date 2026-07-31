@@ -44,6 +44,7 @@
             >
               <span class="node-icon">📋</span>
               <span class="node-name">全部笔记</span>
+              <button class="btn-export-all" @click.stop="handleExportAll" title="导出全部笔记为 ZIP">⬇ 导出</button>
             </div>
             <NotebookTreeNode
               v-for="nb in notebookTree"
@@ -54,6 +55,7 @@
               @add-child="handleAddChild"
               @rename="handleRename"
               @delete="handleDelete"
+              @export="handleExportNotebook"
               @refresh="loadNotebooks"
             />
           </div>
@@ -149,7 +151,10 @@
                   <span>👁 {{ note.view_count || 0 }}</span>
                   <span>👍 {{ note.like_count || 0 }}</span>
                 </div>
-                <span class="card-time">{{ formatTime(note.updated_at || note.created_at) }}</span>
+                <div class="card-actions">
+                  <button class="btn-export-note" @click.stop="handleExportNote(note.id)" title="导出为 Markdown">⬇ MD</button>
+                  <span class="card-time">{{ formatTime(note.updated_at || note.created_at) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -277,6 +282,7 @@ import {
   getMyNotes, getPublicNotes, getNoteStats, searchNotes,
   getNotebooks, createNotebook as createNotebookApi, updateNotebook, deleteNotebook,
   getPublicTags,
+  exportNote, exportNotebook, exportAllNotes,
 } from '../api/learningNote'
 
 const router = useRouter()
@@ -375,6 +381,32 @@ function formatTime(t) {
   if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
   if (diff < 2592000) return `${Math.floor(diff / 86400)}天前`
   return d.toLocaleDateString()
+}
+
+// ====== 导出 ======
+
+async function handleExportNote(id) {
+  try {
+    await exportNote(id)
+  } catch (e) {
+    alert(e.message || '导出失败')
+  }
+}
+
+async function handleExportNotebook(id) {
+  try {
+    await exportNotebook(id)
+  } catch (e) {
+    alert(e.message || '导出失败')
+  }
+}
+
+async function handleExportAll() {
+  try {
+    await exportAllNotes()
+  } catch (e) {
+    alert(e.message || '导出失败')
+  }
 }
 
 // ====== 笔记本操作 ======
@@ -952,6 +984,41 @@ onMounted(async () => {
 .card-time {
   font-size: 12px;
   color: var(--text-muted);
+}
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-export-note {
+  padding: 2px 8px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 6px;
+  color: var(--accent-light, #a5b4fc);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-export-note:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+.btn-export-all {
+  margin-left: auto;
+  padding: 2px 8px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 6px;
+  color: var(--accent-light, #a5b4fc);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.btn-export-all:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.45);
 }
 
 /* 分页 */

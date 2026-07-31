@@ -1,11 +1,14 @@
 <template>
   <div id="app">
-    <div class="top-sticky">
+    <div class="top-sticky" :class="{ 'nav-hidden': navHidden }">
       <AnnouncementBanner />
       <nav class="navbar" v-if="authStore.token">
         <div class="nav-content">
           <router-link to="/dashboard" class="nav-logo">智面</router-link>
-          <div class="nav-links">
+          <button class="nav-toggle" @click="mobileMenuOpen = !mobileMenuOpen" aria-label="菜单">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="nav-links" :class="{ 'mobile-open': mobileMenuOpen }">
             <router-link to="/experiences">面经广场</router-link>
             <router-link to="/learning-notes">学习笔记</router-link>
             <router-link to="/my/experiences">我的投稿</router-link>
@@ -32,7 +35,10 @@
       <nav class="navbar" v-else>
         <div class="nav-content">
           <router-link to="/" class="nav-logo">智面</router-link>
-          <div class="nav-links">
+          <button class="nav-toggle" @click="mobileMenuOpen = !mobileMenuOpen" aria-label="菜单">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="nav-links" :class="{ 'mobile-open': mobileMenuOpen }">
             <router-link to="/experiences">面经广场</router-link>
             <router-link to="/learning-notes">学习笔记</router-link>
             <router-link to="/login">登录</router-link>
@@ -53,21 +59,48 @@
 </template>
 
 <script setup>
-import { onMounted, ref, onUnmounted } from 'vue'
+import { onMounted, ref, onUnmounted, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import BugReportBanner from './components/BugReportBanner.vue'
 import AnnouncementBanner from './components/AnnouncementBanner.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 import { useTheme } from './composables/useTheme'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { getProfile } from './api/user'
 import { getUnreadCount } from './api/notification'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const avatarError = ref(false)
 const unreadCount = ref(0)
 let unreadTimer = null
+
+// 导航栏滚动收起 / 手机端汉堡菜单
+const navHidden = ref(false)
+const mobileMenuOpen = ref(false)
+let lastScrollY = 0
+
+function handleScroll() {
+  const y = window.scrollY
+  // 顶部区域：始终显示
+  if (y < 80) {
+    navHidden.value = false
+  } else if (y > lastScrollY + 8) {
+    // 向下滚动：收起
+    navHidden.value = true
+    mobileMenuOpen.value = false
+  } else if (y < lastScrollY - 8) {
+    // 向上滚动：展开
+    navHidden.value = false
+  }
+  lastScrollY = y
+}
+
+// 路由切换时关闭手机端菜单
+watch(() => route.path, () => {
+  mobileMenuOpen.value = false
+})
 
 useTheme()
 
@@ -83,6 +116,7 @@ async function fetchUnreadCount() {
 
 onMounted(async () => {
   window.addEventListener('notifications-updated', fetchUnreadCount)
+  window.addEventListener('scroll', handleScroll, { passive: true })
   if (authStore.token) {
     try {
       const data = await getProfile()
@@ -99,6 +133,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (unreadTimer) clearInterval(unreadTimer)
   window.removeEventListener('notifications-updated', fetchUnreadCount)
+  window.removeEventListener('scroll', handleScroll)
 })
 
 async function logout() {
@@ -112,6 +147,10 @@ async function logout() {
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: transform 0.3s ease;
+}
+.top-sticky.nav-hidden {
+  transform: translateY(-100%);
 }
 
 .navbar {
@@ -254,20 +293,75 @@ async function logout() {
   border-color: rgba(239,68,68,0.2);
 }
 
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+.nav-toggle span {
+  width: 22px;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 2px;
+  transition: transform 0.3s, opacity 0.2s;
+}
+.nav-toggle:hover span {
+  background: var(--accent-light);
+}
+
 @media (max-width: 900px) {
   .navbar {
     padding: 8px 14px;
   }
 
   .nav-content {
-    height: auto;
-    align-items: flex-start;
-    gap: 12px;
-    flex-direction: column;
+    height: 48px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .nav-toggle {
+    display: flex;
+    margin-left: auto;
   }
 
   .nav-links {
-    gap: 12px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background: var(--bg-surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-default);
+    padding: 0 14px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    pointer-events: none;
+  }
+  .nav-links.mobile-open {
+    max-height: 520px;
+    padding: 10px 14px 16px;
+    pointer-events: auto;
+  }
+  .nav-links a,
+  .nav-links .btn-logout {
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--border-default);
+    width: 100%;
+    text-align: left;
+  }
+  .nav-links a:last-of-type,
+  .nav-links .btn-logout {
+    border-bottom: none;
   }
 }
 </style>

@@ -72,7 +72,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { login, guestLogin } from '../api/auth'
+import { login, guestLogin, refreshToken } from '../api/auth'
 import { getProfile } from '../api/user'
 import { getSiteInfo } from '../api/config'
 
@@ -117,11 +117,24 @@ async function handleLogin() {
 async function handleGuest() {
   guestLoading.value = true
   try {
-    // 复用已有的游客 token，避免重复创建匿名用户
+    // 复用已有游客会话：本地存在游客登录态时优先续期复用
     if (authStore.isLoggedIn && authStore.isGuest) {
-      router.push('/dashboard')
-      return
+      if (authStore.refreshToken) {
+        try {
+          const refreshRes = await refreshToken(authStore.refreshToken)
+          authStore.updateToken(refreshRes.access_token)
+          router.push('/dashboard')
+          return
+        } catch (_) {
+          // refresh 失败（token 过期/失效），清除失效会话后 fallthrough 新建游客
+          await authStore.logout().catch(() => {})
+        }
+      } else {
+        // 无 refresh token，直接 fallthrough 新建
+        await authStore.logout().catch(() => {})
+      }
     }
+    // 本地无有效游客会话（或旧会话已失效），创建新游客
     const data = await guestLogin()
     authStore.setAuth(data)
     router.push('/dashboard')
@@ -814,4 +827,9 @@ h2 {
 :root[data-theme="light"] .orbit-ring { opacity: 0.3; }
 :root[data-theme="light"] .meteor { opacity: 0.3; }
 :root[data-theme="light"] .aurora { opacity: 0.4; }
+:root[data-theme="light"] .space-login {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #e0e7ff 100%);
+}
+:root[data-theme="light"] .star-canvas { opacity: 0.15; }
+:root[data-theme="light"] .particle-canvas { opacity: 0.25; }
 </style>

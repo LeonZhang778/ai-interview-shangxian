@@ -108,7 +108,7 @@
             <button type="button" class="btn-import" @click="fileInput?.click()">📄 导入 Markdown / 文本</button>
             <input ref="fileInput" type="file" accept=".txt,.md,.text,.markdown" style="display:none" @change="handleFileImport" />
           </label>
-          <div class="editor-wrapper">
+          <div class="editor-wrapper" @click="handleEditorClick">
             <Editor
               :value="form.content"
               :plugins="plugins"
@@ -134,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
 import { Editor } from '@bytemd/vue-next'
@@ -195,6 +195,22 @@ async function loadNotebooks() {
 
 function handleEditorChange(v) {
   form.value.content = v
+}
+
+// 编辑器预览区标题点击跳转（事件委托）
+function handleEditorClick(e) {
+  const target = e.target.closest('h1, h2, h3, h4, h5, h6')
+  if (!target) return
+  // 仅处理预览区内的标题
+  const preview = document.querySelector('.bytemd-preview')
+  if (!preview || !preview.contains(target)) return
+  // 点击标题 → 滚动到该标题在预览区的顶部
+  nextTick(() => {
+    const rect = target.getBoundingClientRect()
+    const previewRect = preview.getBoundingClientRect()
+    const offsetTop = rect.top - previewRect.top + preview.scrollTop - 10
+    preview.scrollTo({ top: offsetTop, behavior: 'smooth' })
+  })
 }
 
 async function handleUploadImages(files) {
@@ -576,6 +592,16 @@ label {
 .editor-wrapper :deep(.bytemd-preview .markdown-body h6) {
   color: var(--text-primary);
   border-bottom-color: var(--border-default);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.editor-wrapper :deep(.bytemd-preview .markdown-body h1:hover),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h2:hover),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h3:hover),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h4:hover),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h5:hover),
+.editor-wrapper :deep(.bytemd-preview .markdown-body h6:hover) {
+  color: var(--accent-light);
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body a) {
   color: var(--accent-light);
