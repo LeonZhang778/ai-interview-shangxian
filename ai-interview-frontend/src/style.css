@@ -242,6 +242,16 @@ select {
   background-position: right 12px center;
   padding-right: 32px;
 }
+/* 原生 <option> 弹出层在黑夜模式下默认白底白字看不清，显式覆盖为主题色 */
+select option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+/* 部分浏览器对 option:checked 高亮需单独处理 */
+select option:checked {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
 
 .container {
   max-width: 960px;

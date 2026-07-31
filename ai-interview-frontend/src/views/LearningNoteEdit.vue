@@ -437,8 +437,8 @@ label {
 }
 .form-select {
   padding: 10px 14px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   color: var(--text-primary);
   font-size: 14px;
@@ -452,13 +452,14 @@ label {
   padding-right: 36px;
 }
 .form-select:focus {
-  border-color: rgba(99,102,241,0.4);
-  background-color: rgba(255,255,255,0.07);
+  border-color: var(--border-focus);
+  background-color: var(--bg-input-focus);
 }
 .form-select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* option 弹出层由全局 style.css 统一适配黑夜/白天模式 */
 
 .form-textarea {
   padding: 14px;

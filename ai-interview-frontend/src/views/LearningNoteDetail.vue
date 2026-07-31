@@ -72,6 +72,29 @@
             >{{ item.text }}</li>
           </ul>
         </aside>
+        <!-- 移动端浮动目录按钮 + 抽屉 -->
+        <button
+          v-if="tocList.length > 1"
+          class="toc-fab"
+          @click="showTocDrawer = !showTocDrawer"
+          aria-label="目录"
+        >📋</button>
+        <transition name="toc-drawer">
+          <div v-if="showTocDrawer && tocList.length > 1" class="toc-drawer">
+            <div class="toc-drawer-header">
+              <span>📋 目录</span>
+              <button class="toc-drawer-close" @click="showTocDrawer = false">✕</button>
+            </div>
+            <ul>
+              <li
+                v-for="item in tocList"
+                :key="item.id"
+                :class="[`toc-lvl-${item.level}`, { active: activeTocId === item.id }]"
+                @click="scrollToHeading(item.id)"
+              >{{ item.text }}</li>
+            </ul>
+          </div>
+        </transition>
       </div>
     </div>
   </div>
@@ -100,6 +123,7 @@ const note = ref(null)
 const loading = ref(true)
 const tocList = ref([])
 const activeTocId = ref('')
+const showTocDrawer = ref(false)
 
 const typeOptions = [
   { value: 'note', label: '笔记' },
@@ -143,8 +167,9 @@ async function loadData() {
   loading.value = true
   try {
     note.value = await getNoteDetail(route.params.id)
+    // bytemd Viewer 异步渲染，双重等待确保 DOM 就绪
     await nextTick()
-    buildToc()
+    requestAnimationFrame(() => buildToc())
   } catch (e) {
     console.error(e)
     note.value = null
@@ -153,7 +178,18 @@ async function loadData() {
   }
 }
 
-// 从渲染后的 DOM 读取标题生成目录（与 bytemd 实际生成的 id 保持一致）
+// 从渲染后的 DOM 读取标题生成目录
+// bytemd 默认不给标题加 id，这里手动补上 id 以便锚点跳转
+function slugify(text) {
+  return (text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fa5\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 function buildToc() {
   tocList.value = []
   activeTocId.value = ''
@@ -161,9 +197,19 @@ function buildToc() {
   if (!body) return
   const headings = body.querySelectorAll('h1, h2, h3, h4')
   if (headings.length <= 1) return
+  const usedIds = new Set()
   const list = []
   headings.forEach((h) => {
-    if (!h.id) return
+    if (!h.id) {
+      const base = slugify(h.textContent || `heading-${list.length}`)
+      let id = base || `heading-${list.length}`
+      let i = 1
+      while (usedIds.has(id)) {
+        id = `${base}-${i++}`
+      }
+      h.id = id
+    }
+    usedIds.add(h.id)
     list.push({
       id: h.id,
       text: h.textContent || '',
@@ -182,6 +228,7 @@ function scrollToHeading(id) {
     window.scrollTo({ top, behavior: 'smooth' })
     activeTocId.value = id
   }
+  showTocDrawer.value = false
 }
 
 function onScroll() {
@@ -520,29 +567,114 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .toc-lvl-3 { padding-left: 30px; font-size: 12px; }
 .toc-lvl-4 { padding-left: 42px; font-size: 12px; }
 
+/* 移动端浮动目录按钮（默认隐藏，移动端显示） */
+.toc-fab {
+  display: none;
+}
+/* 移动端目录抽屉（默认隐藏） */
+.toc-drawer {
+  display: none;
+}
+
 @media (max-width: 960px) {
   .note-layout {
     flex-direction: column;
   }
+  /* 移动端隐藏固定侧栏，改用浮动按钮 + 抽屉 */
   .note-toc {
-    position: static;
-    flex: none;
-    width: 100%;
-    max-height: none;
-    margin-bottom: 20px;
-    order: -1;
+    display: none;
   }
-  .note-toc ul {
+  /* 浮动按钮：右下角 */
+  .toc-fab {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 18px;
+    bottom: 80px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 20px;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    z-index: 50;
+    transition: transform 0.2s, box-shadow 0.2s;
   }
-  .note-toc li {
-    border-left: none;
-    border-radius: 6px;
-    padding: 4px 10px;
-    background: var(--bg-card);
+  .toc-fab:active {
+    transform: scale(0.92);
   }
-  .toc-lvl-2, .toc-lvl-3, .toc-lvl-4 { padding-left: 10px; }
+  /* 抽屉：从右侧滑出 */
+  .toc-drawer {
+    display: block;
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 78%;
+    max-width: 320px;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-default);
+    box-shadow: var(--shadow-lg);
+    z-index: 60;
+    overflow-y: auto;
+    padding: 16px 0;
+  }
+  .toc-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px 12px;
+    border-bottom: 1px solid var(--border-default);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .toc-drawer-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .toc-drawer ul {
+    list-style: none;
+    padding: 8px 0;
+    margin: 0;
+  }
+  .toc-drawer li {
+    padding: 10px 18px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .toc-drawer li:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+  .toc-drawer li.active {
+    color: var(--accent-light);
+    border-left-color: var(--accent-purple);
+    background: var(--bg-hover);
+  }
+  .toc-drawer .toc-lvl-2 { padding-left: 30px; }
+  .toc-drawer .toc-lvl-3 { padding-left: 42px; font-size: 12px; }
+  .toc-drawer .toc-lvl-4 { padding-left: 54px; font-size: 12px; }
+}
+/* 抽屉过渡动画 */
+.toc-drawer-enter-active, .toc-drawer-leave-active {
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.toc-drawer-enter-from, .toc-drawer-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
 }
 </style>
