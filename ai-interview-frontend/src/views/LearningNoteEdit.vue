@@ -90,14 +90,46 @@
 
         <!-- 标签（逗号分隔，最多 5 个） -->
         <div class="form-group">
-          <label>标签（逗号分隔，最多 5 个）</label>
-          <input
-            v-model="form.tags"
-            type="text"
-            placeholder="例如：Redis,缓存,持久化"
-            maxlength="500"
-            class="form-input"
-          />
+          <label>
+            标签（最多 5 个）
+            <button
+              v-if="isEditMode"
+              type="button"
+              class="btn-ai-tag"
+              @click="loadAiTags"
+              :disabled="loadingTags"
+            >🤖 {{ aiTags.length ? '重新推荐' : 'AI 推荐标签' }}</button>
+          </label>
+          <div class="tag-input-area">
+            <input
+              v-model="tagInput"
+              type="text"
+              placeholder="输入标签后按回车添加"
+              maxlength="20"
+              class="form-input"
+              @keyup.enter="addTag"
+            />
+          </div>
+          <!-- 已选标签 -->
+          <div v-if="tagsArray.length" class="tag-list">
+            <span v-for="(tag, i) in tagsArray" :key="i" class="tag">
+              {{ tag }}
+              <span class="tag-remove" @click="removeTag(i)">✕</span>
+            </span>
+          </div>
+          <!-- AI 推荐标签 -->
+          <div v-if="aiTags.length" class="ai-tags">
+            <span class="ai-tags-label">AI 推荐：</span>
+            <span
+              v-for="tag in aiTags"
+              :key="tag"
+              class="tag tag-suggested"
+              :class="{ selected: tagsArray.includes(tag) }"
+              @click="toggleAiTag(tag)"
+            >{{ tag }}</span>
+            <span v-if="aiTagsReason" class="ai-tags-reason">{{ aiTagsReason }}</span>
+          </div>
+          <p v-if="loadingTags" class="hint">AI 正在分析笔记内容...</p>
         </div>
 
 <!-- 内容 -->
@@ -142,7 +174,7 @@ import gfm from '@bytemd/plugin-gfm'
 import highlight from '@bytemd/plugin-highlight'
 import 'bytemd/dist/index.css'
 import 'highlight.js/styles/github-dark.css'
-import { createNote, updateNote, getNoteDetail, uploadNoteImage, getNotebooks } from '../api/learningNote'
+import { createNote, updateNote, getNoteDetail, uploadNoteImage, getNotebooks, suggestTags } from '../api/learningNote'
 
 const plugins = [
   gfm(),
@@ -160,6 +192,12 @@ const notebooks = ref([])
 const isEditMode = computed(() => !!route.params.id)
 const fileInput = ref(null)
 
+// 标签管理：form.tags 保留为逗号字符串供提交，tagsArray 是前端操作的数组视图
+const tagInput = ref('')
+const aiTags = ref([])
+const aiTagsReason = ref('')
+const loadingTags = ref(false)
+
 const form = ref({
   title: '',
   content: '',
@@ -169,6 +207,70 @@ const form = ref({
   tags: '',
   notebook_id: null,
 })
+
+// tags 字符串 <-> 数组 双向转换，方便前端增删
+const tagsArray = computed({
+  get: () => form.value.tags
+    ? form.value.tags.split(',').map(t => t.trim()).filter(Boolean)
+    : [],
+  set: (arr) => { form.value.tags = arr.join(',') },
+})
+
+function addTag() {
+  const t = tagInput.value.trim()
+  if (!t) return
+  const arr = tagsArray.value
+  if (arr.includes(t)) {
+    tagInput.value = ''
+    return
+  }
+  if (arr.length >= 5) {
+    error.value = '最多 5 个标签'
+    return
+  }
+  error.value = ''
+  tagsArray.value = [...arr, t]
+  tagInput.value = ''
+}
+
+function removeTag(idx) {
+  const arr = tagsArray.value
+  arr.splice(idx, 1)
+  tagsArray.value = arr
+}
+
+function toggleAiTag(tag) {
+  const arr = tagsArray.value
+  if (arr.includes(tag)) {
+    arr.splice(arr.indexOf(tag), 1)
+  } else {
+    if (arr.length >= 5) {
+      error.value = '最多 5 个标签'
+      return
+    }
+    arr.push(tag)
+  }
+  tagsArray.value = arr
+}
+
+async function loadAiTags() {
+  if (!isEditMode.value || !route.params.id) {
+    error.value = '请先保存笔记后再让 AI 推荐标签'
+    return
+  }
+  loadingTags.value = true
+  error.value = ''
+  try {
+    const res = await suggestTags(route.params.id)
+    aiTags.value = res.tags || []
+    aiTagsReason.value = res.reason || ''
+  } catch (e) {
+    error.value = e?.message || 'AI 标签推荐失败'
+    console.error(e)
+  } finally {
+    loadingTags.value = false
+  }
+}
 
 function handleFileImport(event) {
   const file = event.target.files?.[0]
@@ -628,6 +730,93 @@ label {
 }
 .editor-wrapper :deep(.bytemd-preview .markdown-body table tr:nth-child(2n)) {
   background: var(--bg-hover);
+}
+
+/* === 标签输入区 === */
+.btn-ai-tag {
+  margin-left: auto;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.18));
+  border: 1px solid rgba(99,102,241,0.35);
+  border-radius: 6px;
+  color: var(--accent-light);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ai-tag:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(99,102,241,0.28), rgba(139,92,246,0.28));
+}
+.btn-ai-tag:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tag-input-area {
+  display: flex;
+  gap: 8px;
+}
+.tag-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(99,102,241,0.15);
+  color: var(--accent-light);
+}
+.tag-remove {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.tag-remove:hover {
+  opacity: 1;
+}
+.ai-tags {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(99,102,241,0.05);
+  border: 1px dashed rgba(99,102,241,0.2);
+  border-radius: 8px;
+}
+.ai-tags-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-top: 4px;
+}
+.ai-tags-reason {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.tag-suggested {
+  cursor: pointer;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+.tag-suggested:hover {
+  background: rgba(99,102,241,0.2);
+  color: var(--text-secondary);
+}
+.tag-suggested.selected {
+  background: rgba(99,102,241,0.28);
+  color: var(--accent-light);
 }
 
 .option-tabs {

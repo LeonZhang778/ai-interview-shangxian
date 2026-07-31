@@ -49,6 +49,11 @@ class NoteFromInterviewBody(BaseModel):
     visibility: str = "private"
 
 
+class TagApplyBody(BaseModel):
+    """应用 AI 推荐标签时提交的标签列表"""
+    tags: list[str]
+
+
 @router.post("/upload-image")
 async def upload_note_image(
     file: UploadFile = File(...),
@@ -201,6 +206,39 @@ async def generate_note_summary(
         db=db, note_id=note_id, user_id=current_user.id, force=force
     )
     return ApiResponse.success(data=result)
+
+
+@router.post("/{note_id}/suggest-tags")
+async def suggest_note_tags(
+    note_id: int,
+    force: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取 AI 推荐的标签（不写入笔记，仅返回建议）"""
+    result = await learning_note_service.suggest_tags(
+        db=db, note_id=note_id, user_id=current_user.id, force=force
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.post("/{note_id}/apply-tags")
+async def apply_suggested_tags(
+    note_id: int,
+    body: TagApplyBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """应用 AI 推荐的标签（用户确认后写入笔记）"""
+    # 标准化提交的标签，避免前端绕过标准化
+    from app.utils.utils import normalize_tag
+    tags = list(dict.fromkeys(
+        normalize_tag(t) for t in body.tags if t and t.strip()
+    ))[:5]
+    result = await learning_note_service.update_note(
+        db=db, user_id=current_user.id, note_id=note_id, tags=",".join(tags)
+    )
+    return ApiResponse.success(data={"tags": tags, "message": "标签已应用"})
 
 
 @router.get("/{note_id}")

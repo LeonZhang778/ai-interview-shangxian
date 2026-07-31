@@ -98,6 +98,16 @@ export function generateSummary(id, force = false) {
   return api.post(`/learning-notes/${id}/summary`, null, { params: { force } })
 }
 
+// 获取 AI 推荐的标签（不写入笔记，仅返回建议）
+export function suggestTags(id, force = false) {
+  return api.post(`/learning-notes/${id}/suggest-tags`, null, { params: { force } })
+}
+
+// 应用 AI 推荐的标签（用户确认后写入笔记）
+export function applyTags(id, tags) {
+  return api.post(`/learning-notes/${id}/apply-tags`, { tags })
+}
+
 // 获取笔记统计
 export function getNoteStats(params) {
   return api.get('/learning-notes/stats', { params })

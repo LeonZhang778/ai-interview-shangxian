@@ -417,3 +417,90 @@ def get_timezone_by_city(city_name, country_code=None):
     except Exception as e:
         print(f"获取时区时出错: {e}")
         return None
+
+
+# ==================== 标签标准化工具 ====================
+# 用于 AI 智能标签模块：把模型返回的标签归一化到统一的标准名称，
+# 避免出现 "redis"/"Redis"/"redis缓存" 混排，便于后续聚合与推荐。
+
+TAG_ALIASES = {
+    "redis": "Redis",
+    "mysql": "MySQL",
+    "postgresql": "PostgreSQL",
+    "postgres": "PostgreSQL",
+    "pg": "PostgreSQL",
+    "mongodb": "MongoDB",
+    "mongo": "MongoDB",
+    "elasticsearch": "Elasticsearch",
+    "es": "Elasticsearch",
+    "clickhouse": "ClickHouse",
+    "kafka": "Kafka",
+    "rabbitmq": "RabbitMQ",
+    "mq": "RabbitMQ",
+    "nginx": "Nginx",
+    "docker": "Docker",
+    "k8s": "Kubernetes",
+    "kubernetes": "Kubernetes",
+    "javascript": "JavaScript",
+    "js": "JavaScript",
+    "typescript": "TypeScript",
+    "ts": "TypeScript",
+    "python": "Python",
+    "java": "Java",
+    "golang": "Go",
+    "go": "Go",
+    "rust": "Rust",
+    "cpp": "C++",
+    "c++": "C++",
+    "c": "C",
+    "react": "React",
+    "vue": "Vue",
+    "vuejs": "Vue",
+    "fastapi": "FastAPI",
+    "springboot": "Spring Boot",
+    "spring": "Spring Boot",
+    "gin": "Gin",
+    "django": "Django",
+    "flask": "Flask",
+    "aws": "AWS",
+    "gcp": "GCP",
+    "azure": "Azure",
+    "terraform": "Terraform",
+    "cicd": "CI/CD",
+    "ci/cd": "CI/CD",
+    "sql": "SQL",
+    "nosql": "NoSQL",
+    "微服务": "微服务",
+    "分布式": "分布式",
+    "高并发": "高并发",
+    "系统设计": "系统设计",
+    "设计模式": "设计模式",
+    "数据结构": "数据结构",
+    "算法": "算法",
+    "操作系统": "操作系统",
+    "网络": "网络",
+    "tcp": "TCP",
+    "http": "HTTP",
+    "https": "HTTPS",
+}
+
+
+def normalize_tag(tag: str) -> str:
+    """标准化标签名称：别名归一 + 首字母大写。
+
+    Args:
+        tag: 原始标签字符串
+
+    Returns:
+        标准化后的标签，例如 "redis" -> "Redis"，"k8s" -> "Kubernetes"。
+        对未知别名返回首字母大写后的原值。
+    """
+    if not tag:
+        return tag
+    tag = tag.strip()
+    # 去掉空格、连字符、下划线后做小写匹配
+    lower = tag.lower().replace(" ", "").replace("-", "").replace("_", "")
+    if lower in TAG_ALIASES:
+        return TAG_ALIASES[lower]
+    # 未知别名：首字母大写，其余保持
+    return tag[0].upper() + tag[1:] if tag else tag

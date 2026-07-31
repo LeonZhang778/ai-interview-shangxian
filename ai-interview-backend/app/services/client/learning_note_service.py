@@ -8,7 +8,8 @@ from app.models.learning_note import LearningNote
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
-from app.prompts.learning_note import NOTE_SUMMARIZE_PROMPT
+from app.prompts.learning_note import NOTE_SUMMARIZE_PROMPT, NOTE_TAG_SUGGEST_PROMPT
+from app.utils.utils import normalize_tag
 
 logger = logging.getLogger(__name__)
 
@@ -589,6 +590,69 @@ class LearningNoteService:
         except Exception as e:
             logger.error(f"笔记摘要生成失败: note_id={note_id}, {e}")
             return {"summary": "", "key_points": [], "error": str(e)}
+
+    @staticmethod
+    async def suggest_tags(
+        db: AsyncSession,
+        note_id: int,
+        user_id: int,
+        force: bool = False
+    ) -> Dict:
+        """
+        为笔记推荐 AI 标签（自动分析内容）
+
+        Args:
+            force: 是否强制重新生成（忽略 LLM 缓存）
+        """
+        from app.services.client.ai_service import AIService
+        from app.services.common.redis import redis_client
+
+        note = await db.get(LearningNote, note_id)
+        if not note or note.user_id != user_id:
+            raise NotFoundError(message="笔记不存在")
+
+        # 空笔记直接返回空结果，不调用 AI
+        if not note.content or not note.content.strip():
+            return {"tags": [], "reason": ""}
+
+        # 检查 LLM 缓存（相同内容不重复调用 AI）
+        cache_content = note.content[:500]
+        cached = await redis_client.get_llm_cache("note_tags", cache_content)
+        if cached and not force:
+            return cached
+
+        # 调用 AI 生成标签
+        content = note.content[:2000]  # 截取前 2000 字，控制 token 用量
+        messages = [
+            {"role": "system", "content": NOTE_TAG_SUGGEST_PROMPT.format(
+                title=note.title, note_type=note.note_type, content=content
+            )},
+        ]
+
+        try:
+            result = await AIService._chat(messages, temperature=0.3)
+            parsed = AIService._extract_json(result)
+
+            raw_tags = parsed.get("tags", []) or []
+            reason = parsed.get("reason", "")
+
+            # 标准化标签：别名归一 + 去重，最多保留 5 个
+            tags = list(dict.fromkeys(
+                normalize_tag(t) for t in raw_tags if t and t.strip()
+            ))[:5]
+
+            result_data = {"tags": tags, "reason": reason}
+
+            # 写入 LLM 缓存（TTL 7 天，笔记内容不变时无需重新生成）
+            await redis_client.set_llm_cache(
+                "note_tags", cache_content, result_data,
+                ttl=7 * 24 * 3600
+            )
+
+            return result_data
+        except Exception as e:
+            logger.error(f"笔记标签推荐失败: note_id={note_id}, {e}")
+            return {"tags": [], "reason": "", "error": str(e)}
 
 
 learning_note_service = LearningNoteService()
