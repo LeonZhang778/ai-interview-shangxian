@@ -87,12 +87,20 @@ class Settings(BaseSettings):
     LLM_CACHE_TTL_QUESTIONS: int = 3600
     LLM_CACHE_TTL_REPORT: int = 3600
 
-    # 面试会话缓存
+# 面试会话缓存
     INTERVIEW_SESSION_TTL: int = 7200
 
     # API 限流
     RATE_LIMIT_REQUESTS: int = 30
     RATE_LIMIT_WINDOW: int = 60
+
+    # 媒体工具配置
+    MEDIA_UPLOAD_DIR: str = "uploads/media"
+    MEDIA_MAX_FILE_SIZE_MB: int = 500
+    MEDIA_TEMP_DIR: str = "uploads/media/tmp"
+    MEDIA_RESULT_EXPIRY_HOURS: int = 24
+    MEDIA_CELERY_QUEUE: str = "media_tasks"
+    MEDIA_WORKER_CONCURRENCY: int = 2
 
     class Config:
         env_file = ".env"

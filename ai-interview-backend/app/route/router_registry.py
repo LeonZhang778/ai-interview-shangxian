@@ -92,7 +92,7 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/shared",
         tags=["client-shared"]
     ),
-    RouteConfig(
+RouteConfig(
         module_path="app.api.client.v1.notebook",
         prefix=f"{settings.API_V1_STR}/notebooks",
         tags=["client-notebook"]
@@ -101,6 +101,16 @@ CLIENT_ROUTES = [
         module_path="app.api.client.v1.note_template",
         prefix=f"{settings.API_V1_STR}/note-templates",
         tags=["client-note-template"]
+    ),
+    RouteConfig(
+        module_path="app.api.client.v1.media.files",
+        prefix=f"{settings.API_V1_STR}/media-tools",
+        tags=["client-media-tools"]
+    ),
+    RouteConfig(
+        module_path="app.api.client.v1.media.tasks",
+        prefix=f"{settings.API_V1_STR}/media-tools",
+        tags=["client-media-tools"]
     ),
 ]
 

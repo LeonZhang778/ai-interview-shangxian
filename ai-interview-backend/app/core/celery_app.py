@@ -30,10 +30,19 @@ celery_app.conf.task_queues = {
         'exchange': 'scheduled_tasks',
         'routing_key': 'scheduled_tasks',
     },
+    'media_tasks': {
+        'exchange': 'media_tasks',
+        'routing_key': 'media_tasks',
+    },
     'celery': {  # 默认队列
         'exchange': 'celery',
         'routing_key': 'celery',
     }
+}
+
+# 媒体任务路由：所有 media.* 任务自动路由到 media_tasks 队列
+celery_app.conf.task_routes = {
+    'app.schedule.jobs.media_tasks.*': {'queue': 'media_tasks'},
 }
 
 # Optional: Configure other Celery settings

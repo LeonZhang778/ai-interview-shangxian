@@ -82,6 +82,11 @@ full_page_*.png
 admin_experiences*.png
 test_*.png
 
+# ---------- 测试媒体文件 ----------
+ai-interview-backend/test_media*.mp4
+ai-interview-backend/test_media*.mp3
+ai-interview-backend/test_media_converted*
+
 # ---------- 其他 ----------
 *.log
 *.bak
