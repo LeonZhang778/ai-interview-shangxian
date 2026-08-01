@@ -40,14 +40,20 @@ jobs:
         env:
           BACKEND_IMAGE: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
           DEPLOY_COMMIT: ${{ github.sha }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           command_timeout: 12m
-          envs: BACKEND_IMAGE,DEPLOY_COMMIT
+          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY
           script: |
             set -e
+
+            if [ -z "$AI_API_KEY" ]; then
+              echo "Missing required GitHub Actions secret: AI_API_KEY"
+              exit 1
+            fi
 
             echo "Deploy commit: $DEPLOY_COMMIT"
             echo "Deploy image: $BACKEND_IMAGE"
@@ -60,6 +66,37 @@ jobs:
 
             cd ai-interview-backend
             export BACKEND_IMAGE="$BACKEND_IMAGE"
+
+            # 仅更新服务器本地 .env 中的 Qwen 配置，真实密钥来自 GitHub Secret，绝不写入 Git。
+            AI_API_KEY="$AI_API_KEY" python3 - <<'PY'
+            import os
+            from pathlib import Path
+
+            env_path = Path('.env')
+            existing = env_path.read_text(encoding='utf-8') if env_path.exists() else ''
+            values = {
+                'AI_API_KEY': os.environ['AI_API_KEY'],
+                'AI_BASE_URL': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                'AI_MODEL': 'qwen-plus',
+            }
+            lines = existing.splitlines()
+            seen = set()
+            output = []
+            for line in lines:
+                key = line.split('=', 1)[0].strip() if '=' in line else ''
+                if key in values:
+                    output.append(f'{key}={values[key]}')
+                    seen.add(key)
+                else:
+                    output.append(line)
+            if output and output[-1] != '':
+                output.append('')
+            for key, value in values.items():
+                if key not in seen:
+                    output.append(f'{key}={value}')
+            env_path.write_text('\\n'.join(output).rstrip() + '\\n', encoding='utf-8')
+            PY
+            chmod 600 .env
 
             docker pull "$BACKEND_IMAGE"
             docker image inspect "$BACKEND_IMAGE" --format 'Pulled image={{.Id}}'
