@@ -12,6 +12,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
     g++ \
     pkg-config \
     default-libmysqlclient-dev \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -27,5 +28,5 @@ USER app
 
 EXPOSE 8006
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${API_PORT:-8006}/api/v1/config/health')" || exit 1
+    CMD sh -c "ffmpeg -version >/dev/null 2>&1 && ffprobe -version >/dev/null 2>&1 && python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${API_PORT:-8006}/api/v1/config/health')\"" || exit 1
 CMD ["python", "main.py"]

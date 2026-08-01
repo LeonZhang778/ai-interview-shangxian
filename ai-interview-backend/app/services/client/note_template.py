@@ -79,7 +79,7 @@ TEMPLATES: Dict[str, NoteTemplate] = {
         description="分析一道面试错题，找出薄弱点",
         icon="❌",
         note_type="mistake",
-        markdown="""# {题目名称} — 错题分析
+markdown="""# {题目名称} - 错题分析
 
 ## 题目信息
 - **题目：**

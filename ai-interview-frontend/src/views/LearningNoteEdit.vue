@@ -121,18 +121,19 @@
                 <div v-if="templateLoading" class="loading-state">加载中...</div>
                 <div v-else-if="templates.length === 0" class="empty-state">暂无可用模板</div>
                 <div v-else class="template-grid">
-                  <div
-                    v-for="tpl in templates"
-                    :key="tpl.id"
-                    class="template-card"
-                    :class="{ active: selectedTemplate === tpl.id }"
-                    @click="applyTemplate(tpl.id)"
-                  >
-                    <div class="template-card-title">{{ tpl.name }}</div>
-                    <div v-if="tpl.description" class="template-card-desc">{{ tpl.description }}</div>
-                    <div class="template-card-meta">
-                      <span class="template-category">{{ tpl.category || '通用' }}</span>
-                    </div>
+                  <div v-for="tpl in templates" :key="tpl.id" class="template-card-wrapper">
+                    <button
+                      type="button"
+                      class="template-card"
+                      :class="{ active: selectedTemplate === tpl.id }"
+                      @click="applyTemplate(tpl.id)"
+                    >
+                      <div class="template-card-title">{{ tpl.name }}</div>
+                      <div v-if="tpl.description" class="template-card-desc">{{ tpl.description }}</div>
+                      <div class="template-card-meta">
+                        <span class="template-category">{{ typeLabel(tpl.note_type) }}</span>
+                      </div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -370,14 +371,26 @@ async function loadTemplates() {
 }
 
 async function applyTemplate(templateId) {
+  const template = templates.value.find(item => item.id === templateId)
+  if (!template) return
+
+  if (form.value.content.trim()) {
+    const confirmed = window.confirm('应用模板会覆盖当前内容，确定继续吗？')
+    if (!confirmed) return
+  }
+
   showTemplateDialog.value = false
   try {
     const detail = await getTemplateDetail(templateId)
     if (detail?.markdown) {
       form.value.content = detail.markdown
+      if (detail.note_type) {
+        form.value.note_type = detail.note_type
+      }
     }
     selectedTemplate.value = templateId
   } catch (e) {
+    error.value = e?.message || '应用模板失败'
     console.error('应用模板失败', e)
   }
 }
@@ -426,6 +439,10 @@ const typeOptions = [
   { value: 'experience', label: '面经' },
   { value: 'material', label: '资料' },
 ]
+
+function typeLabel(value) {
+  return typeOptions.find(option => option.value === value)?.label || '通用'
+}
 
 // 将嵌套的笔记本树展平，添加路径前缀
 function flattenNotebooks(notebooks, prefix = '') {
@@ -1071,6 +1088,9 @@ label {
   gap: 12px;
 }
 .template-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
   padding: 14px;
   border: 1px solid var(--border-default);
   border-radius: 10px;
@@ -1116,6 +1136,10 @@ label {
 
 /* === 手机端适配 === */
 @media (max-width: 640px) {
+  .template-grid {
+    grid-template-columns: 1fr;
+  }
+
   .page-header {
     padding: 20px 14px 8px;
     gap: 10px;

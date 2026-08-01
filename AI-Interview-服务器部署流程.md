@@ -10,7 +10,7 @@
 
 1. 打开 https://github.com/new
 2. Repository name: `ai-interview`
-3. 选 **Private** (项目包含 API Key 和邮箱密码)
+3. 选 **Private**（项目部署配置不应包含真实密钥）
 4. 不要勾选 README / .gitignore
 5. 点 Create repository
 
@@ -74,8 +74,8 @@ ai-interview/                    ← 仓库根目录
     │   ├── requirements.txt
     │   ├── main.py
     │   ├── alembic.ini
-    │   ├── .env                 ← 包含 API Key 和邮箱配置
-    │   └── .env.production
+    ├── .env.example
+    └── .env.production
     ├── ai-interview-frontend/   ← Vue 用户端前端
     │   ├── src/
     │   ├── package.json
@@ -259,18 +259,18 @@ ENV=production
 POSTGRES_HOST=postgres
 REDIS_HOST=redis
 
-# 设置 Redis 密码 (生产环境必须)
-REDIS_PASSWORD=R3d!s_A1_2026_Sec
+# 设置 Redis 密码 (生产环境必须，使用密码管理器生成并填入，不要提交到 Git)
+REDIS_PASSWORD=<生成的强随机 Redis 密码>
 
-# 改用强密码 (替换 123456)
-POSTGRES_PASSWORD=Xk9$mP2vL7qR4wN8
+# 改用强密码 (替换 123456，使用密码管理器生成并填入)
+POSTGRES_PASSWORD=<生成的强随机 PostgreSQL 密码>
 
 # 改用自定义数据库名
 POSTGRES_DB=ai_interview
 POSTGRES_USER=ai_user
 
-# JWT 密钥替换为强密钥
-SECRET_KEY=a3f8b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
+# JWT 密钥替换为强密钥 (至少 32 字节，使用密码管理器生成并填入)
+SECRET_KEY=<生成的强随机 JWT 密钥>
 
 # 前端地址 (暂时用 IP, 绑域名后改)
 FRONTEND_URL=http://8.166.120.119
@@ -281,30 +281,32 @@ API_PORT=8001
 
 ### 6.2 不需要修改的配置
 
-以下保持原样:
+以下保持原样。敏感值请从本机安全环境变量或密码管理器注入:
 
 ```env
-# QQ 邮箱 (确认授权码有效即可)
+# QQ 邮箱
 MAIL_HOST=smtp.qq.com
 MAIL_PORT=465
-MAIL_USERNAME=1448203623@qq.com
-MAIL_PASSWORD=qxxbeqhanjsbjcga
+MAIL_USERNAME=<QQ 邮箱地址>
+MAIL_PASSWORD=<QQ 邮箱授权码，不要提交到 Git>
 
-# 智谱 GLM (确认有额度即可)
-AI_API_KEY=70041ddde9824461bfb02fac3f469fc3.pDZCoxOgkovIx1vT
+# 智谱 GLM
+AI_API_KEY=<智谱 API Key，不要提交到 Git>
 AI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
 AI_MODEL=glm-4.7-flash
 ```
 
-### 6.3 凭据速查表 (保存到本地)
+### 6.3 凭据速查表 (仅记录变量名，不要在文档或仓库中保存真实值)
 
-| 项目 | 值 |
-|------|-----|
-| PostgreSQL 用户名 | `ai_user` |
-| PostgreSQL 密码 | `Xk9$mP2vL7qR4wN8` |
-| PostgreSQL 数据库 | `ai_interview` |
-| Redis 密码 | `R3d!s_A1_2026_Sec` |
-| JWT SECRET_KEY | `a3f8b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0` |
+| 项目 | 配置方式 |
+|------|----------|
+| PostgreSQL 用户名 | `POSTGRES_USER` |
+| PostgreSQL 密码 | 通过 `.env` 本地注入，禁止提交到 Git |
+| PostgreSQL 数据库 | `POSTGRES_DB` |
+| Redis 密码 | 通过 `.env` 本地注入，禁止提交到 Git |
+| JWT SECRET_KEY | 通过 `.env` 本地注入，禁止提交到 Git |
+| 邮箱授权码 | 通过 `MAIL_PASSWORD` 本地注入，禁止提交到 Git |
+| AI API Key | 通过 `AI_API_KEY` 本地注入，禁止提交到 Git |
 
 ---
 

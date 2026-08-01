@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'http://8.166.120.119'
+const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:8000'
 
 test.describe('面试评分机制测试', () => {
 
