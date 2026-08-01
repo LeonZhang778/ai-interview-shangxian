@@ -93,12 +93,11 @@
           <label>
             标签（最多 5 个）
             <button
-              v-if="isEditMode"
               type="button"
               class="btn-ai-tag"
               @click="loadAiTags"
               :disabled="loadingTags"
-            >🤖 {{ aiTags.length ? '重新推荐' : 'AI 推荐标签' }}</button>
+            >🤖 {{ hasAiRecommendation ? '重新推荐' : 'AI 推荐标签' }}</button>
           </label>
           <div class="tag-input-area">
             <input
@@ -197,6 +196,7 @@ const tagInput = ref('')
 const aiTags = ref([])
 const aiTagsReason = ref('')
 const loadingTags = ref(false)
+const hasAiRecommendation = ref(false)
 
 const form = ref({
   title: '',
@@ -242,14 +242,17 @@ function removeTag(idx) {
 function toggleAiTag(tag) {
   const arr = tagsArray.value
   if (arr.includes(tag)) {
-    arr.splice(arr.indexOf(tag), 1)
-  } else {
-    if (arr.length >= 5) {
-      error.value = '最多 5 个标签'
-      return
-    }
-    arr.push(tag)
+    // 已选中则取消选中
+    const idx = arr.indexOf(tag)
+    arr.splice(idx, 1)
+    tagsArray.value = arr
+    return
   }
+  if (arr.length >= 5) {
+    error.value = '最多 5 个标签'
+    return
+  }
+  arr.push(tag)
   tagsArray.value = arr
 }
 
@@ -261,9 +264,10 @@ async function loadAiTags() {
   loadingTags.value = true
   error.value = ''
   try {
-    const res = await suggestTags(route.params.id)
+    const res = await suggestTags(route.params.id, hasAiRecommendation.value)
     aiTags.value = res.tags || []
     aiTagsReason.value = res.reason || ''
+    hasAiRecommendation.value = true
   } catch (e) {
     error.value = e?.message || 'AI 标签推荐失败'
     console.error(e)

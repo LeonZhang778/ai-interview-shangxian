@@ -36,15 +36,15 @@
         🌐 公开笔记 · 无需登录即可阅读
       </div>
 
-      <!-- 面试回流关联入口 -->
+<!-- 面试回流关联入口 -->
       <div v-if="note.interview_id && note.is_owner" class="interview-link">
-        <router-link :to="`/report/${note.interview_id}`" class="link-text">
+        <router-link :to="`/interview/${note.interview_id}/report`" class="link-text">
           📋 查看关联的 AI 面试报告 →
         </router-link>
       </div>
 
-      <!-- AI 摘要 + 要点速览 -->
-      <div v-if="note.is_owner" class="summary-block">
+<!-- AI 摘要 + 要点速览（所有人可见，但仅所有者可操作） -->
+      <div class="summary-block">
         <div v-if="summaryLoading" class="summary-loading">AI 摘要生成中...</div>
         <template v-else>
           <div v-if="summary || keyPoints.length" class="summary-card">
@@ -56,7 +56,11 @@
               </ul>
             </div>
           </div>
-          <button class="btn-regenerate" @click="regenerateSummary">
+          <button
+            v-if="note.is_owner"
+            class="btn-regenerate"
+            @click="regenerateSummary"
+          >
             {{ summary || keyPoints.length ? '🔄 重新生成摘要' : '✨ 生成 AI 摘要' }}
           </button>
         </template>
@@ -196,6 +200,10 @@ async function loadData() {
     // bytemd Viewer 异步渲染，双重等待确保 DOM 就绪
     await nextTick()
     requestAnimationFrame(() => buildToc())
+    // 如果笔记有内容但无摘要，且是所有者，自动触发 AI 摘要生成
+    if (data.is_owner && data.content && data.content.trim() && !data.summary) {
+      regenerateSummary()
+    }
   } catch (e) {
     console.error(e)
     note.value = null

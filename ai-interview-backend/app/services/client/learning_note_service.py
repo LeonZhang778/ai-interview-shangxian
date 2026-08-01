@@ -550,8 +550,9 @@ class LearningNoteService:
                 "key_points": json.loads(note.key_points) if note.key_points else [],
             }
 
-        # 检查 LLM 缓存（防止完全相同的笔记内容重复调用 AI）
-        cache_content = note.content[:500]
+# 检查 LLM 缓存（防止完全相同的笔记内容重复调用 AI）
+        # 缓存键包含标题+类型+内容前缀，与 suggest_tags 的策略一致
+        cache_content = f"{note.title}\n{note.note_type}\n{note.content[:2000]}"
         cached = await redis_client.get_llm_cache("note_summary", cache_content)
         if cached and not force:
             note.summary = cached.get("summary", "")[:300]
@@ -579,7 +580,8 @@ class LearningNoteService:
             note.key_points = json.dumps(key_points, ensure_ascii=False)
             await db.commit()
 
-            # 写入 LLM 缓存（TTL 7 天，笔记内容不变时无需重新生成）
+# 写入 LLM 缓存（TTL 7 天，笔记内容不变时无需重新生成）
+            # 缓存键使用与读取时一致的 cache_content（含标题+类型+内容前缀）
             await redis_client.set_llm_cache(
                 "note_summary", cache_content,
                 {"summary": summary, "key_points": key_points},
@@ -616,8 +618,12 @@ class LearningNoteService:
             return {"tags": [], "reason": ""}
 
         # 检查 LLM 缓存（相同内容不重复调用 AI）
-        cache_content = note.content[:500]
-        cached = await redis_client.get_llm_cache("note_tags", cache_content)
+        cache_content = f"{note.title}\n{note.note_type}\n{note.content[:2000]}"
+        try:
+            cached = await redis_client.get_llm_cache("note_tags", cache_content)
+        except Exception as e:
+            logger.warning("读取笔记标签缓存失败: note_id=%s, %s", note_id, e)
+            cached = None
         if cached and not force:
             return cached
 
@@ -644,15 +650,18 @@ class LearningNoteService:
             result_data = {"tags": tags, "reason": reason}
 
             # 写入 LLM 缓存（TTL 7 天，笔记内容不变时无需重新生成）
-            await redis_client.set_llm_cache(
-                "note_tags", cache_content, result_data,
-                ttl=7 * 24 * 3600
-            )
+            try:
+                await redis_client.set_llm_cache(
+                    "note_tags", cache_content, result_data,
+                    ttl=7 * 24 * 3600
+                )
+            except Exception as e:
+                logger.warning("写入笔记标签缓存失败: note_id=%s, %s", note_id, e)
 
             return result_data
         except Exception as e:
             logger.error(f"笔记标签推荐失败: note_id={note_id}, {e}")
-            return {"tags": [], "reason": "", "error": str(e)}
+            return {"tags": [], "reason": "暂时无法生成标签，请稍后重试"}
 
 
 learning_note_service = LearningNoteService()
