@@ -41,17 +41,22 @@ jobs:
           BACKEND_IMAGE: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
           DEPLOY_COMMIT: ${{ github.sha }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
-        with:
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           command_timeout: 12m
-          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY
-          script: |
+          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY,POLLINATIONS_API_KEY
+
             set -e
 
             if [ -z "$AI_API_KEY" ]; then
               echo "Missing required GitHub Actions secret: AI_API_KEY"
+              exit 1
+            fi
+            if [ -z "$POLLINATIONS_API_KEY" ]; then
+              echo "Missing required GitHub Actions secret: POLLINATIONS_API_KEY"
               exit 1
             fi
 
@@ -68,18 +73,19 @@ jobs:
             export BACKEND_IMAGE="$BACKEND_IMAGE"
 
             # 仅更新服务器本地 .env 中的 Qwen 配置，真实密钥来自 GitHub Secret，绝不写入 Git。
-            AI_API_KEY="$AI_API_KEY" python3 - <<'PY'
-            import os
+            AI_API_KEY="$AI_API_KEY" POLLINATIONS_API_KEY="$POLLINATIONS_API_KEY" python3 - <<'PY'
+
             from pathlib import Path
 
             env_path = Path('.env')
             existing = env_path.read_text(encoding='utf-8') if env_path.exists() else ''
             values = {
                 'AI_API_KEY': os.environ['AI_API_KEY'],
+                'POLLINATIONS_API_KEY': os.environ['POLLINATIONS_API_KEY'],
                 'AI_BASE_URL': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
                 'AI_MODEL': 'qwen-plus',
             }
-            lines = existing.splitlines()
+
             seen = set()
             output = []
             for line in lines:

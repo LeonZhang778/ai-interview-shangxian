@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = "/app/uploads"
 POLLINATIONS_API_URL = "https://apihub.agnes-ai.com/v1/images/generations"
-POLLINATIONS_API_KEY = "sk-6Ur9hxvujlpbPvzqkXWgbaTASbXUGUucFrl6mk85fTLQLKZe"
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
 
 
 class ImageService:
