@@ -72,10 +72,10 @@ class Settings(BaseSettings):
     # OpenAI 配置
     OPENAI_API_KEY: str = "your-openai-api-key"
 
-    # AI 配置（智谱 GLM）
+# AI 配置（通义千问 Qwen）
     AI_API_KEY: str = ""
-    AI_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
-    AI_MODEL: str = "glm-4.7-flash"
+    AI_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    AI_MODEL: str = "qwen-plus"
     AI_TIMEOUT: int = 30
     AI_MAX_RETRIES: int = 3
     AI_RETRY_MIN_WAIT: int = 1

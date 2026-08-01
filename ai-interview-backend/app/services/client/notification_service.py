@@ -19,6 +19,7 @@ class NotificationService:
         notification_type: str = "system",
         related_id: Optional[int] = None,
         related_type: Optional[str] = None,
+        commit: bool = True,
     ) -> None:
         """创建通知"""
         try:
@@ -31,7 +32,8 @@ class NotificationService:
                 related_type=related_type,
             )
             db.add(notification)
-            await db.commit()
+            if commit:
+                await db.commit()
         except Exception as e:
             logger.warning(f"Failed to create notification: {e}")
             await db.rollback()

@@ -88,6 +88,58 @@
           </select>
         </div>
 
+        <!-- 笔记模板 -->
+        <div class="form-group">
+          <label>
+            笔记模板
+            <span class="hint">选择一个模板快速填充内容结构</span>
+          </label>
+          <div class="template-selector">
+            <button
+              type="button"
+              class="btn-template"
+              @click="showTemplateDialog = true"
+              :disabled="templateLoading"
+            >
+              📋 {{ selectedTemplate ? '更换模板' : '选择模板' }}
+            </button>
+            <span v-if="selectedTemplate" class="template-applied">
+              已应用模板
+            </span>
+          </div>
+        </div>
+
+        <!-- 模板选择弹窗 -->
+        <Teleport to="body">
+          <div v-if="showTemplateDialog" class="modal-overlay" @click.self="showTemplateDialog = false">
+            <div class="modal-panel">
+              <div class="modal-header">
+                <h3>选择笔记模板</h3>
+                <button class="modal-close" @click="showTemplateDialog = false">✕</button>
+              </div>
+              <div class="modal-body">
+                <div v-if="templateLoading" class="loading-state">加载中...</div>
+                <div v-else-if="templates.length === 0" class="empty-state">暂无可用模板</div>
+                <div v-else class="template-grid">
+                  <div
+                    v-for="tpl in templates"
+                    :key="tpl.id"
+                    class="template-card"
+                    :class="{ active: selectedTemplate === tpl.id }"
+                    @click="applyTemplate(tpl.id)"
+                  >
+                    <div class="template-card-title">{{ tpl.name }}</div>
+                    <div v-if="tpl.description" class="template-card-desc">{{ tpl.description }}</div>
+                    <div class="template-card-meta">
+                      <span class="template-category">{{ tpl.category || '通用' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Teleport>
+
         <!-- 标签（逗号分隔，最多 5 个） -->
         <div class="form-group">
           <label>
@@ -173,7 +225,7 @@ import gfm from '@bytemd/plugin-gfm'
 import highlight from '@bytemd/plugin-highlight'
 import 'bytemd/dist/index.css'
 import 'highlight.js/styles/github-dark.css'
-import { createNote, updateNote, getNoteDetail, uploadNoteImage, getNotebooks, suggestTags } from '../api/learningNote'
+import { createNote, updateNote, getNoteDetail, uploadNoteImage, getNotebooks, suggestTags, getTemplates, getTemplateDetail } from '../api/learningNote'
 
 const plugins = [
   gfm(),
@@ -190,6 +242,12 @@ const notebookLoading = ref(false)
 const notebooks = ref([])
 const isEditMode = computed(() => !!route.params.id)
 const fileInput = ref(null)
+
+// 模板选择
+const templates = ref([])
+const templateLoading = ref(false)
+const showTemplateDialog = ref(false)
+const selectedTemplate = ref(null)
 
 // 标签管理：form.tags 保留为逗号字符串供提交，tagsArray 是前端操作的数组视图
 const tagInput = ref('')
@@ -299,6 +357,31 @@ async function loadNotebooks() {
   }
 }
 
+async function loadTemplates() {
+  templateLoading.value = true
+  try {
+    const res = await getTemplates()
+    templates.value = res?.templates || []
+  } catch (e) {
+    console.error('加载模板失败', e)
+  } finally {
+    templateLoading.value = false
+  }
+}
+
+async function applyTemplate(templateId) {
+  showTemplateDialog.value = false
+  try {
+    const detail = await getTemplateDetail(templateId)
+    if (detail?.markdown) {
+      form.value.content = detail.markdown
+    }
+    selectedTemplate.value = templateId
+  } catch (e) {
+    console.error('应用模板失败', e)
+  }
+}
+
 function handleEditorChange(v) {
   form.value.content = v
 }
@@ -396,7 +479,8 @@ async function handleSubmit() {
 
 async function loadEditData() {
   if (!isEditMode.value) {
-    // 新建笔记时，先加载笔记本列表
+    // 新建笔记时，先加载笔记本列表和模板
+    loadTemplates()
     await loadNotebooks()
     // 如果 URL query 有 notebook_id，自动选中
     if (route.query.notebook_id) {
@@ -405,6 +489,8 @@ async function loadEditData() {
     return
   }
   loading.value = true
+  // 同时加载模板列表
+  loadTemplates()
   try {
     const data = await getNoteDetail(route.params.id)
     form.value = {
@@ -890,6 +976,142 @@ label {
 }
 .btn-cancel:hover {
   background: rgba(255,255,255,0.1);
+}
+
+/* === 模板选择器 === */
+.template-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.btn-template {
+  padding: 8px 16px;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 8px;
+  color: var(--accent-light);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-template:hover:not(:disabled) {
+  background: rgba(99,102,241,0.2);
+}
+.btn-template:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.template-applied {
+  font-size: 12px;
+  color: #22c55e;
+}
+
+/* 模板选择弹窗 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-default);
+}
+.modal-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.modal-close:hover {
+  color: var(--text-primary);
+}
+.modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.template-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.template-card {
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255,255,255,0.03);
+}
+.template-card:hover {
+  border-color: rgba(99,102,241,0.4);
+  background: rgba(99,102,241,0.06);
+}
+.template-card.active {
+  border-color: rgba(99,102,241,0.5);
+  background: rgba(99,102,241,0.1);
+}
+.template-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.template-card-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.template-card-meta {
+  display: flex;
+  gap: 6px;
+}
+.template-category {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(99,102,241,0.1);
+  color: var(--accent-light);
 }
 
 /* === 手机端适配 === */

@@ -127,6 +127,18 @@ export function uploadNoteImage(file) {
   })
 }
 
+// ==================== 笔记模板 ====================
+
+// 获取所有笔记模板列表
+export function getTemplates() {
+  return api.get('/note-templates/templates')
+}
+
+// 获取模板详情（含 Markdown 正文）
+export function getTemplateDetail(id) {
+  return api.get(`/note-templates/templates/${id}`)
+}
+
 // ==================== 笔记本 ====================
 
 // 获取笔记本树

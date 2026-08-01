@@ -3,7 +3,7 @@ import uuid
 import mimetypes
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, UploadFile, File
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.client.deps import get_current_user, get_current_user_optional
@@ -51,7 +51,17 @@ class NoteFromInterviewBody(BaseModel):
 
 class TagApplyBody(BaseModel):
     """应用 AI 推荐标签时提交的标签列表"""
-    tags: list[str]
+    tags: list[str] = Field(..., min_length=1, max_length=5)
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str]) -> list[str]:
+        cleaned = [tag.strip() for tag in value if tag and tag.strip()]
+        if not cleaned:
+            raise ValueError("至少需要一个有效标签")
+        if any(len(tag) > 20 for tag in cleaned):
+            raise ValueError("单个标签不能超过 20 个字符")
+        return list(dict.fromkeys(cleaned))[:5]
 
 
 @router.post("/upload-image")

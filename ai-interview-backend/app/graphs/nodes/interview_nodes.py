@@ -318,6 +318,7 @@ async def save_results_node(state: dict) -> dict:
                 notification_type="interview",
                 related_id=interview_id,
                 related_type="interview",
+                commit=False,
             )
         except Exception as e:
             logger.warning(f"发送面试完成通知失败: {e}")
