@@ -105,7 +105,7 @@ async def create_convert_task(
         options_json=options,
     )
 
-    # 6. 记录事件
+# 6. 记录事件
     await MediaEventRepository.create(
         db=db,
         task_id=task.id,
@@ -114,9 +114,12 @@ async def create_convert_task(
         payload_json={"tool_code": tool_code, "target_format": target_format},
     )
 
-    # TODO: 后续步骤 - 启动 Celery 媒体任务
-    # from app.schedule.jobs.media_tasks import process_media_task
-    # process_media_task.delay(task.id)
+    # 7. 异步提交到 Celery 媒体队列
+    try:
+        from app.schedule.jobs.media_tasks import process_media_task
+        process_media_task.delay(task.id)
+    except Exception as e:
+        logger.warning(f"Celery 任务提交失败（任务已创建，可手动重试）: {e}")
 
     return ApiResponse.success(
         data={

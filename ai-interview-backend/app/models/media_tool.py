@@ -49,6 +49,7 @@ class MediaTask(BaseModel):
     output_file_id = Column(Integer, ForeignKey("media_files.id", ondelete="SET NULL"), nullable=True, index=True)
     progress = Column(Integer, nullable=False, default=0)
     error_code = Column(String(80), nullable=True)
+    error_message = Column(String, nullable=True)
     retry_count = Column(Integer, nullable=False, default=0)
     celery_task_id = Column(String(255), nullable=True, index=True)
     started_at = Column(TIMESTAMP(timezone=True), nullable=True)

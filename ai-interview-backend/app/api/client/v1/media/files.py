@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, UploadFile, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -205,3 +206,32 @@ async def get_capabilities():
     """获取格式、编码器和工具能力（公开）"""
     caps = format_config.get_capabilities()
     return ApiResponse.success(data=caps)
+
+
+@router.get("/files/{file_id}/raw")
+async def download_media_file_raw(
+    file_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """流式下载媒体文件原始内容"""
+    record = await MediaFileRepository.get_by_id(db, file_id, current_user.id)
+    if not record:
+        raise NotFoundError(message="文件不存在")
+
+    if record.expires_at and record.expires_at < datetime.now(timezone.utc):
+        raise APIException(code=10414, message="文件已过期", status_code=410)
+
+    file_path = record.storage_key
+    if not os.path.exists(file_path):
+        raise NotFoundError(message="文件已从磁盘移除")
+
+    media_type = record.media_type or "application/octet-stream"
+    return FileResponse(
+        path=file_path,
+        media_type=media_type,
+        filename=record.original_name,
+        headers={
+            "Content-Disposition": f'attachment; filename="{record.original_name}"',
+        },
+    )
