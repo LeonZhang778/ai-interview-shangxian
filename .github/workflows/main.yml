@@ -72,7 +72,7 @@ jobs:
             cd ai-interview-backend
             export BACKEND_IMAGE="$BACKEND_IMAGE"
 
-# 更新服务器本地 .env 配置：AI 密钥来自 GitHub Secret，基础设施变量使用安全默认值。
+            # 更新服务器本地 .env 配置：AI 密钥来自 GitHub Secret，基础设施变量使用安全默认值。
             # 注意：POSTGRES_PASSWORD 生产环境应改为强密码，此处使用开发默认值。
             AI_API_KEY="$AI_API_KEY" POLLINATIONS_API_KEY="$POLLINATIONS_API_KEY" python3 - <<'PY'
             import os
