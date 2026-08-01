@@ -2,12 +2,15 @@
 
 ## 1. 公共约定
 
-- Base URL：`/api/v1/media-tools`。
-- 认证：客户端接口使用现有 `Authorization: Bearer <access_token>`。
+- Base URL：`/api/v1/media-tools`；实际前缀使用 `settings.API_V1_STR`，并通过 `app.route.router_registry.CLIENT_ROUTES` 注册。
+- 认证：客户端接口使用现有 `Authorization: Bearer <access_token>`，用户级接口依赖 `get_current_user`。
 - 请求：JSON；上传接口使用 `multipart/form-data`。
-- 成功响应沿用当前项目 `ApiResponse` 结构。
-- 错误响应至少包含 `code`、`message`、`request_id`。
-- 前端不传物理路径，只传 `file_id`、`task_id`。
+- 成功响应沿用当前项目 `ApiResponse.success` 结构：`{code, message, data}`，创建任务使用 HTTP 202，上传成功使用 HTTP 201。
+- 失败响应沿用 `ApiResponse.failed` 或 `APIException`：至少包含业务 `code` 和 `message`，`data` 可承载稳定错误字段；`request_id` 只有在全局响应/中间件已提供时才能声明，媒体路由不得单独伪造。
+- 前端不传物理路径，只传 `file_id`、`task_id` 和后端生成的短期下载地址。
+- 所有文件、任务、下载查询必须同时带当前用户条件；管理员接口另行使用后台权限依赖。
+- 功能开关和额度配置通过 `app.services.common.setting_service` 读取；开关关闭时返回 `media_feature_disabled`，更新设置后必须失效 `system_settings` Redis 缓存。
+- Redis 进度键使用媒体专用命名空间，例如 `media:task:{task_id}:progress`，必须设置 TTL，不得与限流键或 LLM 缓存键混用。
 
 ## 2. Endpoint 表
 

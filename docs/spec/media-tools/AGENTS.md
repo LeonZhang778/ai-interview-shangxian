@@ -12,10 +12,14 @@
 
 - 后端使用 FastAPI + SQLAlchemy + Alembic + Celery + Redis + PostgreSQL。
 - 路由使用 `/api/v1/media-tools`，文件使用 `snake_case`，工具代码使用稳定小写字符串。
-- 通过当前认证依赖获取用户，不创建第二套登录体系。
+- 通过当前认证依赖 `get_current_user` 获取用户，不创建第二套登录体系。
+- 路由必须加入 `app.route.router_registry.CLIENT_ROUTES`，使用 `settings.API_V1_STR` 生成 `/api/v1/media-tools` 前缀，不在模块内绕过注册中心。
 - 通过 `file_id` 和 `task_id` 访问资源，不接受前端物理路径。
-- 统一使用当前项目响应和异常体系。
-- 生产部署沿用 `AI-Interview-服务器部署流程.md` 和现有 Docker Compose，不新增公网端口。
+- 用户级查询必须带 `current_user.id`；管理员统计使用后台认证依赖并默认只返回聚合数据。
+- 成功/失败响应使用 `ApiResponse`，业务异常使用 `APIException` 及其子类；不要在媒体模块创建重复响应格式。
+- 功能开关、限制和保留策略使用 `setting_service`，设置变更后必须失效 Redis 设置缓存。
+- Redis 进度键使用媒体专用命名空间和 TTL；Celery 媒体任务使用独立队列或显式路由。
+
 
 ## 安全硬规则
 
@@ -28,6 +32,16 @@
 ## UI 规则
 
 复用当前主站视觉、组件、主题和通知体系，不复制项目1页面。移动优先 375px；每页有 loading/empty/error/success 四态；每个交互有 hover/focus-visible/active/disabled；进度有文本和 `role=progressbar`。颜色使用项目现有 token，不硬编码主题色。
+
+## 5. 工程自检清单
+
+实现前必须确认以下事实：
+
+- `CLIENT_ROUTES` 已注册媒体模块，且路由前缀来自 `settings.API_V1_STR`。
+- 用户级依赖使用 `get_current_user`，查询条件包含 `current_user.id`。
+- 开关、文件大小、并发和保留时长通过 `setting_service` 获取，配置更新调用 `invalidate_settings_cache`。
+- Redis 进度 key 使用 `media:` 前缀并设置 TTL；Celery 任务只传 `task_id` 等 JSON 数据，不传本地路径。
+- 错误响应可通过 `APIException` 的业务码、HTTP 状态码和 `data` 定位；不得新增与公共响应冲突的格式。
 
 ## 验证规则
 

@@ -33,7 +33,24 @@ timestamp level service event request_id user_id task_id tool_code stage progres
 - `media.result.download`
 - `media.cleanup`
 
-## 4. 告警
+## 4. 当前后端实现约束
+
+- API 业务异常沿用 `APIException` 的 `code/status_code/data` 字段，并通过 `get_message` 做消息本地化；媒体错误码应作为稳定业务码映射到该结构，不能仅抛出裸 `HTTPException`。
+- 成功和失败响应沿用 `ApiResponse.success/failed` 的 `{code, message, data}` 契约。若需要 `request_id`，应由全局中间件或响应层统一注入，并在实现前同步更新公共响应契约。
+- 功能开关、大小限制、保留期限和并发策略从 `get_setting/get_setting_bool` 读取。设置更新后调用 `invalidate_settings_cache`，避免 worker 和 API 继续使用旧策略。
+- Redis 进度写入使用 `media:task:{task_id}:progress`、`media:task:{task_id}:stage` 等专用键，并设置不短于任务恢复窗口的 TTL。Redis 不可用时，数据库状态仍必须保持可追踪，禁止创建“已入队但无记录”的任务。
+- Celery 任务应加入媒体专用队列或路由，避免 FFmpeg CPU 任务与邮件、图片任务互相争抢；任务参数使用 JSON 可序列化的 `task_id`，worker 重新从数据库读取并校验所有权和状态。
+- 进度更新、任务事件和日志不得记录 token、密码、签名 URL、完整本地路径或用户媒体内容。
+
+## 5. 日志格式
+
+```text
+timestamp level service event request_id user_id task_id tool_code stage progress error_code duration_ms
+```
+
+不得记录 token、密码、完整对象存储签名 URL、用户文件内容或 FFmpeg 命令中的敏感路径。
+
+## 6. 告警
 
 - 5 分钟内任务失败率 > 10%：通知开发负责人。
 - Celery 媒体队列等待 p95 > 120 秒：通知运维。

@@ -21,18 +21,20 @@
 
 ## 3. 现有代码引用
 
-- `ai-interview-backend/app/route/router_registry.py:9-120`：客户端路由注册中心。
-- `ai-interview-backend/app/route/route.py:30-160`：FastAPI 生命周期、中间件和统一应用入口。
-- `ai-interview-backend/app/core/celery_app.py:1-20`：Celery 应用配置。
+- `ai-interview-backend/app/route/router_registry.py:1-120`：客户端路由注册中心；媒体模块应新增客户端 `RouteConfig`，由 `settings.API_V1_STR` 拼接前缀，不在业务文件内重复注册。
+- `ai-interview-backend/app/route/route.py:84-160`：FastAPI 应用创建、生命周期和中间件入口。
+- `ai-interview-backend/app/api/client/deps.py:1-70`：`get_current_user` 认证依赖；媒体用户级接口必须复用该依赖，不能创建第二套 token 校验。
+- `ai-interview-backend/app/core/celery_app.py:1-55`：Celery broker/backend、JSON 序列化、任务超时和 worker 并发配置；媒体任务应加入独立队列或明确路由配置。
 - `ai-interview-backend/app/core/config.py:1-100`：配置和环境变量入口。
 - `ai-interview-backend/requirements.txt:1-51`：当前 Python 依赖。
 - `ai-interview-backend/docker-compose.yml:1-110`：线上 app、Celery、Redis、PostgreSQL 编排。
-- `ai-interview-backend/app/services/common/redis.py`：Redis 封装。
-- `ai-interview-backend/app/db/session.py`：数据库会话。
-- `ai-interview-backend/app/schemas/response.py`：统一响应格式。
-- `ai-interview-backend/app/core/security.py`：当前用户认证。
+- `ai-interview-backend/app/services/common/redis.py:1-170`：异步 Redis 封装；媒体进度可复用 `set_with_ttl/get`，但必须使用媒体专用 key 命名空间，不得复用限流或 LLM 缓存 key。
+- `ai-interview-backend/app/services/common/setting_service.py:1-45`：系统设置读取和 Redis 缓存；功能开关、大小限制、保留时长和并发策略从此服务读取，更新后调用缓存失效。
+- `ai-interview-backend/app/exceptions/http_exceptions.py:1-63`：`APIException` 及业务异常基类；媒体业务异常应映射到现有 `code/status_code/data` 结构。
+- `ai-interview-backend/app/schemas/response.py:1-65`：`ApiResponse.success/failed` 统一响应；当前失败响应不自动包含 `request_id`，若媒体接口要求关联请求，应由现有中间件或响应扩展统一补充，不在单个媒体路由内伪造。
+- `ai-interview-backend/app/core/security.py:1-80`：当前用户认证和 token 工具。
 - `ai-interview-backend/app/utils/utils.py:22-320`：S3、文件和安全工具。
-- `C:/Users/admin/Desktop/项目1/server/index.ts:400-520`：上传和 FFprobe 校验。
+
 - `C:/Users/admin/Desktop/项目1/server/index.ts:650-1000`：格式、编码器、分辨率和压缩规则。
 - `C:/Users/admin/Desktop/项目1/server/index.ts:1330-1470`：文字/图片水印构建。
 - `C:/Users/admin/Desktop/项目1/server/index.ts:1541-1740`：视频合并任务。

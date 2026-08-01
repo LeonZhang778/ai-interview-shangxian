@@ -15,5 +15,6 @@ from .feedback import Feedback
 from .audit_log import AuditLog
 from .page_view import PageView
 from .notification import Notification
+from .media_tool import MediaEvent, MediaFile, MediaTask
 
-__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "CollectionGroup", "LearningNote", "Notebook", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView", "Notification"]
+__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "CollectionGroup", "LearningNote", "Notebook", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView", "Notification", "MediaFile", "MediaTask", "MediaEvent"]

@@ -3,15 +3,15 @@
 按依赖顺序执行，完成一项后勾选并运行当前项目验证命令。
 
 - [ ] T001 · 确认 FFmpeg/FFprobe 版本并加入 app、celery-worker 镜像 — ref 00-context.md§7、09-nfr-slo.md§5
-- [ ] T002 · 新增 `media_tools_enabled`、P0/P1 开关 — ref 08-rollout.md§1
-- [ ] T003 · 创建 `media_files`、`media_tasks`、`media_task_events` Alembic migration — ref 02-data-model.md§2-4
+- [ ] T002 · 新增 `media_tools_enabled`、P0/P1 开关，并接入 `setting_service` 缓存失效 — ref 08-rollout.md§1、00-context.md§3
+
 - [ ] T004 · 创建媒体 ORM Model、Repository 和用户范围查询 — ref 02-data-model.md§5、05-rbac.md§3
 - [ ] T005 · 实现 FFprobe 媒体探测服务 — ref 00-context.md§4、10-test-plan.md§1
 - [ ] T006 · 提取项目1格式别名、编码器默认值和兼容矩阵为 Python 配置 — ref 00-context.md§4、10-test-plan.md§1
 - [ ] T007 · 实现媒体文件上传与探测接口 `POST /api/v1/media-tools/files` — ref 03-api-contract.md§2、STORY-001
 - [ ] T008 · 实现文件元数据、删除和用户权限校验 — ref 03-api-contract.md§2、05-rbac.md
-- [ ] T009 · 实现 Celery 媒体任务基类、Redis 进度和 PostgreSQL 状态同步 — ref 04-state-machines.md、07-observability.md
-- [ ] T010 · 实现 P0 转换任务 `POST /tasks/convert`，覆盖转换/压缩/截取/提取音频/音频转换 — ref 03-api-contract.md§2、01-prd.md§4
+- [ ] T009 · 实现 Celery 媒体任务基类、专用队列、Redis 进度和 PostgreSQL 状态同步 — ref 04-state-machines.md、07-observability.md、00-context.md§3
+
 - [ ] T011 · 实现任务查询、取消、重试、历史和下载接口 — ref 03-api-contract.md§2、STORY-002
 - [ ] T012 · 接入日志事件、trace span 和失败告警字段 — ref 07-observability.md
 - [ ] T013 · 新增 P0 前端工具首页和转换、压缩、音频工具页面 — ref 06-ux-flows.md§1-5

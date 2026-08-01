@@ -21,6 +21,8 @@ stop.ps1
 .codepus/
 .codepus-todos.json
 
+.codepus.json
+
 # ---------- Python ----------
 __pycache__/
 *.py[cod]
@@ -32,8 +34,15 @@ venv/
 # ---------- Node.js ----------
 node_modules/
 
-# ---------- 前端构建产物 ----------
-# 前后端静态产物需要随仓库同步到服务器，不能忽略
+# ---------- 测试产物 ----------
+ai-interview-frontend/test-results/
+
+# ---------- 环境配置 ----------
+.env
+.env.*
+!.env.example
+
+
 
 # ---------- 后端运行时 ----------
 ai-interview-backend/logs/
