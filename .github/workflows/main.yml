@@ -107,15 +107,15 @@ jobs:
             fi
 
             echo "Synchronizing PostgreSQL password after backup..."
-            docker exec ai-interview-postgres psql -U postgres -d postgres \
-              -v "password=$POSTGRES_PASSWORD" \
-              -v ON_ERROR_STOP=1 \
-              -c "ALTER ROLE postgres PASSWORD :'password';"
+            postgres_password_sql=${POSTGRES_PASSWORD//\'/\'\'}
+            printf "ALTER ROLE postgres PASSWORD '%s';\n" "$postgres_password_sql" \
+              | docker exec -i ai-interview-postgres psql -U postgres -d postgres \
+                  -v ON_ERROR_STOP=1
 
             export BACKEND_IMAGE="$BACKEND_IMAGE"
 
             echo "Writing complete .env..."
-            AI_API_KEY="$AI_API_KEY" \
+
             POLLINATIONS_API_KEY="$POLLINATIONS_API_KEY" \
             POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
             REDIS_PASSWORD="$REDIS_PASSWORD" \
