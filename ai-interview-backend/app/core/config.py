@@ -10,9 +10,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     API_PORT: int = 8006
     FRONTEND_URL: str = "http://localhost:3000"
+    # API worker 数量通过环境变量配置。生产环境默认单 worker，避免小规格服务器
 
-    # Docker 端口配置（可选，用于 docker-compose）
-    REDIS_EXTERNAL_PORT: int = 6386
+    API_WORKERS: int = 1
+
     NGINX_HTTP_PORT: int = 8086
     NGINX_HTTPS_PORT: int = 8446
     FLOWER_PORT: int = 5556

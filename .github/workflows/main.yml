@@ -131,8 +131,8 @@ jobs:
                 'PROJECT_NAME': 'AI-Interview',
                 'API_V1_STR': '/api/v1',
                 'API_PORT': '8006',
-                'POSTGRES_USER': 'postgres',
-                'POSTGRES_PASSWORD': os.environ['POSTGRES_PASSWORD'],
+                'API_WORKERS': '1',
+
                 'POSTGRES_HOST': 'postgres',
                 'POSTGRES_PORT': '5432',
                 'POSTGRES_DB': 'postgres',
@@ -172,8 +172,8 @@ jobs:
             chmod 600 .env
 
             echo "Validating required .env variables..."
-            required_env="ENV API_V1_STR API_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT POSTGRES_DB REDIS_HOST REDIS_PORT REDIS_PASSWORD AI_API_KEY AI_BASE_URL AI_MODEL POLLINATIONS_API_KEY"
-            for env_name in $required_env; do
+            required_env="ENV API_V1_STR API_PORT API_WORKERS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT POSTGRES_DB REDIS_HOST REDIS_PORT REDIS_PASSWORD AI_API_KEY AI_BASE_URL AI_MODEL POLLINATIONS_API_KEY"
+
               if ! grep -q "^${env_name}=" .env; then
                 echo "Missing required .env variable: $env_name"
                 exit 1
