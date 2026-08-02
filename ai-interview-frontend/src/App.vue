@@ -14,6 +14,7 @@
             <router-link to="/my/experiences">我的投稿</router-link>
             <router-link to="/collections">我的收藏</router-link>
             <router-link to="/image-studio">AI 绘图</router-link>
+            <router-link to="/media-tools">媒体工具</router-link>
             <router-link to="/dashboard">面试记录</router-link>
             <router-link to="/analysis">面试分析</router-link>
             <router-link to="/resume/upload">上传简历</router-link>

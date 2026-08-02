@@ -20,6 +20,7 @@ const routes = [
   { path: '/my/experiences/:id/edit', name: 'EditExperience', component: () => import('../views/ExperienceSubmit.vue'), meta: { auth: true } },
   { path: '/experiences/:id', name: 'ExperienceDetail', component: () => import('../views/ExperienceDetail.vue') },
   { path: '/image-studio', name: 'ImageStudio', component: () => import('../views/ImageStudio.vue'), meta: { auth: true } },
+  { path: '/media-tools', name: 'MediaTools', component: () => import('../views/MediaTools.vue'), meta: { auth: true } },
   { path: '/announcements', name: 'Announcements', component: () => import('../views/Announcements.vue') },
   { path: '/announcements/:id', name: 'AnnouncementDetail', component: () => import('../views/AnnouncementDetail.vue') },
   { path: '/feedbacks', name: 'MyFeedbacks', component: () => import('../views/MyFeedbacks.vue'), meta: { auth: true } },

@@ -332,11 +332,11 @@ async def _process_convert_task(task_id: int):
             if audio_bitrate:
                 cmd.extend(["-b:a", audio_bitrate])
 
-            # 提取音频（无视频流）
+# 提取音频（无视频流）
             if tool_code == "extract_audio":
                 cmd.extend(["-vn"])
 
-cmd.append(output_path)
+            cmd.append(output_path)
 
             logger.info(f"FFmpeg cmd: {' '.join(cmd)}")
             span_id = "span_ffmpeg_start"
@@ -392,11 +392,11 @@ cmd.append(output_path)
                 error_output = "\n".join(stderr_lines[-20:])
                 raise RuntimeError(f"FFmpeg 失败 (code={proc.returncode}): {error_output[:500]}")
 
-            # 6. 检查输出文件
+# 6. 检查输出文件
             if not os.path.exists(output_path):
                 raise RuntimeError("FFmpeg 未生成输出文件")
 
-output_size = os.path.getsize(output_path)
+            output_size = os.path.getsize(output_path)
             if output_size == 0:
                 os.remove(output_path)
                 raise RuntimeError("输出文件为空")
@@ -436,7 +436,7 @@ output_size = os.path.getsize(output_path)
                 event="task_completed", task_id=task_id, trace_id=trace_id,
                 span_id=span_id, user_id=user_id,
                 extra={"output_file_id": output_file.id, "output_size": output_size},
-            )
+)
             await _update_task_status(
                 db, task_id, "completed",
                 progress=100, output_file_id=output_file.id,
@@ -465,7 +465,7 @@ output_size = os.path.getsize(output_path)
                     os.remove(output_path)
                 except OSError:
                     pass
-await _update_task_status(
+            await _update_task_status(
                 db, task_id, "failed",
                 error_code="FFMPEG_ERROR",
                 error_message=str(e)[:500],
