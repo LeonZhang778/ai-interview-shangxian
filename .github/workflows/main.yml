@@ -16,12 +16,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate deployment secrets
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+
+          required_secrets="AI_API_KEY POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD"
+          for secret_name in $required_secrets; do
+            if [ -z "${!secret_name:-}" ]; then
+              echo "Missing required GitHub Actions secret: $secret_name"
+              exit 1
+            fi
+          done
+
       - name: Log in to ACR
         uses: docker/login-action@v3
         with:
           registry: ${{ secrets.ACR_REGISTRY }}
           username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+
 
       - name: Build backend image
         run: |
