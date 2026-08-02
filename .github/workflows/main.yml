@@ -38,6 +38,7 @@ jobs:
         with:
           registry: ${{ secrets.ACR_REGISTRY }}
           username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
 
       - name: Build backend image
