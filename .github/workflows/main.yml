@@ -261,9 +261,10 @@ jobs:
             test "$public_health_status" = 200
 
             echo "Checking frontend, admin and API..."
-            frontend_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/)
-            admin_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/admin/)
-            api_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/api/v1/config/release)
+            frontend_status=$(curl -k -sS -o /dev/null -w '%{http_code}' https://localhost/)
+            admin_status=$(curl -k -sS -o /dev/null -w '%{http_code}' https://localhost/admin/)
+            api_status=$(curl -k -sS -o /dev/null -w '%{http_code}' https://localhost/api/v1/config/release)
+            echo "HTTPS status: frontend=$frontend_status admin=$admin_status api=$api_status"
             test "$frontend_status" = 200
             test "$admin_status" = 200
             test "$api_status" = 200
@@ -283,8 +284,8 @@ jobs:
 
             echo "Waiting for containers..."
             for i in $(seq 1 12); do
-              status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/api/v1/config/health || true)
-              basic_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/health || true)
+              status=$(curl -k -sS -o /dev/null -w '%{http_code}' https://localhost/api/v1/config/health || true)
+              basic_status=$(curl -k -sS -o /dev/null -w '%{http_code}' https://localhost/health || true)
               if [ "$status" = 200 ] && [ "$basic_status" = 200 ]; then
                 echo "Health checks passed: detailed=$status basic=$basic_status"
                 exit 0
