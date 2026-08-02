@@ -8,7 +8,6 @@ Create Date: 2026-08-02 23:05:00.000000
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
 
 revision: str = "j3c4d5e6f7g8"
@@ -18,8 +17,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("media_tasks", sa.Column("error_message", sa.Text(), nullable=True))
+    op.execute("ALTER TABLE media_tasks ADD COLUMN IF NOT EXISTS error_message TEXT")
 
 
 def downgrade() -> None:
-    op.drop_column("media_tasks", "error_message")
+    op.execute("ALTER TABLE media_tasks DROP COLUMN IF EXISTS error_message")
