@@ -42,126 +42,201 @@ jobs:
           DEPLOY_COMMIT: ${{ github.sha }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 12m
-          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY,POLLINATIONS_API_KEY
+          command_timeout: 20m
+          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY,POLLINATIONS_API_KEY,POSTGRES_PASSWORD,REDIS_PASSWORD
           script: |
-            set -e
+            set -Eeuo pipefail
 
-            if [ -z "$AI_API_KEY" ]; then
-              echo "Missing required GitHub Actions secret: AI_API_KEY"
-              exit 1
-            fi
-            if [ -z "$POLLINATIONS_API_KEY" ]; then
-              echo "Missing required GitHub Actions secret: POLLINATIONS_API_KEY"
-              exit 1
-            fi
+            required_secrets="AI_API_KEY POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD"
+            for secret_name in $required_secrets; do
+              if [ -z "${!secret_name:-}" ]; then
+                echo "Missing required GitHub Actions secret: $secret_name"
+                exit 1
+              fi
+            done
+
+            cd /home/deploy/ai-interview
+            git stash push --include-untracked --message "deploy-$DEPLOY_COMMIT" || true
+            git pull --ff-only origin main
+            cd ai-interview-backend
 
             echo "Deploy commit: $DEPLOY_COMMIT"
             echo "Deploy image: $BACKEND_IMAGE"
+            echo "Disk usage:"
+            df -h / /home
+            echo "Container status before deploy:"
+            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
 
-            cd /home/deploy/ai-interview
-            git stash || true
-            git pull origin main
-            echo "Server git commit:"
-            git log -1 --oneline
+            timestamp=$(date +%Y%m%d%H%M%S)
+            backup_dir="/home/deploy/ai-interview/backups"
+            mkdir -p "$backup_dir"
 
-            cd ai-interview-backend
+            echo "Backing up PostgreSQL..."
+            docker exec ai-interview-postgres pg_dump -U postgres -d postgres -Fc > "$backup_dir/postgres-$timestamp.dump"
+            test -s "$backup_dir/postgres-$timestamp.dump"
+            chmod 600 "$backup_dir/postgres-$timestamp.dump"
+
+            echo "Backing up current .env..."
+            if [ -f .env ]; then
+              cp -p .env "$backup_dir/env-$timestamp.backup"
+              chmod 600 "$backup_dir/env-$timestamp.backup"
+            fi
+
+            echo "Synchronizing PostgreSQL password after backup..."
+            docker exec ai-interview-postgres psql -U postgres -d postgres \
+              -v "password=$POSTGRES_PASSWORD" \
+              -v ON_ERROR_STOP=1 \
+              -c "ALTER ROLE postgres PASSWORD :'password';"
+
             export BACKEND_IMAGE="$BACKEND_IMAGE"
 
-            # 更新服务器本地 .env 配置：AI 密钥来自 GitHub Secret，基础设施变量使用安全默认值。
-            # 注意：POSTGRES_PASSWORD 生产环境应改为强密码，此处使用开发默认值。
-            AI_API_KEY="$AI_API_KEY" POLLINATIONS_API_KEY="$POLLINATIONS_API_KEY" python3 - <<'PY'
+            echo "Writing complete .env..."
+            AI_API_KEY="$AI_API_KEY" \
+            POLLINATIONS_API_KEY="$POLLINATIONS_API_KEY" \
+            POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            REDIS_PASSWORD="$REDIS_PASSWORD" \
+            python3 - <<'PY'
             import os
+            import re
             from pathlib import Path
 
             env_path = Path('.env')
             existing = env_path.read_text(encoding='utf-8') if env_path.exists() else ''
-            lines = existing.splitlines()
             values = {
-                # 来自 GitHub Secrets 的 AI 密钥
+                'ENV': 'production',
+                'PROJECT_NAME': 'AI-Interview',
+                'API_V1_STR': '/api/v1',
+                'API_PORT': '8006',
+                'POSTGRES_USER': 'postgres',
+                'POSTGRES_PASSWORD': os.environ['POSTGRES_PASSWORD'],
+                'POSTGRES_HOST': 'postgres',
+                'POSTGRES_PORT': '5432',
+                'POSTGRES_DB': 'postgres',
+                'REDIS_HOST': 'redis',
+                'REDIS_PORT': '6379',
+                'REDIS_PASSWORD': os.environ['REDIS_PASSWORD'],
                 'AI_API_KEY': os.environ['AI_API_KEY'],
-                'POLLINATIONS_API_KEY': os.environ['POLLINATIONS_API_KEY'],
                 'AI_BASE_URL': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
                 'AI_MODEL': 'qwen-plus',
-                # 基础设施变量（安全默认值，缺少时才写入）
-                'POSTGRES_USER': 'postgres',
-                'POSTGRES_PASSWORD': '123456',
-                'POSTGRES_DB': 'postgres',
-                'API_PORT': '8006',
-                'REDIS_PASSWORD': '',
+                'POLLINATIONS_API_KEY': os.environ['POLLINATIONS_API_KEY'],
             }
 
-            seen = set()
             output = []
-            for line in lines:
-                key = line.split('=', 1)[0].strip() if '=' in line else ''
+            seen = set()
+            assignment = re.compile(r'^([A-Za-z_][A-Za-z0-9_]*)=(.*)$')
+            for line in existing.splitlines():
+                match = assignment.match(line)
+                if not match:
+                    if line.strip() or output:
+                        output.append(line)
+                    continue
+                key = match.group(1)
                 if key in values:
                     output.append(f'{key}={values[key]}')
                     seen.add(key)
                 else:
                     output.append(line)
+
             if output and output[-1] != '':
                 output.append('')
             for key, value in values.items():
                 if key not in seen:
                     output.append(f'{key}={value}')
-            env_path.write_text('\\n'.join(output).rstrip() + '\\n', encoding='utf-8')
+
+            env_path.write_text('\n'.join(output).rstrip() + '\n', encoding='utf-8')
             PY
             chmod 600 .env
 
+            echo "Validating required .env variables..."
+            required_env="ENV API_V1_STR API_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT POSTGRES_DB REDIS_HOST REDIS_PORT REDIS_PASSWORD AI_API_KEY AI_BASE_URL AI_MODEL POLLINATIONS_API_KEY"
+            for env_name in $required_env; do
+              if ! grep -q "^${env_name}=" .env; then
+                echo "Missing required .env variable: $env_name"
+                exit 1
+              fi
+            done
+
+            echo "Validating Docker Compose configuration..."
+            compose_config="/tmp/ai-interview-compose-$timestamp.yml"
+            docker compose config > "$compose_config"
+            grep -q 'POSTGRES_USER: postgres' "$compose_config"
+            grep -q 'POSTGRES_DB: postgres' "$compose_config"
+            grep -q 'container_name: ai-interview-app' "$compose_config"
+
+            echo "Pulling backend image..."
             docker pull "$BACKEND_IMAGE"
             docker image inspect "$BACKEND_IMAGE" --format 'Pulled image={{.Id}}'
 
-            docker compose stop app celery-worker celery-beat || true
-
-            docker compose up -d --force-recreate --no-deps app
-            sleep 5
-            echo "Running DB migrations..."
-            docker exec ai-interview-app alembic upgrade head || true
-            echo "Migrations done."
-            for i in $(seq 1 12); do
-              APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
-              if [ "$APP_HEALTH" = "healthy" ]; then
+            echo "Starting PostgreSQL and Redis..."
+            docker compose up -d --force-recreate postgres redis
+            for i in $(seq 1 30); do
+              postgres_status=$(docker inspect --format='{{.State.Health.Status}}' ai-interview-postgres 2>/dev/null || echo missing)
+              redis_status=$(docker inspect --format='{{.State.Health.Status}}' ai-interview-redis 2>/dev/null || echo missing)
+              if [ "$postgres_status" = healthy ] && [ "$redis_status" = healthy ]; then
                 break
               fi
-              echo "Waiting for app container health ($i/12): $APP_HEALTH"
+              echo "Waiting for PostgreSQL/Redis healthy ($i/30): postgres=$postgres_status redis=$redis_status"
               sleep 5
             done
+            test "$(docker inspect --format='{{.State.Health.Status}}' ai-interview-postgres)" = healthy
+            test "$(docker inspect --format='{{.State.Health.Status}}' ai-interview-redis)" = healthy
 
-            APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
-            if [ "$APP_HEALTH" != "healthy" ]; then
-              echo "App failed to become healthy."
-              docker logs ai-interview-app --tail 100 || true
-              exit 1
-            fi
+            echo "Starting app..."
+            docker compose up -d --force-recreate --no-deps app
+            for i in $(seq 1 30); do
+              app_status=$(docker inspect --format='{{.State.Status}}' ai-interview-app 2>/dev/null || echo missing)
+              if [ "$app_status" = running ]; then
+                break
+              fi
+              echo "Waiting for app running ($i/30): $app_status"
+              sleep 3
+            done
+            test "$(docker inspect --format='{{.State.Status}}' ai-interview-app)" = running
 
+            echo "Running database migrations..."
+            docker exec ai-interview-app alembic upgrade head
+
+            echo "Checking direct app health..."
+            direct_health_status=$(docker exec ai-interview-app python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8006/api/v1/config/health', timeout=5).status)")
+            test "$direct_health_status" = 200
+
+            echo "Starting Celery worker..."
             docker compose up -d --force-recreate --no-deps celery-worker
+            echo "Starting Celery beat..."
             docker compose up -d --force-recreate --no-deps celery-beat
-            docker compose up -d --build --force-recreate --no-deps nginx
 
-            # Deploy host Nginx config (SSL termination + reverse proxy to Docker Nginx)
+            echo "Starting or reloading Nginx..."
+            docker compose up -d --force-recreate --no-deps nginx
+
             echo "Deploying host Nginx config..."
             mkdir -p /var/www/letsencrypt
             cp /home/deploy/ai-interview/deploy/host-nginx/ai-interview.conf /etc/nginx/sites-available/ai-interview
             rm -f /etc/nginx/sites-enabled/default
             ln -sf /etc/nginx/sites-available/ai-interview /etc/nginx/sites-enabled/ai-interview
-            nginx -t && systemctl reload nginx || systemctl start nginx
-            echo "Host Nginx deployed OK"
+            nginx -t
+            systemctl reload nginx || systemctl start nginx
 
-            echo "Container summary:"
+            echo "Checking public health..."
+            public_health_status=$(curl -sS -o /tmp/ai-interview-health.json -w '%{http_code}' http://localhost:80/api/v1/config/health)
+            test "$public_health_status" = 200
+
+            echo "Checking frontend, admin and API..."
+            frontend_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/)
+            admin_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/admin/)
+            api_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/api/v1/config/release)
+            test "$frontend_status" = 200
+            test "$admin_status" = 200
+            test "$api_status" = 200
+
+            echo "Final container status:"
             docker compose ps
-            echo "App container:"
-            docker inspect ai-interview-app --format 'ID={{.Id}} Image={{.Image}} StartedAt={{.State.StartedAt}}'
-            echo "Worker container:"
-            docker inspect ai-interview-celery-worker --format 'ID={{.Id}} Image={{.Image}} StartedAt={{.State.StartedAt}}'
-            echo "Beat container:"
-            docker inspect ai-interview-celery-beat --format 'ID={{.Id}} Image={{.Image}} StartedAt={{.State.StartedAt}}'
-            echo "Nginx container:"
-            docker inspect ai-interview-nginx --format 'ID={{.Id}} Image={{.Image}} StartedAt={{.State.StartedAt}}'
+            echo "Deployment completed successfully."
 
       - name: Health check
         uses: appleboy/ssh-action@v1
@@ -170,40 +245,22 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            set -e
+            set -Eeuo pipefail
 
             echo "Waiting for containers..."
-            sleep 8
-
             for i in $(seq 1 12); do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/api/v1/config/health 2>/dev/null || echo "000")
-              if [ "$STATUS" = "200" ]; then
-                echo "Health check passed (HTTP $STATUS)"
+              status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/api/v1/config/health || true)
+              basic_status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:80/health || true)
+              if [ "$status" = 200 ] && [ "$basic_status" = 200 ]; then
+                echo "Health checks passed: detailed=$status basic=$basic_status"
                 exit 0
               fi
-
-              APP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' ai-interview-app 2>/dev/null || echo "missing")
-              DIRECT_STATUS=$(docker exec ai-interview-app python -c "import os, urllib.request; port=os.getenv('API_PORT','8006'); print(urllib.request.urlopen(f'http://localhost:{port}/api/v1/config/health', timeout=3).status)" 2>/dev/null || echo "failed")
-              echo "Health check $i/12 failed: nginx HTTP $STATUS, app health $APP_HEALTH, direct app HTTP $DIRECT_STATUS"
+              echo "Health check $i/12 failed: detailed=$status basic=$basic_status"
               sleep 5
             done
 
-            echo "Health check failed. Container status:"
-            docker ps -a --filter name=ai-interview
-
-            echo "App logs:"
-            docker logs ai-interview-app --tail 50 || true
-
-            echo "Worker logs:"
+            docker compose -f /home/deploy/ai-interview/ai-interview-backend/docker-compose.yml ps || true
+            docker logs ai-interview-app --tail 100 || true
             docker logs ai-interview-celery-worker --tail 50 || true
-
-            echo "Beat logs:"
             docker logs ai-interview-celery-beat --tail 50 || true
-
-            echo "Nginx logs:"
-            docker logs ai-interview-nginx --tail 50 || true
-
-            echo "Nginx error log:"
-            docker exec ai-interview-nginx sh -c 'tail -n 50 /var/log/nginx/error.log' || true
-
             exit 1
