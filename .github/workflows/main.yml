@@ -207,20 +207,36 @@ jobs:
 
             echo "Starting app..."
             docker compose up -d --force-recreate --no-deps app
-            for i in $(seq 1 30); do
+            echo "Waiting for app process and HTTP health..."
+            app_ready=false
+            for i in $(seq 1 36); do
               app_status=$(docker inspect --format='{{.State.Status}}' ai-interview-app 2>/dev/null || echo missing)
-              if [ "$app_status" = running ]; then
+              if [ "$app_status" != "running" ]; then
+                echo "Waiting for app running ($i/36): $app_status"
+                sleep 5
+                continue
+              fi
+
+              direct_health_status=$(docker exec ai-interview-app python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8006/api/v1/config/health', timeout=5).status)" 2>/dev/null || true)
+              echo "App readiness check ($i/36): status=$app_status http=${direct_health_status:-unavailable}"
+              if [ "$direct_health_status" = "200" ]; then
+                app_ready=true
                 break
               fi
-              echo "Waiting for app running ($i/30): $app_status"
-              sleep 3
+              sleep 5
             done
-            test "$(docker inspect --format='{{.State.Status}}' ai-interview-app)" = running
+
+            if [ "$app_ready" != "true" ]; then
+              echo "App failed to become ready; collecting diagnostics..."
+              docker inspect --format='status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} exit={{.State.ExitCode}}' ai-interview-app || true
+              docker logs ai-interview-app --tail 200 || true
+              exit 1
+            fi
 
             echo "Running database migrations..."
             docker exec ai-interview-app alembic upgrade head
 
-            echo "Checking direct app health..."
+            echo "Checking direct app health after migrations..."
             direct_health_status=$(docker exec ai-interview-app python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8006/api/v1/config/health', timeout=5).status)")
             test "$direct_health_status" = 200
 
