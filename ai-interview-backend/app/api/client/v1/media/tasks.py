@@ -117,9 +117,34 @@ async def create_convert_task(
     # 7. 异步提交到 Celery 媒体队列
     try:
         from app.schedule.jobs.media_tasks import process_media_task
-        process_media_task.delay(task.id)
+        celery_result = process_media_task.delay(task.id)
+        await MediaTaskRepository.update_status(
+            db=db,
+            task_id=task.id,
+            status="pending",
+            celery_task_id=celery_result.id,
+        )
     except Exception as e:
-        logger.warning(f"Celery 任务提交失败（任务已创建，可手动重试）: {e}")
+        logger.exception("Celery 媒体任务提交失败: task_id=%s", task.id)
+        await MediaTaskRepository.update_status(
+            db=db,
+            task_id=task.id,
+            status="failed",
+            error_code="CELERY_SUBMIT_FAILED",
+            error_message="后台任务提交失败，请稍后重试",
+        )
+        await MediaEventRepository.create(
+            db=db,
+            task_id=task.id,
+            user_id=current_user.id,
+            event_name="task_submit_failed",
+            payload_json={"error": str(e)[:200]},
+        )
+        raise APIException(
+            code=10503,
+            message="后台任务提交失败，请稍后重试",
+            status_code=503,
+        ) from e
 
     return ApiResponse.success(
         data={
@@ -196,6 +221,30 @@ async def retry_media_task(
 ):
     """重试失败任务"""
     task = await MediaTaskRepository.retry_task(db, task_id, current_user.id)
+
+    try:
+        from app.schedule.jobs.media_tasks import process_media_task
+        celery_result = process_media_task.delay(task.id)
+        await MediaTaskRepository.update_status(
+            db=db,
+            task_id=task.id,
+            status="pending",
+            celery_task_id=celery_result.id,
+        )
+    except Exception as e:
+        logger.exception("Celery 媒体任务重试提交失败: task_id=%s", task.id)
+        await MediaTaskRepository.update_status(
+            db=db,
+            task_id=task.id,
+            status="failed",
+            error_code="CELERY_SUBMIT_FAILED",
+            error_message="后台任务重新提交失败，请稍后重试",
+        )
+        raise APIException(
+            code=10503,
+            message="后台任务重新提交失败，请稍后重试",
+            status_code=503,
+        ) from e
 
     await MediaEventRepository.create(
         db=db,

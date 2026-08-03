@@ -4,7 +4,8 @@ from math import ceil
 from typing import Optional, Dict, List
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.learning_note import LearningNote
+
+
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.exceptions.http_exceptions import NotFoundError, ValidationError

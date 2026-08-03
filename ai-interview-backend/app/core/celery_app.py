@@ -1,4 +1,4 @@
-import os
+import logging
 from celery import Celery
 from app.core.config import settings
 
@@ -46,18 +46,18 @@ celery_app.conf.task_queues = {
     }
 }
 
-# 媒体任务路由：所有 media.* 任务自动路由到 media_tasks 队列
+# 媒体任务路由：实际任务名为 media.process_media、media.health_check，统一投递到 media_tasks 队列
 celery_app.conf.task_routes = {
-    'app.schedule.jobs.media_tasks.*': {'queue': 'media_tasks'},
+    "media.*": {"queue": "media_tasks"},
 }
 
 # Optional: Configure other Celery settings
 celery_app.conf.update(
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
     task_track_started=True,
-    worker_concurrency=os.cpu_count(),
+    worker_concurrency=settings.MEDIA_WORKER_CONCURRENCY,
     task_time_limit=30 * 60,  # 30 minutes time limit
     task_soft_time_limit=15 * 60,  # 15 minutes soft time limit
 )
