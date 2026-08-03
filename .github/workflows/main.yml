@@ -271,6 +271,26 @@ jobs:
 
             echo "Final container status:"
             docker compose ps
+
+            echo "Cleaning old backend images..."
+            backend_repo="${BACKEND_IMAGE%:*}"
+            current_backend_image_id=$(docker image inspect "$BACKEND_IMAGE" --format '{{.Id}}')
+            docker image ls "$backend_repo" --format '{{.Repository}}:{{.Tag}}' \
+              | while read -r image_ref; do
+                  if [ -z "$image_ref" ] || [ "$image_ref" = "$BACKEND_IMAGE" ]; then
+                    continue
+                  fi
+
+                  image_id=$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)
+                  if [ -n "$image_id" ] && [ "$image_id" != "$current_backend_image_id" ]; then
+                    echo "Removing old backend image: $image_ref"
+                    docker image rm -f "$image_ref" || true
+                  fi
+                done
+            docker image prune -f || true
+            docker builder prune -f || true
+            docker system df || true
+
             echo "Deployment completed successfully."
 
       - name: Health check
