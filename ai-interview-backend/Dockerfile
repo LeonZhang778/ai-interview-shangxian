@@ -29,4 +29,4 @@ USER app
 EXPOSE 8006
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "ffmpeg -version >/dev/null 2>&1 && ffprobe -version >/dev/null 2>&1 && python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${API_PORT:-8006}/api/v1/config/health')\"" || exit 1
-CMD ["python", "main.py"]
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${API_PORT:-8006} --workers ${API_WORKERS:-2}"]

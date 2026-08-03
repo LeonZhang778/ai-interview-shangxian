@@ -233,6 +233,12 @@ EXTENSION_MEDIA_KIND: Dict[str, str] = {
 class FormatConfig:
     """格式配置查询类"""
 
+    # 保持配置常量可通过 format_config 实例访问，兼容 API 和 Celery 任务。
+    TOOL_CODES = TOOL_CODES
+    RESOLUTION_PRESETS = RESOLUTION_PRESETS
+    COMPRESSION_QUALITY = COMPRESSION_QUALITY
+    GIF_QUALITY = GIF_QUALITY
+
     @staticmethod
     def get_container_args(format_key: str) -> str:
         return CONTAINER_ARGS.get(format_key, "-f mp4")
