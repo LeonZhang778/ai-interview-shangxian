@@ -107,6 +107,13 @@ async def _dispose_engine():
         _session_factory = None
 
 
+async def _is_task_cancelled(db, task_id: int) -> bool:
+    result = await db.execute(
+        select(MediaTask.status).where(MediaTask.id == task_id)
+    )
+    return result.scalar_one_or_none() == "cancelled"
+
+
 async def _update_task_status(
     db, task_id: int, status: str, progress: Optional[int] = None,
     error_code: Optional[str] = None, error_message: Optional[str] = None,
@@ -117,6 +124,10 @@ async def _update_task_status(
     result = await db.execute(select(MediaTask).where(MediaTask.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
+        return
+
+    # 终态不可被迟到的 Worker 进度更新覆盖。
+    if task.status in ("completed", "failed", "cancelled") and status != task.status:
         return
 
     task.status = status
@@ -376,17 +387,19 @@ async def _process_convert_task(task_id: int):
                         total_dur = (input_file.duration_ms or 30000) / 1000
                         if total_dur > 0:
                             pct = min(95, int(10 + (seconds / total_dur) * 85))
-                            # 异步更新进度（不阻塞主流程）
-                            asyncio.ensure_future(
-                                _update_task_status(
-                                    db, task_id, "processing", progress=pct,
-                                    trace_id=trace_id, span_id="span_ffmpeg_progress",
-                                )
+                            await _update_task_status(
+                                db, task_id, "processing", progress=pct,
+                                trace_id=trace_id, span_id="span_ffmpeg_progress",
                             )
                     except (ValueError, IndexError):
                         pass
 
             await proc.wait()
+
+            if await _is_task_cancelled(db, task_id):
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+                return
 
             if proc.returncode != 0:
                 error_output = "\n".join(stderr_lines[-20:])
@@ -424,7 +437,7 @@ async def _process_convert_task(task_id: int):
                 metadata_json={"source_task_id": task_id, "tool_code": tool_code},
                 expires_at=datetime.now(timezone.utc).replace(
                     hour=0, minute=0, second=0, microsecond=0
-                ) + __import__("datetime").timedelta(days=1),
+                ) + timedelta(days=1),
             )
             db.add(output_file)
             await db.commit()

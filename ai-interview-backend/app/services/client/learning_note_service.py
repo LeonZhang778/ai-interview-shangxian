@@ -18,6 +18,18 @@ logger = logging.getLogger(__name__)
 class LearningNoteService:
 
     @staticmethod
+    def _safe_parse_json(value, default=None):
+        """安全解析 JSON 字符串，兼容已为 dict 或 None 的输入"""
+        if value is None:
+            return default if default is not None else {}
+        if isinstance(value, (dict, list)):
+            return value
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return default if default is not None else {}
+
+    @staticmethod
     async def search_notes(
         db: AsyncSession,
         keyword: str,
@@ -297,7 +309,7 @@ class LearningNoteService:
             "view_count": note.view_count,
             "like_count": note.like_count,
             "summary": note.summary,
-            "key_points": json.loads(note.key_points) if note.key_points else [],
+"key_points": LearningNoteService._safe_parse_json(note.key_points, []),
             "is_owner": is_owner,
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
@@ -411,13 +423,8 @@ class LearningNoteService:
         msg_result = await db.execute(msg_query)
         messages = msg_result.scalars().all()
 
-        # 解析报告
-        report = {}
-        if interview.report:
-            try:
-                report = json.loads(interview.report)
-            except json.JSONDecodeError:
-                report = {}
+# 解析报告
+        report = LearningNoteService._safe_parse_json(interview.report, {})
 
         # 按题型组装 Markdown 内容
         content_parts = []
@@ -548,7 +555,7 @@ class LearningNoteService:
         if note.summary and not force:
             return {
                 "summary": note.summary,
-                "key_points": json.loads(note.key_points) if note.key_points else [],
+"key_points": LearningNoteService._safe_parse_json(note.key_points, []),
             }
 
 # 检查 LLM 缓存（防止完全相同的笔记内容重复调用 AI）

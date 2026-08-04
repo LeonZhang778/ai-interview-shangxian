@@ -31,11 +31,11 @@ api.interceptors.response.use(
     return Promise.reject(new Error(data.message || '请求失败'))
   },
   async error => {
-    const originalRequest = error.config
+    const originalRequest = error.config || {}
     const authStore = useAuthStore()
 
     // 401 且有 refreshToken 且不是 refresh 请求本身 → 尝试刷新
-    if (error.response?.status === 401 && authStore.refreshToken && !originalRequest._retry && !originalRequest.url.includes('/auth/refresh')) {
+    if (error.response?.status === 401 && authStore.refreshToken && !originalRequest._retry && !originalRequest.url?.includes('/auth/refresh')) {
       originalRequest._retry = true
 
       if (isRefreshing) {

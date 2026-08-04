@@ -9,6 +9,7 @@ from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
+from app.utils.utils import safe_parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class InterviewService:
         if resume.status != "completed":
             raise ValidationError(message="简历尚未解析完成")
 
-        parsed_resume = json.loads(resume.parsed_content)
+        parsed_resume = safe_parse_json(resume.parsed_content, {})
 
         # 通过 AI 生成面试题目
         questions = await AIService.generate_questions(
@@ -207,12 +208,7 @@ class InterviewService:
         if interview.status != "completed":
             raise ValidationError(message="面试尚未完成")
 
-        report = {}
-        if interview.report:
-            try:
-                report = json.loads(interview.report)
-            except json.JSONDecodeError:
-                report = {}
+        report = safe_parse_json(interview.report, {})
 
         return {
             "interview_id": interview.id,
@@ -422,12 +418,7 @@ class InterviewService:
         if not interview:
             raise NotFoundError(message="分享链接无效或已失效")
 
-        report = {}
-        if interview.report:
-            try:
-                report = json.loads(interview.report)
-            except json.JSONDecodeError:
-                report = {}
+        report = safe_parse_json(interview.report, {})
 
         return {
             "interview_id": interview.id,

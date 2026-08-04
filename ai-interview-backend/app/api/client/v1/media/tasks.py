@@ -5,6 +5,8 @@
 """
 
 import logging
+import math
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -27,6 +29,44 @@ from app.services.media import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+_NUMBER_FIELDS = ("frame_rate", "sample_rate", "channels", "start_time", "duration")
+_BITRATE_RE = re.compile(r"^[1-9][0-9]{0,5}(k|M)$", re.IGNORECASE)
+_RESOLUTION_RE = re.compile(r"^[1-9][0-9]{1,4}x[1-9][0-9]{1,4}$")
+
+
+def _validate_options(data: dict, target_format: str) -> None:
+    video_codec = data.get("video_codec") or ""
+    audio_codec = data.get("audio_codec") or ""
+    if video_codec and not format_config.is_valid_codec(target_format, video_codec, "video"):
+        raise APIException(code=10401, message=f"目标格式不支持视频编码器: {video_codec}", status_code=400)
+    if audio_codec and not format_config.is_valid_codec(target_format, audio_codec, "audio"):
+        raise APIException(code=10401, message=f"目标格式不支持音频编码器: {audio_codec}", status_code=400)
+
+    resolution = data.get("resolution") or ""
+    if resolution and resolution not in format_config.RESOLUTION_PRESETS and not _RESOLUTION_RE.fullmatch(resolution):
+        raise APIException(code=10401, message="分辨率格式无效", status_code=400)
+
+    for field in _NUMBER_FIELDS:
+        value = data.get(field, 0)
+        if isinstance(value, bool):
+            raise APIException(code=10401, message=f"参数 {field} 必须为数字", status_code=400)
+        try:
+            numeric = float(value or 0)
+        except (TypeError, ValueError):
+            raise APIException(code=10401, message=f"参数 {field} 必须为数字", status_code=400)
+        if not math.isfinite(numeric) or numeric < 0:
+            raise APIException(code=10401, message=f"参数 {field} 必须为非负有限数字", status_code=400)
+
+    if float(data.get("frame_rate", 0) or 0) > 240:
+        raise APIException(code=10401, message="帧率不能超过 240", status_code=400)
+    if int(float(data.get("channels", 0) or 0)) > 32:
+        raise APIException(code=10401, message="声道数不能超过 32", status_code=400)
+    for field in ("video_bitrate", "audio_bitrate"):
+        bitrate = data.get(field) or ""
+        if bitrate and not _BITRATE_RE.fullmatch(str(bitrate)):
+            raise APIException(code=10401, message=f"参数 {field} 格式无效", status_code=400)
 
 
 @router.post("/tasks/convert", status_code=202)
@@ -70,8 +110,9 @@ async def create_convert_task(
         raise APIException(code=10401, message="缺少 file_id", status_code=400)
     if not target_format or not format_config.is_valid_format(target_format):
         raise APIException(code=10401, message=f"不支持的目标格式: {target_format}", status_code=400)
-    if tool_code not in format_config.TOOL_CODES:
+    if not format_config.is_valid_tool_code(tool_code):
         raise APIException(code=10401, message=f"不支持的工具代码: {tool_code}", status_code=400)
+    _validate_options(data, target_format)
 
     # 3. 检查文件
     file_record = await MediaFileRepository.get_by_id(db, file_id, current_user.id)

@@ -86,6 +86,11 @@ TOOL_CODES: Dict[str, str] = {
     "redact": "区域模糊/遮挡",
 }
 
+# 当前 Worker 已实现的工具。其余代码保留在能力配置中，待对应故事完成后再开放。
+IMPLEMENTED_TOOL_CODES = {
+    "convert", "compress", "trim", "extract_audio", "audio_convert",
+}
+
 # 格式 → 默认视频编码器
 DEFAULT_VIDEO_CODEC: Dict[str, str] = {
     "mp4": "libx264",
@@ -240,6 +245,11 @@ class FormatConfig:
     GIF_QUALITY = GIF_QUALITY
 
     @staticmethod
+    def is_valid_tool_code(tool_code: str) -> bool:
+        """检查工具代码是否合法且已由当前 Worker 实现"""
+        return tool_code in IMPLEMENTED_TOOL_CODES
+
+    @staticmethod
     def get_container_args(format_key: str) -> str:
         return CONTAINER_ARGS.get(format_key, "-f mp4")
 
@@ -269,7 +279,12 @@ class FormatConfig:
 
     @staticmethod
     def get_media_kind(format_key: str) -> str:
-        return FORMAT_MEDIA_KIND.get(format_key, "unknown")
+        """按格式返回 video、audio 或 image，未知格式返回 unknown。"""
+        return FORMAT_MEDIA_KIND.get(format_key.lower(), "unknown")
+
+    @staticmethod
+    def get_mime_type(format_key: str) -> str:
+        return EXTENSION_MIME.get(format_key.lower(), "application/octet-stream")
 
     @staticmethod
     def is_valid_codec(format_key: str, codec: str, codec_type: str = "video") -> bool:

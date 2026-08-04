@@ -16,6 +16,7 @@ from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
+from app.utils.utils import safe_parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ async def load_context_node(state: dict) -> dict:
     if not interview:
         return {"error": "面试记录不存在"}
 
-    # 获取上下文（简历或面经）
+# 获取上下文（简历或面经）
     parsed_resume = {}
     resume_id = None
     experience_id = None
@@ -42,7 +43,7 @@ async def load_context_node(state: dict) -> dict:
         resume_query = select(Resume).where(Resume.id == interview.resume_id)
         resume_result = await db.execute(resume_query)
         resume = resume_result.scalar_one_or_none()
-        parsed_resume = json.loads(resume.parsed_content) if resume and resume.parsed_content else {}
+        parsed_resume = safe_parse_json(resume.parsed_content, {})
         resume_id = interview.resume_id
     elif interview.experience_id:
         from app.models.experience import Experience

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
+from app.utils.utils import safe_parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -105,19 +106,8 @@ class ResumeService:
         if not resume:
             raise NotFoundError(message="简历不存在")
 
-        parsed_content = None
-        if resume.parsed_content:
-            try:
-                parsed_content = json.loads(resume.parsed_content)
-            except json.JSONDecodeError:
-                parsed_content = None
-
-        analysis = None
-        if resume.analysis:
-            try:
-                analysis = json.loads(resume.analysis)
-            except json.JSONDecodeError:
-                analysis = None
+        parsed_content = safe_parse_json(resume.parsed_content, None)
+        analysis = safe_parse_json(resume.analysis, None)
 
         return {
             "resume_id": resume.id,

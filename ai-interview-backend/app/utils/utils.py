@@ -1,3 +1,4 @@
+import json
 from fastapi import UploadFile
 from datetime import datetime
 from docx import Document
@@ -498,9 +499,29 @@ def normalize_tag(tag: str) -> str:
     if not tag:
         return tag
     tag = tag.strip()
-    # 去掉空格、连字符、下划线后做小写匹配
+# 去掉空格、连字符、下划线后做小写匹配
     lower = tag.lower().replace(" ", "").replace("-", "").replace("_", "")
     if lower in TAG_ALIASES:
         return TAG_ALIASES[lower]
     # 未知别名：首字母大写，其余保持
     return tag[0].upper() + tag[1:] if tag else tag
+
+
+def safe_parse_json(value, default=None):
+    """安全解析 JSON 字符串，兼容已为 dict/list 或 None 的输入。
+
+    Args:
+        value: 输入值（str, dict, list, None 等）
+        default: 解析失败时的默认值（None 时返回空 dict）
+
+    Returns:
+        解析后的 dict/list，或默认值
+    """
+    if value is None:
+        return default if default is not None else {}
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return default if default is not None else {}

@@ -8,6 +8,7 @@ from app.schemas.client.interview import InterviewStart, AnswerSubmit
 from app.services.client.interview_service import interview_service
 from app.schemas.response import ApiResponse
 from app.models.user import User
+from app.utils.utils import safe_parse_json
 
 router = APIRouter()
 
@@ -169,9 +170,8 @@ async def get_analysis(
     db: AsyncSession = Depends(get_db)
 ):
     """面试历史对比分析 - 增强版"""
-    import json
     from datetime import datetime, timedelta, timezone
-    from sqlalchemy import select, func, cast, Date
+    from sqlalchemy import select
     from app.models.interview import Interview
 
     # 查询已完成的面试
@@ -213,24 +213,21 @@ async def get_analysis(
     # ========== 维度分析（从报告中提取真实维度） ==========
     dimension_scores = {}
     for i in interviews:
-        if i.report:
-            try:
-                report = json.loads(i.report)
-                # 尝试从 dimension_scores 获取
-                dims = report.get("dimension_scores", {})
-                if dims:
-                    for dim_name, dim_score in dims.items():
-                        dimension_scores.setdefault(dim_name, []).append(float(dim_score))
-                else:
-                    # 回退到 question_scores 按类别聚合
-                    question_scores = report.get("question_scores", [])
-                    for qs in question_scores:
-                        category = qs.get("category") or qs.get("question", "")[:20]
-                        score = qs.get("score", 0)
-                        if category:
-                            dimension_scores.setdefault(category, []).append(float(score))
-            except (json.JSONDecodeError, TypeError):
-                pass
+        report = safe_parse_json(i.report, {})
+        if report:
+            # 尝试从 dimension_scores 获取
+            dims = report.get("dimension_scores", {})
+            if dims:
+                for dim_name, dim_score in dims.items():
+                    dimension_scores.setdefault(dim_name, []).append(float(dim_score))
+            else:
+                # 回退到 question_scores 按类别聚合
+                question_scores = report.get("question_scores", [])
+                for qs in question_scores:
+                    category = qs.get("category") or qs.get("question", "")[:20]
+                    score = qs.get("score", 0)
+                    if category:
+                        dimension_scores.setdefault(category, []).append(float(score))
 
     # 计算维度平均分
     dimension_avg = {}

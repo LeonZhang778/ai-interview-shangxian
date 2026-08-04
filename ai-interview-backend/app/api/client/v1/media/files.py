@@ -68,18 +68,11 @@ async def upload_media_file(
             status_code=400,
         )
 
-    # 读取文件内容
-    file_bytes = await file.read()
-    file_size = len(file_bytes)
-
-    # 大小限制
+    # 大小限制。分块读取，避免超大上传一次性占满进程内存。
     max_size_mb = int(await get_setting("media_file_max_size_mb", str(settings.MEDIA_MAX_FILE_SIZE_MB)))
-    if file_size > max_size_mb * 1024 * 1024:
-        raise APIException(
-            code=10402,
-            message=f"文件大小超过限制 ({max_size_mb}MB)",
-            status_code=413,
-        )
+    max_size_bytes = max_size_mb * 1024 * 1024
+    if max_size_bytes <= 0:
+        raise APIException(code=10402, message="媒体文件大小限制配置无效", status_code=500)
 
     # 3. 保存到临时目录
     upload_dir = os.path.join(settings.MEDIA_UPLOAD_DIR, str(current_user.id))
@@ -89,8 +82,29 @@ async def upload_media_file(
     unique_name = f"{uuid.uuid4().hex}.{ext}"
     temp_path = os.path.join(upload_dir, unique_name)
 
-    with open(temp_path, "wb") as f:
-        f.write(file_bytes)
+    file_size = 0
+    try:
+        with open(temp_path, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                file_size += len(chunk)
+                if file_size > max_size_bytes:
+                    raise APIException(
+                        code=10402,
+                        message=f"文件大小超过限制 ({max_size_mb}MB)",
+                        status_code=413,
+                    )
+                f.write(chunk)
+
+        if file_size == 0:
+            raise APIException(code=10401, message="不能上传空文件", status_code=400)
+
+    except Exception:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise
 
     try:
         # 4. 用 ffprobe 探测
@@ -226,12 +240,9 @@ async def download_media_file_raw(
     if not os.path.exists(file_path):
         raise NotFoundError(message="文件已从磁盘移除")
 
-    media_type = record.media_type or "application/octet-stream"
+    media_type = format_config.get_mime_type(record.source_format)
     return FileResponse(
         path=file_path,
         media_type=media_type,
         filename=record.original_name,
-        headers={
-            "Content-Disposition": f'attachment; filename="{record.original_name}"',
-        },
     )

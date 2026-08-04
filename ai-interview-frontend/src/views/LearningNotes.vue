@@ -6,6 +6,17 @@
       <p class="header-desc">沉淀面试知识，记录薄弱点，复盘每一次成长</p>
     </div>
 
+    <div v-if="errorMessage" class="page-message error-message" role="alert">
+      <span>{{ errorMessage }}</span>
+      <div class="message-actions">
+        <button type="button" class="message-retry" @click="loadData">重试</button>
+        <button type="button" class="message-close" aria-label="关闭错误提示" @click="errorMessage = ''">×</button>
+      </div>
+    </div>
+    <div v-if="actionMessage" class="page-message success-message" role="status">
+      {{ actionMessage }}
+    </div>
+
     <div class="main-container">
       <!-- 模式切换 -->
       <div class="mode-tabs">
@@ -44,7 +55,7 @@
             >
               <span class="node-icon">📋</span>
               <span class="node-name">全部笔记</span>
-              <button class="btn-export-all" @click.stop="handleExportAll" title="导出全部笔记为 ZIP">⬇ 导出</button>
+              <button class="btn-export-all" :disabled="actionLoading" @click.stop="handleExportAll" title="导出全部笔记为 ZIP">⬇ 导出</button>
             </div>
             <NotebookTreeNode
               v-for="nb in notebookTree"
@@ -275,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
 import NotebookTreeNode from '../components/NotebookTreeNode.vue'
@@ -304,6 +315,9 @@ const notes = ref([])
 const total = ref(0)
 const stats = ref({})
 const loading = ref(true)
+const actionLoading = ref(false)
+const errorMessage = ref('')
+const actionMessage = ref('')
 
 // 笔记本状态
 const notebookTree = ref([])
@@ -388,26 +402,47 @@ function formatTime(t) {
 // ====== 导出 ======
 
 async function handleExportNote(id) {
+  if (actionLoading.value) return
+  actionLoading.value = true
+  errorMessage.value = ''
+  actionMessage.value = ''
   try {
     await exportNote(id)
+    actionMessage.value = '笔记已开始下载'
   } catch (e) {
-    alert(e.message || '导出失败')
+    errorMessage.value = e.message || '导出失败，请稍后重试'
+  } finally {
+    actionLoading.value = false
   }
 }
 
 async function handleExportNotebook(id) {
+  if (actionLoading.value) return
+  actionLoading.value = true
+  errorMessage.value = ''
+  actionMessage.value = ''
   try {
     await exportNotebook(id)
+    actionMessage.value = '笔记本已开始下载'
   } catch (e) {
-    alert(e.message || '导出失败')
+    errorMessage.value = e.message || '导出失败，请稍后重试'
+  } finally {
+    actionLoading.value = false
   }
 }
 
 async function handleExportAll() {
+  if (actionLoading.value) return
+  actionLoading.value = true
+  errorMessage.value = ''
+  actionMessage.value = ''
   try {
     await exportAllNotes()
+    actionMessage.value = '全部笔记已开始下载'
   } catch (e) {
-    alert(e.message || '导出失败')
+    errorMessage.value = e.message || '导出失败，请稍后重试'
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -424,7 +459,7 @@ async function loadNotebooks() {
     const res = await getNotebooks()
     notebookTree.value = res.tree || []
   } catch (e) {
-    console.error('加载笔记本失败', e)
+    errorMessage.value = e.message || '加载笔记本失败，请稍后重试'
   }
 }
 
@@ -440,7 +475,7 @@ async function createNotebook() {
     showAddNotebook.value = false
     await loadNotebooks()
   } catch (e) {
-    console.error('创建笔记本失败', e)
+    errorMessage.value = e.message || '创建笔记本失败，请稍后重试'
   }
 }
 
@@ -454,7 +489,7 @@ async function handleAddChild({ parentId, name }) {
     await createNotebookApi({ name, parent_id: parentId })
     await loadNotebooks()
   } catch (e) {
-    console.error('创建子笔记本失败', e)
+    errorMessage.value = e.message || '创建子笔记本失败，请稍后重试'
   }
 }
 
@@ -463,7 +498,7 @@ async function handleRename({ id, name }) {
     await updateNotebook(id, { name })
     await loadNotebooks()
   } catch (e) {
-    console.error('重命名失败', e)
+    errorMessage.value = e.message || '重命名失败，请稍后重试'
   }
 }
 
@@ -476,7 +511,7 @@ async function handleDelete(id) {
     await loadNotebooks()
     await loadData()
   } catch (e) {
-    console.error('删除笔记本失败', e)
+    errorMessage.value = e.message || '删除笔记本失败，请稍后重试'
   }
 }
 
@@ -484,6 +519,7 @@ async function handleDelete(id) {
 
 async function loadData() {
   loading.value = true
+  errorMessage.value = ''
   try {
     const kw = keyword.value.trim()
 
@@ -499,7 +535,7 @@ async function loadData() {
       const res = await searchNotes(params)
       notes.value = res.items || []
       total.value = res.total || 0
-      if (mode.value === 'my') loadStats()
+      if (mode.value === 'my') await loadStats()
       return
     }
 
@@ -511,7 +547,7 @@ async function loadData() {
       const res = await getMyNotes(params)
       notes.value = res.items || []
       total.value = res.total || 0
-      loadStats()
+      await loadStats()
     } else {
       const params = { page: currentPage.value, size: pageSize, sort: sort.value }
       if (filterType.value) params.note_type = filterType.value
@@ -521,7 +557,7 @@ async function loadData() {
       total.value = res.total || 0
     }
   } catch (e) {
-    console.error(e)
+    errorMessage.value = e.message || '加载笔记失败，请稍后重试'
   } finally {
     loading.value = false
   }
@@ -532,7 +568,7 @@ async function loadTags() {
     const res = await getPublicTags()
     tagOptions.value = res || []
   } catch (e) {
-    console.error(e)
+    errorMessage.value = e.message || '加载标签失败，请稍后重试'
     tagOptions.value = []
   }
 }
@@ -550,7 +586,7 @@ async function loadStats() {
     if (activeNotebookId.value !== null) params.notebook_id = activeNotebookId.value
     stats.value = await getNoteStats(params)
   } catch (e) {
-    console.error(e)
+    errorMessage.value = e.message || '加载统计失败，请稍后重试'
   }
 }
 
@@ -567,6 +603,53 @@ onMounted(async () => {
   min-height: 100vh;
   padding-bottom: 60px;
 }
+
+/* 页面提示 */
+.page-message {
+  max-width: 1100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 auto 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.error-message {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.success-message {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.message-retry,
+.message-close {
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.message-retry {
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+}
+.message-close {
+  padding: 0 4px;
+  border: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
 .page-header {
   text-align: center;
   padding: 40px 20px 20px;

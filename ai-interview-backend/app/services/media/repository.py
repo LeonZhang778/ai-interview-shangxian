@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.media_tool import MediaFile, MediaTask, MediaEvent
@@ -61,7 +61,7 @@ class MediaFileRepository:
             select(MediaFile).where(
                 MediaFile.id == file_id,
                 MediaFile.user_id == user_id,
-                MediaFile.media_type != "deleted",
+                MediaFile.deleted_at.is_(None),
             )
         )
         return result.scalar_one_or_none()
@@ -85,7 +85,7 @@ class MediaFileRepository:
         """查询用户的文件列表"""
         query = select(MediaFile).where(
             MediaFile.user_id == user_id,
-            MediaFile.media_type != "deleted",
+            MediaFile.deleted_at.is_(None),
         )
         if media_type:
             query = query.where(MediaFile.media_type == media_type)
@@ -129,7 +129,7 @@ class MediaFileRepository:
         result = await db.execute(
             select(func.count(MediaTask.id)).where(
                 MediaTask.output_file_id == file_id,
-                MediaTask.status.in_(["queued", "processing", "completed"]),
+                MediaTask.status.in_( ["pending", "processing", "completed"]),
             )
 )
         ref_count = result.scalar()
@@ -140,7 +140,7 @@ class MediaFileRepository:
                 status_code=409,
             )
 
-        # 软删除：设置 media_type = "deleted"
+        # 软删除：保留媒体类型，避免违反 media_type 的数据库约束。
         result = await db.execute(
             select(MediaFile).where(
                 MediaFile.id == file_id,
@@ -151,7 +151,7 @@ class MediaFileRepository:
         if not record:
             raise NotFoundError(message="文件不存在")
 
-        record.media_type = "deleted"
+        record.deleted_at = datetime.now(timezone.utc)
         await db.commit()
         return True
 
@@ -161,7 +161,7 @@ class MediaFileRepository:
         result = await db.execute(
             select(MediaFile).where(
                 MediaFile.expires_at < datetime.now(timezone.utc),
-                MediaFile.media_type != "deleted",
+                MediaFile.deleted_at.is_(None),
             )
         )
         return result.scalars().all()
@@ -169,6 +169,14 @@ class MediaFileRepository:
 
 class MediaTaskRepository:
     """媒体任务 Repository"""
+
+    @staticmethod
+    async def _is_cancelled(db, task_id: int) -> bool:
+        result = await db.execute(
+            select(MediaTask.status).where(MediaTask.id == task_id)
+        )
+        return result.scalar_one_or_none() == "cancelled"
+
 
     @staticmethod
     async def create(

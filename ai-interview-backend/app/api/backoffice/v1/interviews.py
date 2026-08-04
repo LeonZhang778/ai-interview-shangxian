@@ -10,6 +10,7 @@ from app.models.interview_message import InterviewMessage
 from app.models.user import User
 from app.schemas.response import ApiResponse
 from app.services.client.interview_service import interview_service
+from app.utils.utils import safe_parse_json
 
 router = APIRouter()
 
@@ -70,12 +71,7 @@ async def get_interview_detail(
     msg_result = await db.execute(msg_query)
     messages = msg_result.scalars().all()
 
-    report = {}
-    if interview.report:
-        try:
-            report = json.loads(interview.report)
-        except json.JSONDecodeError:
-            report = {}
+    report = safe_parse_json(interview.report, {})
 
     return ApiResponse.success(data={
         "id": interview.id,

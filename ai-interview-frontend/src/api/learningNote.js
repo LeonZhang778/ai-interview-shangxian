@@ -2,39 +2,69 @@ import api from './request'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
+const exportApi = axios.create({
+  baseURL: '/api/v1',
+  timeout: 60000,
+})
+
+exportApi.interceptors.response.use(
+  response => response,
+  async error => {
+    const data = error.response?.data
+    let message = data?.message || data?.detail || error.message || '导出失败，请稍后重试'
+    if (typeof message !== 'string') message = '导出失败，请稍后重试'
+    return Promise.reject(new Error(message))
+  },
+)
+
 // ==================== 学习笔记 ====================
 
 // 导出单个笔记为 Markdown
 export async function exportNote(id) {
-  const authStore = useAuthStore()
-  const res = await axios.get(`/api/v1/learning-notes/${id}/export`, {
-    responseType: 'blob',
-    headers: { Authorization: `Bearer ${authStore.token}` }
-  })
-  triggerDownload(res, `${id}.md`)
-  return true
+  return requestExport(`/api/v1/learning-notes/${id}/export`, `${id}.md`)
 }
 
 // 导出整个笔记本（含子笔记本）为 ZIP
 export async function exportNotebook(notebookId) {
-  const authStore = useAuthStore()
-  const res = await axios.get(`/api/v1/learning-notes/export/notebook/${notebookId}`, {
-    responseType: 'blob',
-    headers: { Authorization: `Bearer ${authStore.token}` }
-  })
-  triggerDownload(res, `notebook_${notebookId}.zip`)
-  return true
+  return requestExport(`/api/v1/learning-notes/export/notebook/${notebookId}`, `notebook_${notebookId}.zip`)
 }
 
 // 导出全部笔记为 ZIP
 export async function exportAllNotes() {
+  return requestExport('/api/v1/learning-notes/export/all', 'all_notes.zip')
+}
+
+async function requestExport(url, fallbackName) {
   const authStore = useAuthStore()
-  const res = await axios.get('/api/v1/learning-notes/export/all', {
-    responseType: 'blob',
-    headers: { Authorization: `Bearer ${authStore.token}` }
-  })
-  triggerDownload(res, 'all_notes.zip')
-  return true
+  try {
+  const res = await exportApi.get(url.replace('/api/v1', ''), {
+      responseType: 'blob',
+      headers: { Authorization: `Bearer ${authStore.token}` },
+      validateStatus: () => true,
+    })
+
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(await getBlobErrorMessage(res.data, res.status))
+    }
+
+    triggerDownload(res, fallbackName)
+    return true
+  } catch (error) {
+    if (error instanceof Error) throw error
+    throw new Error('导出失败，请稍后重试')
+  }
+}
+
+async function getBlobErrorMessage(blob, status) {
+  const fallback = `导出失败（${status}），请稍后重试`
+  if (!(blob instanceof Blob)) return fallback
+  try {
+    const text = await blob.text()
+    const data = JSON.parse(text)
+    return data.message || data.detail || fallback
+  } catch {
+    return fallback
+  }
 }
 
 // 通用下载触发：从 Content-Disposition 提取文件名，回退用 fallback

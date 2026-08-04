@@ -19,6 +19,7 @@ class MediaFile(BaseModel):
     duration_ms = Column(BigInteger, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
 
     user = relationship("User", backref="media_files")
     output_tasks = relationship(
