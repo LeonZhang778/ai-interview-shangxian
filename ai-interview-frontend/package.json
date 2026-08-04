@@ -20,6 +20,7 @@
     "html2canvas": "^1.4.1",
     "marked": "^18.0.5",
     "pinia": "^2.1.0",
+    "qrcode": "^1.5.4",
     "vue": "^3.4.0",
     "vue-echarts": "^8.0.1",
     "vue-router": "^4.3.0"

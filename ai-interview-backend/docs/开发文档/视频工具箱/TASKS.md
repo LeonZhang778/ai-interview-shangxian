@@ -13,9 +13,9 @@
 - [x] T009 · 实现任务查询、取消、结果下载和过期清理，参考 `03-api-contract.md`。
 - [x] T010 · 接入客户端路由注册和统一响应，参考 `00-context.md`。
 - [x] T011 · 实现工具箱入口、通用上传组件、参数表单和任务卡片，参考 `06-ux-flows.md`。
-- [ ] T012 · 增加 GIF 片段处理，参考 `STORY-003-video-to-gif.md`。
-- [ ] T013 · 增加视频合并，参考 `STORY-004-video-merge.md`。
-- [ ] T014 · 增加添加水印，参考 `STORY-005-video-watermark.md`。
+- [x] T012 · 增加 GIF 片段处理，参考 `STORY-003-video-to-gif.md`。
+- [x] T013 · 增加视频合并，参考 `STORY-004-video-merge.md`。
+- [x] T014 · 增加添加水印，参考 `STORY-005-video-watermark.md`。
 - [ ] T015 · 实现后台任务查询、重试和终止，参考 `05-rbac.md`。
 - [ ] T016 · 增加事件、日志、指标和告警，参考 `07-observability.md`。
 - [ ] T017 · 按 `10-test-plan.md` 完成单元、集成、E2E、负载和安全测试。

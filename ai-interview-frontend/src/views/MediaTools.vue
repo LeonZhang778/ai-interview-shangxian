@@ -181,6 +181,9 @@
             <h2>最近任务</h2>
           </div>
           <button v-if="tasks.length" class="text-button" type="button" @click="loadTasks">刷新</button>
+          <button v-if="tasks.length" class="text-button danger-text-button" type="button" :disabled="deletingTasks" @click="deleteAllTasks">
+            {{ deletingTasks ? '删除中...' : '清空已完成' }}
+          </button>
         </div>
 
         <div v-if="tasksLoading" class="history-loading">正在加载任务...</div>
@@ -207,6 +210,9 @@
               <button v-if="task.status === 'completed'" class="task-action success" type="button" @click="downloadTask(task)">下载</button>
               <button v-else-if="['queued', 'pending', 'processing'].includes(task.status)" class="task-action" type="button" @click="cancelTask(task)">取消</button>
               <button v-else-if="task.status === 'failed'" class="task-action" type="button" @click="retryTask(task)">重试</button>
+              <button v-if="isDeletableTask(task)" class="task-action danger" type="button" :disabled="deletingTaskId === task.id" @click="deleteTask(task)">
+                {{ deletingTaskId === task.id ? '删除中...' : '删除' }}
+              </button>
             </div>
           </article>
         </div>
@@ -221,10 +227,15 @@ import { useAuthStore } from '../stores/auth'
 import {
   cancelMediaTask,
   createConvertTask,
+  createGifTask,
+  createMergeTask,
+  createWatermarkTask,
   getCapabilities,
-  getMediaTask,
+
   getMediaTaskDownload,
   listMediaTasks,
+  deleteMediaTask,
+  deleteMediaTasks,
   retryMediaTask,
   uploadMediaFile
 } from '../api/mediaTool'
@@ -234,7 +245,10 @@ const tools = [
   { code: 'compress', name: '视频压缩', icon: '▤', description: '减小体积，保持清晰度' },
   { code: 'trim', name: '视频截取', icon: '⌁', description: '截取需要的时间片段' },
   { code: 'extract_audio', name: '提取音频', icon: '♫', description: '从视频中提取音频' },
-  { code: 'audio_convert', name: '音频转换', icon: '◖', description: '转换音频编码和格式' }
+  { code: 'audio_convert', name: '音频转换', icon: '◖', description: '转换音频编码和格式' },
+  { code: 'gif', name: '视频转 GIF', icon: '✦', description: '截取视频片段生成 GIF' },
+  { code: 'merge', name: '视频合并', icon: '⊕', description: '按顺序合并多个视频' },
+  { code: 'watermark', name: '添加水印', icon: '◇', description: '给视频添加图片水印' }
 ]
 
 const selectedTool = ref('convert')
@@ -250,6 +264,8 @@ const showAdvanced = ref(false)
 const errorMessage = ref('')
 const tasks = ref([])
 const tasksLoading = ref(true)
+const deletingTaskId = ref(null)
+const deletingTasks = ref(false)
 let pollTimer = null
 
 const form = reactive({
@@ -336,7 +352,7 @@ async function submitTask() {
   errorMessage.value = ''
   submitting.value = true
   try {
-    await createConvertTask({
+    const payload = {
       file_id: selectedFile.value.id,
       target_format: form.target_format,
       tool_code: selectedTool.value,
@@ -350,7 +366,16 @@ async function submitTask() {
       start_time: form.start_time || 0,
       duration: form.duration || 0,
       quality: form.quality
-    })
+    }
+    if (selectedTool.value === 'gif') {
+      await createGifTask(payload)
+    } else if (selectedTool.value === 'merge') {
+      await createMergeTask({ ...payload, file_ids: [selectedFile.value.id] })
+    } else if (selectedTool.value === 'watermark') {
+      await createWatermarkTask(payload)
+    } else {
+      await createConvertTask(payload)
+    }
     selectedFile.value = null
     await loadTasks()
   } catch (error) {
@@ -430,6 +455,40 @@ async function downloadTask(task) {
   } catch (error) {
     errorMessage.value = error.message || '获取下载地址失败'
   }
+}
+
+async function deleteTask(task) {
+  if (!isDeletableTask(task) || deletingTaskId.value) return
+  if (!window.confirm('确定删除这条任务记录吗？')) return
+  deletingTaskId.value = task.id
+  try {
+    await deleteMediaTask(task.id)
+    tasks.value = tasks.value.filter(item => item.id !== task.id)
+  } catch (error) {
+    errorMessage.value = error.message || '删除任务失败'
+  } finally {
+    deletingTaskId.value = null
+  }
+}
+
+async function deleteAllTasks() {
+  const deletableTasks = tasks.value.filter(isDeletableTask)
+  if (!deletableTasks.length || deletingTasks.value) return
+  if (!window.confirm(`确定清空 ${deletableTasks.length} 条已结束任务吗？`)) return
+  deletingTasks.value = true
+  try {
+    await deleteMediaTasks(deletableTasks.map(task => task.id))
+    const deletableIds = new Set(deletableTasks.map(task => task.id))
+    tasks.value = tasks.value.filter(task => !deletableIds.has(task.id))
+  } catch (error) {
+    errorMessage.value = error.message || '批量删除任务失败'
+  } finally {
+    deletingTasks.value = false
+  }
+}
+
+function isDeletableTask(task) {
+  return !['queued', 'pending', 'processing'].includes(task.status)
 }
 
 function formatBytes(bytes) {
@@ -553,6 +612,10 @@ onUnmounted(() => {
 .workspace-card, .history-card { padding: 24px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 16px; box-shadow: var(--shadow-sm); }
 .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
 .section-heading.compact { margin-bottom: 16px; }
+.history-card .section-heading.compact { align-items: flex-start; }
+.history-card .section-heading.compact > div:last-child { display: flex; gap: 12px; align-items: center; }
+.danger-text-button { color: var(--red); }
+.danger-text-button:disabled { opacity: .55; cursor: not-allowed; }
 .section-heading h2, .section-heading h3 { color: var(--text-primary); font-size: 20px; }
 .section-heading h3 { font-size: 17px; }
 .section-kicker { margin-bottom: 6px; font-size: 10px; }

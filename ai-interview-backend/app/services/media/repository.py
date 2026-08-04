@@ -332,6 +332,43 @@ class MediaTaskRepository:
         await db.commit()
         return True
 
+    async def delete_task(db: AsyncSession, task_id: int, user_id: int) -> bool:
+        """删除一条已结束的任务记录。正在执行的任务必须先取消。"""
+        result = await db.execute(
+            select(MediaTask).where(
+                MediaTask.id == task_id,
+                MediaTask.user_id == user_id,
+            )
+        )
+        task = result.scalar_one_or_none()
+        if not task:
+            raise NotFoundError(message="任务不存在")
+        if task.status in ("pending", "processing"):
+            raise APIException(code=10400, message="任务正在处理中，请先取消任务", status_code=400)
+        await db.delete(task)
+        await db.commit()
+        return True
+
+    @staticmethod
+    async def delete_tasks(db: AsyncSession, task_ids: List[int], user_id: int) -> int:
+        """批量删除已结束的任务记录，返回实际删除数量。"""
+        if not task_ids:
+            return 0
+        result = await db.execute(
+            select(MediaTask).where(
+                MediaTask.id.in_(task_ids),
+                MediaTask.user_id == user_id,
+            )
+        )
+        tasks = result.scalars().all()
+        active_tasks = [task for task in tasks if task.status in ("pending", "processing")]
+        if active_tasks:
+            raise APIException(code=10400, message="选中的任务中有正在处理的任务，请先取消后再删除", status_code=400)
+        for task in tasks:
+            await db.delete(task)
+        await db.commit()
+        return len(tasks)
+
     @staticmethod
     async def retry_task(db: AsyncSession, task_id: int, user_id: int) -> MediaTask:
         """重试失败任务"""

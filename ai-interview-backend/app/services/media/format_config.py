@@ -89,6 +89,7 @@ TOOL_CODES: Dict[str, str] = {
 # 当前 Worker 已实现的工具。其余代码保留在能力配置中，待对应故事完成后再开放。
 IMPLEMENTED_TOOL_CODES = {
     "convert", "compress", "trim", "extract_audio", "audio_convert",
+    "merge", "gif", "watermark",
 }
 
 # 格式 → 默认视频编码器

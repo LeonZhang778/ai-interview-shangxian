@@ -69,6 +69,93 @@ def _validate_options(data: dict, target_format: str) -> None:
             raise APIException(code=10401, message=f"参数 {field} 格式无效", status_code=400)
 
 
+def _validate_special_options(data: dict, tool_code: str) -> None:
+    if tool_code == "merge":
+        file_ids = data.get("file_ids")
+        if not isinstance(file_ids, list) or len(file_ids) < 2 or len(file_ids) > 10:
+            raise APIException(code=10401, message="视频合并至少需要 2 个、最多 10 个文件", status_code=400)
+    if tool_code == "gif":
+        try:
+            start = float(data.get("start_time", 0) or 0)
+            duration = float(data.get("duration", 0) or 0)
+        except (TypeError, ValueError):
+            raise APIException(code=10401, message="GIF 时间参数必须为数字", status_code=400)
+        if duration <= 0 or duration > 60:
+            raise APIException(code=10401, message="GIF 时长必须大于 0 且不超过 60 秒", status_code=400)
+        if start < 0:
+            raise APIException(code=10401, message="GIF 开始时间不能为负数", status_code=400)
+        if data.get("quality", "medium") not in format_config.GIF_QUALITY:
+            raise APIException(code=10401, message="GIF 质量参数无效", status_code=400)
+    if tool_code == "watermark":
+        watermark_file_id = data.get("watermark_file_id")
+        if not watermark_file_id:
+            raise APIException(code=10401, message="缺少 watermark_file_id", status_code=400)
+        if data.get("position", "bottom-right") not in {"top-left", "top-right", "bottom-left", "bottom-right", "center"}:
+            raise APIException(code=10401, message="水印位置无效", status_code=400)
+        try:
+            opacity = float(data.get("opacity", 1) or 0)
+            width = int(data.get("watermark_width", 0) or 0)
+        except (TypeError, ValueError):
+            raise APIException(code=10401, message="水印透明度和宽度参数无效", status_code=400)
+        if not 0 < opacity <= 1:
+            raise APIException(code=10401, message="水印透明度必须在 0 到 1 之间", status_code=400)
+        if width and not 16 <= width <= 1920:
+            raise APIException(code=10401, message="水印宽度必须在 16 到 1920 像素之间", status_code=400)
+
+
+async def _create_special_task(data: dict, tool_code: str, current_user: User, db: AsyncSession):
+    enabled = await get_setting_bool("media_tools_enabled", True)
+    if not enabled:
+        raise APIException(code=10400, message="媒体工具功能已关闭", status_code=403)
+    _validate_special_options(data, tool_code)
+    file_ids = data.get("file_ids") or [data.get("file_id")]
+    if not isinstance(file_ids, list) or any(not isinstance(file_id, int) or file_id <= 0 for file_id in file_ids):
+        raise APIException(code=10401, message="文件 ID 无效", status_code=400)
+    records = []
+    for file_id in file_ids:
+        record = await MediaFileRepository.get_by_id(db, file_id, current_user.id)
+        if not record:
+            raise NotFoundError(message="文件不存在")
+        records.append(record)
+    if tool_code == "watermark":
+        watermark = await MediaFileRepository.get_by_id(db, data["watermark_file_id"], current_user.id)
+        if not watermark or watermark.media_type != "image":
+            raise APIException(code=10401, message="水印文件必须是图片", status_code=400)
+        if watermark.size_bytes > 10 * 1024 * 1024:
+            raise APIException(code=10402, message="水印文件不能超过 10MB", status_code=413)
+        file_ids = [file_ids[0], watermark.id]
+    target_format = "gif" if tool_code == "gif" else data.get("target_format", "mp4").lower()
+    if not format_config.is_valid_format(target_format):
+        raise APIException(code=10401, message=f"不支持的目标格式: {target_format}", status_code=400)
+    options = dict(data)
+    options.update({"target_format": target_format, "tool_code": tool_code})
+    task = await MediaTaskRepository.create(db, current_user.id, tool_code, file_ids, options)
+    await MediaEventRepository.create(db, task.id, current_user.id, "task_created", {"tool_code": tool_code})
+    try:
+        from app.schedule.jobs.media_tasks import process_media_task
+        result = process_media_task.delay(task.id)
+        await MediaTaskRepository.update_status(db, task.id, "pending", celery_task_id=result.id)
+    except Exception as exc:
+        await MediaTaskRepository.update_status(db, task.id, "failed", error_code="CELERY_SUBMIT_FAILED", error_message="后台任务提交失败，请稍后重试")
+        raise APIException(code=10503, message="后台任务提交失败，请稍后重试", status_code=503) from exc
+    return ApiResponse.success(data={"task_id": task.id, "tool_code": tool_code, "status": task.status, "progress": task.progress}, message="任务已创建", http_code=202)
+
+
+@router.post("/tasks/gif", status_code=202)
+async def create_gif_task(data: dict = Body(...), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _create_special_task(data, "gif", current_user, db)
+
+
+@router.post("/tasks/merge", status_code=202)
+async def create_merge_task(data: dict = Body(...), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _create_special_task(data, "merge", current_user, db)
+
+
+@router.post("/tasks/watermark", status_code=202)
+async def create_watermark_task(data: dict = Body(...), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _create_special_task(data, "watermark", current_user, db)
+
+
 @router.post("/tasks/convert", status_code=202)
 async def create_convert_task(
     data: dict = Body(...),
@@ -252,6 +339,34 @@ async def cancel_media_task(
         db=db, task_id=task_id, user_id=current_user.id, event_name="task_cancelled"
     )
     return ApiResponse.success(message="任务已取消")
+
+
+@router.delete("/tasks/{task_id}")
+async def delete_media_task(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除一条已结束的媒体任务。"""
+    await MediaTaskRepository.delete_task(db, task_id, current_user.id)
+    return ApiResponse.success(message="任务已删除")
+
+
+@router.post("/tasks/delete-batch")
+async def delete_media_tasks_batch(
+    task_ids: list[int] = Body(..., embed=True),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量删除已结束的媒体任务。"""
+    normalized_ids = list(dict.fromkeys(task_ids))
+    if not normalized_ids:
+        raise APIException(code=10401, message="请选择要删除的任务", status_code=400)
+    deleted_count = await MediaTaskRepository.delete_tasks(db, normalized_ids, current_user.id)
+    return ApiResponse.success(
+        data={"deleted_count": deleted_count},
+        message=f"已删除 {deleted_count} 个任务",
+    )
 
 
 @router.post("/tasks/{task_id}/retry")

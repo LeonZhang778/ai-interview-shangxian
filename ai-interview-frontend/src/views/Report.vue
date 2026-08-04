@@ -161,8 +161,8 @@
 
       <!-- 操作 -->
       <div style="text-align:center;margin-top:24px;margin-bottom:40px">
-        <button @click="handleShareImage" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px">
-          截图分享
+        <button @click.stop="handleShareImage" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px" :disabled="shareStatus === 'generating'">
+          {{ shareStatus === 'generating' ? '生成图片中...' : '截图分享' }}
         </button>
         <router-link to="/resume/upload" class="btn-primary" style="display:inline-block;padding:10px 24px;color:white;border-radius:8px;margin-right:12px">
           再来一次
@@ -200,6 +200,7 @@
 </template>
 
 <script setup>
+import QRCode from 'qrcode'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getReport, shareInterview, unshareInterview } from '../api/interview'
@@ -250,15 +251,14 @@ async function handleShareImage() {
   if (shareStatus.value === 'generating') return
   shareStatus.value = 'generating'
   try {
-    // 如果还没有分享链接，先生成
-    if (!shareToken.value) {
+    let token = shareToken.value
+    // 截图分享只获取二维码所需的公开 token，不改变“分享链接”面板状态。
+    if (!token) {
       const res = await shareInterview(interviewId)
-      shareToken.value = res.share_token
-      isShared.value = true
+      token = res.share_token
     }
 
-    // 生成二维码到 canvas
-    await generateQRCode(shareUrl.value)
+    await generateQRCode(`${window.location.origin}/shared/${token}`)
 
     const html2canvas = (await import('html2canvas')).default
     const canvas = await html2canvas(shareCard.value, {
@@ -298,216 +298,21 @@ async function copyPreviewImage() {
   }
 }
 
-// 纯 Canvas 实现的二维码生成器
 async function generateQRCode(text) {
   const container = qrCanvas.value
-  if (!container) return
+  if (!container || !text) return
   container.innerHTML = ''
 
   const canvas = document.createElement('canvas')
-  const size = 80
-  canvas.width = size
-  canvas.height = size
-  canvas.style.width = size + 'px'
-  canvas.style.height = size + 'px'
+  await QRCode.toCanvas(canvas, text, {
+    width: 160,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+    color: { dark: '#111827', light: '#ffffff' }
+  })
+  canvas.setAttribute('aria-label', '分享报告二维码')
   container.appendChild(canvas)
-
-  const ctx = canvas.getContext('2d')
-  const modules = encodeQR(text)
-  const moduleCount = modules.length
-  const cellSize = size / moduleCount
-
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, size, size)
-  ctx.fillStyle = '#1a1a2e'
-
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (modules[row][col]) {
-        ctx.fillRect(col * cellSize, row * cellSize, cellSize + 0.5, cellSize + 0.5)
-      }
-    }
-  }
 }
-
-// 最小 QR Code 编码器（支持数字/字母/字节模式）
-function encodeQR(text) {
-  const data = encodeData(text)
-  // QR版本选择：根据数据bit数查表（byte mode, EC level L）
-  // 版本1=152 bits, 版本2=272, 版本3=440, 版本4=640, 版本5=864,
-  // 版本6=1088, 版本7=1248, 版本8=1552, 版本9=1856, 版本10=2192
-  const versionCaps = [0, 152, 272, 440, 640, 864, 1088, 1248, 1552, 1856, 2192]
-  let version = 1
-  while (version < versionCaps.length && data.length > versionCaps[version]) version++
-  const moduleCount = version * 4 + 17
-  const matrix = Array.from({ length: moduleCount }, () => Array(moduleCount).fill(null))
-  const reserved = Array.from({ length: moduleCount }, () => Array(moduleCount).fill(false))
-
-  // 放置定位图案
-  placeFinder(matrix, reserved, 0, 0)
-  placeFinder(matrix, reserved, moduleCount - 7, 0)
-  placeFinder(matrix, reserved, 0, moduleCount - 7)
-
-  // 放置对齐图案（version >= 2）
-  if (version >= 2) {
-    const alignPos = getAlignmentPositions(version)
-    for (const r of alignPos) {
-      for (const c of alignPos) {
-        if (reserved[r][c]) continue
-        placeAlignment(matrix, reserved, r, c)
-      }
-    }
-  }
-
-  // 时序图案
-  for (let i = 8; i < moduleCount - 8; i++) {
-    if (!reserved[6][i]) { matrix[6][i] = i % 2 === 0; reserved[6][i] = true }
-    if (!reserved[i][6]) { matrix[i][6] = i % 2 === 0; reserved[i][6] = true }
-  }
-
-  // 暗模块
-  if (moduleCount >= 9) {
-    matrix[moduleCount - 8][8] = true
-    reserved[moduleCount - 8][8] = true
-  }
-
-  // 格式信息（简化：使用 mask 0, 纠错 L）
-  placeFormatInfo(matrix, reserved, moduleCount, 0)
-
-  // 放置数据
-  placeData(matrix, reserved, data, moduleCount)
-
-  // 应用 mask
-  applyMask(matrix, reserved, moduleCount, 0)
-
-  return matrix.map(row => row.map(cell => cell === true))
-}
-
-function encodeData(text) {
-  const bytes = new TextEncoder().encode(text)
-  const bits = []
-  // 模式指示符 0100 (字节模式)
-  bits.push(0, 1, 0, 0)
-  // 字符计数
-  const countBits = 8
-  for (let i = countBits - 1; i >= 0; i--) bits.push((bytes.length >> i) & 1)
-  // 数据
-  for (const b of bytes) {
-    for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1)
-  }
-  // 终止符
-  for (let i = 0; i < 4 && bits.length < 200; i++) bits.push(0)
-  // 填充到字节边界
-  while (bits.length % 8 !== 0) bits.push(0)
-  // 填充字节
-  const padBytes = [0xEC, 0x11]
-  let padIdx = 0
-  while (bits.length < 200) {
-    const b = padBytes[padIdx % 2]
-    for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1)
-    padIdx++
-  }
-  return bits
-}
-
-function placeFinder(matrix, reserved, row, col) {
-  for (let r = -1; r <= 7; r++) {
-    for (let c = -1; c <= 7; c++) {
-      const mr = row + r, mc = col + c
-      if (mr < 0 || mr >= matrix.length || mc < 0 || mc >= matrix.length) continue
-      const val = (r >= 0 && r <= 6 && (c === 0 || c === 6)) ||
-                  (c >= 0 && c <= 6 && (r === 0 || r === 6)) ||
-                  (r >= 2 && r <= 4 && c >= 2 && c <= 4)
-      matrix[mr][mc] = val ? true : false
-      reserved[mr][mc] = true
-    }
-  }
-}
-
-function placeAlignment(matrix, reserved, row, col) {
-  for (let r = -2; r <= 2; r++) {
-    for (let c = -2; c <= 2; c++) {
-      const val = Math.abs(r) === 2 || Math.abs(c) === 2 || (r === 0 && c === 0)
-      matrix[row + r][col + c] = val
-      reserved[row + r][col + c] = true
-    }
-  }
-}
-
-function getAlignmentPositions(version) {
-  if (version <= 1) return []
-  const positions = [6]
-  const last = version * 4 + 10
-  if (version <= 6) {
-    positions.push(last)
-  } else {
-    const step = Math.ceil((last - 6) / (version - 1))
-    for (let i = 1; i < version; i++) positions.push(6 + i * step)
-    positions.push(last)
-  }
-  return positions
-}
-
-function placeFormatInfo(matrix, reserved, moduleCount, mask) {
-  const formatBits = getFormatBits(0, mask) // EC level L = 0
-  // 水平格式信息（第8行）
-  for (let i = 0; i < 15; i++) {
-    const col = i < 6 ? i : (i === 6 ? 7 : (i < 8 ? 8 : moduleCount - 15 + i))
-    if (!reserved[8][col]) {
-      matrix[8][col] = (formatBits >> (14 - i)) & 1 ? true : false
-      reserved[8][col] = true
-    }
-  }
-  // 垂直格式信息（第8列）
-  for (let i = 0; i < 15; i++) {
-    const row = i < 6 ? i : (i === 6 ? 7 : (i < 8 ? 8 : moduleCount - 15 + i))
-    if (!reserved[row][8]) {
-      matrix[row][8] = (formatBits >> (14 - i)) & 1 ? true : false
-      reserved[row][8] = true
-    }
-  }
-}
-
-function getFormatBits(ecLevel, mask) {
-  let data = (ecLevel << 3) | mask
-  let bits = data << 10
-  let gen = 0x537 // 生成多项式
-  for (let i = 4; i >= 0; i--) {
-    if (bits & (1 << (i + 10))) bits ^= gen << i
-  }
-  return ((data << 10) | bits) ^ 0x5412
-}
-
-function placeData(matrix, reserved, data, moduleCount) {
-  let bitIdx = 0
-  let upward = true
-  for (let col = moduleCount - 1; col >= 0; col -= 2) {
-    if (col === 6) col = 5
-    const rows = upward
-      ? Array.from({ length: moduleCount }, (_, i) => moduleCount - 1 - i)
-      : Array.from({ length: moduleCount }, (_, i) => i)
-    for (const row of rows) {
-      for (let c = 0; c < 2; c++) {
-        const cc = col - c
-        if (cc < 0 || cc >= moduleCount) continue
-        if (reserved[row][cc]) continue
-        matrix[row][cc] = bitIdx < data.length ? data[bitIdx] === 1 : false
-        bitIdx++
-      }
-    }
-    upward = !upward
-  }
-}
-
-function applyMask(matrix, reserved, moduleCount, mask) {
-  for (let r = 0; r < moduleCount; r++) {
-    for (let c = 0; c < moduleCount; c++) {
-      if (reserved[r][c]) continue
-      if (mask === 0 && (r + c) % 2 === 0) matrix[r][c] = !matrix[r][c]
-    }
-  }
-}
-
 async function handleShareLink() {
   if (shareLinkStatus.value === 'loading') return
   shareLinkStatus.value = 'loading'
@@ -689,17 +494,14 @@ ul li::before {
   position: absolute;
   left: -9999px;
   top: 0;
-  width: 380px;
-  padding: 32px 28px 24px;
-  background: linear-gradient(150deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+  width: 420px;
+  padding: 34px 30px 28px;
+  background: linear-gradient(145deg, #111827 0%, #172554 48%, #312e81 100%);
   color: white;
   text-align: center;
-  border-radius: 20px;
+  border-radius: 24px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden;
-  position: absolute;
-  left: -9999px;
-  top: 0;
 }
 .share-bg-circle {
   position: absolute;
@@ -837,18 +639,21 @@ ul li::before {
   position: relative;
 }
 .share-qr {
-  width: 80px;
-  height: 80px;
+  width: 112px;
+  height: 112px;
   background: white;
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: 14px;
+  padding: 8px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 10px 24px rgba(0,0,0,.24);
 }
 .share-qr canvas {
   display: block;
+  width: 96px !important;
+  height: 96px !important;
 }
 .share-bottom-info {
   text-align: left;
@@ -977,7 +782,9 @@ ul li::before {
 .preview-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  padding: 24px;
+  background: rgba(3, 7, 18, .82);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -985,53 +792,41 @@ ul li::before {
 }
 .preview-modal {
   background: var(--bg-surface);
-  border-radius: 16px;
-  max-width: 450px;
-  width: 90%;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  max-width: 560px;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
 }
 .preview-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 18px 22px;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-default);
 }
 .preview-close {
-  background: none;
-  border: none;
-  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 0;
+  font-size: 22px;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
 }
-.preview-close:hover {
-  color: var(--text-primary);
-}
-.preview-body {
-  padding: 20px;
-  display: flex;
-  justify-content: center;
-}
-.preview-img {
-  max-width: 100%;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-.preview-footer {
-  display: flex;
-  gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid var(--border-default);
-  justify-content: center;
-}
-.preview-footer .btn-copy {
-  flex: 1;
-  text-align: center;
+.preview-close:hover { color: var(--text-primary); background: var(--border-default); }
+.preview-body { padding: 22px; display: flex; justify-content: center; background: var(--bg-input); }
+.preview-img { max-width: 100%; max-height: 62vh; border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,.35); }
+.preview-footer { display: flex; gap: 12px; padding: 18px 22px; border-top: 1px solid var(--border-default); justify-content: stretch; }
+.preview-footer > * { flex: 1; text-align: center; }
+@media (max-width: 520px) {
+  .preview-overlay { padding: 12px; }
+  .preview-footer { flex-direction: column; }
 }
 </style>

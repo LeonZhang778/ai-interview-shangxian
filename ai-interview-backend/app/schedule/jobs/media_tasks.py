@@ -258,13 +258,17 @@ async def _process_convert_task(task_id: int):
             input_file_id = input_ids[0]
             result = await db.execute(
                 select(MediaFile).where(
-                    MediaFile.id == input_file_id,
+                    MediaFile.id.in_(input_ids),
                     MediaFile.user_id == user_id,
+                    MediaFile.deleted_at.is_(None),
                 )
             )
-            input_file = result.scalar_one_or_none()
-            if not input_file or not os.path.exists(input_file.storage_key):
-                raise FileNotFoundError(f"输入文件不存在: {input_file_id}")
+            input_files = {item.id: item for item in result.scalars().all()}
+            if len(input_files) != len(input_ids):
+                raise FileNotFoundError("输入文件不存在")
+            input_file = input_files[input_file_id]
+            if any(not os.path.exists(input_files[file_id].storage_key) for file_id in input_ids):
+                raise FileNotFoundError("输入文件已从磁盘移除")
 
             input_path = input_file.storage_key
             input_ext = input_file.source_format
@@ -276,78 +280,89 @@ async def _process_convert_task(task_id: int):
             output_name = f"{uuid.uuid4().hex}.{target_format}"
             output_path = os.path.join(output_dir, output_name)
 
-            # 4. 构建 FFmpeg 命令
-            cmd = ["ffmpeg", "-i", input_path, "-y"]
+            # 4. 构建 FFmpeg 命令。特殊工具只使用固定滤镜和参数，不接受原始表达式。
+            if tool_code == "merge":
+                manifest_path = os.path.join(output_dir, f"{uuid.uuid4().hex}.concat.txt")
+                with open(manifest_path, "w", encoding="utf-8") as manifest:
+                    for file_id in input_ids:
+                        item = input_files[file_id]
+                        escaped_path = Path(item.storage_key).resolve().as_posix().replace("'", "'\\''")
+                        manifest.write(f"file '{escaped_path}'\n")
+                temp_paths = [manifest_path]
+                cmd = ["ffmpeg", "-f", "concat", "-safe", "0", "-i", manifest_path, "-c", "copy", "-y", output_path]
 
-            # 视频编码器
-            video_codec = options.get("video_codec", "")
-            if not video_codec:
-                video_codec = format_config.get_default_video_codec(target_format) or "libx264"
-            if not format_config.is_audio_only_format(target_format):
-                cmd.extend(["-c:v", video_codec])
+            elif tool_code == "gif":
+                quality = options.get("quality", "medium")
+                gif_quality = format_config.GIF_QUALITY[quality]
+                width = int(options.get("watermark_width", 0) or gif_quality["width"])
+                fps = int(options.get("frame_rate", 0) or gif_quality["fps"])
+                start_time = float(options.get("start_time", 0) or 0)
+                duration = float(options.get("duration", 0) or 0)
+                vf = f"fps={fps},scale={width}:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256[p];[s1][p]paletteuse=dither=bayer"
+                cmd = ["ffmpeg", "-ss", str(start_time), "-t", str(duration), "-i", input_path, "-filter_complex", vf, "-loop", "0", "-y", output_path]
+            elif tool_code == "watermark":
+                watermark_file = input_files[input_ids[1]]
+                position = options.get("position", "bottom-right")
+                positions = {
+                    "top-left": "10:10", "top-right": "main_w-overlay_w-10:10",
+                    "bottom-left": "10:main_h-overlay_h-10", "bottom-right": "main_w-overlay_w-10:main_h-overlay_h-10",
+                    "center": "(main_w-overlay_w)/2:(main_h-overlay_h)/2",
+                }
+                opacity = float(options.get("opacity", 1) or 1)
+                watermark_width = int(options.get("watermark_width", 0) or 0)
+                scale = f",scale={watermark_width}:-1" if watermark_width else ""
+                filter_graph = f"[1:v]format=rgba,colorchannelmixer=aa={opacity}{scale}[wm];[0:v][wm]overlay={positions[position]}"
+                cmd = ["ffmpeg", "-i", input_path, "-i", watermark_file.storage_key, "-filter_complex", filter_graph, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
+            else:
+                cmd = ["ffmpeg", "-i", input_path, "-y"]
 
-            # 音频编码器
-            audio_codec = options.get("audio_codec", "")
-            if not audio_codec:
-                audio_codec = format_config.get_default_audio_codec(target_format) or "aac"
-            cmd.extend(["-c:a", audio_codec])
+                # 视频编码器
+                video_codec = options.get("video_codec", "")
+                if not video_codec:
+                    video_codec = format_config.get_default_video_codec(target_format) or "libx264"
+                if not format_config.is_audio_only_format(target_format):
+                    cmd.extend(["-c:v", video_codec])
 
-            # 分辨率
-            resolution = options.get("resolution", "")
-            if resolution:
-                if "x" in resolution:
-                    cmd.extend(["-s", resolution])
-                elif resolution in format_config.RESOLUTION_PRESETS:
-                    target_width = format_config.RESOLUTION_PRESETS[resolution]
-                    cmd.extend(["-vf", f"scale={target_width}:-2"])
+                # 音频编码器
+                audio_codec = options.get("audio_codec", "")
+                if not audio_codec:
+                    audio_codec = format_config.get_default_audio_codec(target_format) or "aac"
+                cmd.extend(["-c:a", audio_codec])
 
-            # 帧率
-            frame_rate = options.get("frame_rate", 0)
-            if frame_rate and frame_rate > 0:
-                cmd.extend(["-r", str(frame_rate)])
-
-            # 采样率
-            sample_rate = options.get("sample_rate", 0)
-            if sample_rate and sample_rate > 0:
-                cmd.extend(["-ar", str(sample_rate)])
-
-            # 声道数
-            channels = options.get("channels", 0)
-            if channels and channels > 0:
-                cmd.extend(["-ac", str(channels)])
-
-            # 截取
-            start_time = options.get("start_time", 0)
-            duration = options.get("duration", 0)
-            if start_time and start_time > 0:
-                cmd.extend(["-ss", str(start_time)])
-            if duration and duration > 0:
-                cmd.extend(["-t", str(duration)])
-
-            # 压缩质量 (CRF)
-            quality = options.get("quality", "medium")
-            if quality in format_config.COMPRESSION_QUALITY:
-                quality_cfg = format_config.COMPRESSION_QUALITY[quality]
-                if quality_cfg["crf"] is not None:
-                    cmd.extend(["-crf", str(quality_cfg["crf"])])
-                if quality_cfg["preset"]:
-                    cmd.extend(["-preset", quality_cfg["preset"]])
-
-            # 视频比特率
-            video_bitrate = options.get("video_bitrate", "")
-            if video_bitrate:
-                cmd.extend(["-b:v", video_bitrate])
-
-            # 音频比特率
-            audio_bitrate = options.get("audio_bitrate", "")
-            if audio_bitrate:
-                cmd.extend(["-b:a", audio_bitrate])
-
-# 提取音频（无视频流）
-            if tool_code == "extract_audio":
-                cmd.extend(["-vn"])
-
-            cmd.append(output_path)
+                resolution = options.get("resolution", "")
+                if resolution:
+                    if "x" in resolution:
+                        cmd.extend(["-s", resolution])
+                    elif resolution in format_config.RESOLUTION_PRESETS:
+                        cmd.extend(["-vf", f"scale={format_config.RESOLUTION_PRESETS[resolution]}:-2"])
+                frame_rate = options.get("frame_rate", 0)
+                if frame_rate and frame_rate > 0:
+                    cmd.extend(["-r", str(frame_rate)])
+                sample_rate = options.get("sample_rate", 0)
+                if sample_rate and sample_rate > 0:
+                    cmd.extend(["-ar", str(sample_rate)])
+                channels = options.get("channels", 0)
+                if channels and channels > 0:
+                    cmd.extend(["-ac", str(channels)])
+                start_time = options.get("start_time", 0)
+                duration = options.get("duration", 0)
+                if start_time and start_time > 0:
+                    cmd.extend(["-ss", str(start_time)])
+                if duration and duration > 0:
+                    cmd.extend(["-t", str(duration)])
+                quality = options.get("quality", "medium")
+                if quality in format_config.COMPRESSION_QUALITY:
+                    quality_cfg = format_config.COMPRESSION_QUALITY[quality]
+                    if quality_cfg["crf"] is not None:
+                        cmd.extend(["-crf", str(quality_cfg["crf"])])
+                    if quality_cfg["preset"]:
+                        cmd.extend(["-preset", quality_cfg["preset"]])
+                for option, flag in (("video_bitrate", "-b:v"), ("audio_bitrate", "-b:a")):
+                    if options.get(option):
+                        cmd.extend([flag, options[option]])
+                if tool_code == "extract_audio":
+                    cmd.extend(["-vn"])
+                cmd.append(output_path)
 
             logger.info(f"FFmpeg cmd: {' '.join(cmd)}")
             span_id = "span_ffmpeg_start"
@@ -473,6 +488,13 @@ async def _process_convert_task(task_id: int):
         except Exception as e:
             logger.error(f"Task {task_id} failed: {e}", exc_info=True)
             # 清理临时输出
+            if "temp_paths" in locals():
+                for temp_path in temp_paths:
+                    if os.path.exists(temp_path):
+                        try:
+                            os.remove(temp_path)
+                        except OSError:
+                            pass
             if "output_path" in locals() and os.path.exists(output_path):
                 try:
                     os.remove(output_path)

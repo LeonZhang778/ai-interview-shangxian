@@ -40,14 +40,33 @@ export function createConvertTask(data) {
   return api.post('/media-tools/tasks/convert', data)
 }
 
+export function createGifTask(data) {
+  return api.post('/media-tools/tasks/gif', data)
+}
+
+export function createMergeTask(data) {
+  return api.post('/media-tools/tasks/merge', data)
+}
+
+export function createWatermarkTask(data) {
+  return api.post('/media-tools/tasks/watermark', data)
+}
+
 // 查询任务状态
 export function getMediaTask(id) {
   return api.get(`/media-tools/tasks/${id}`)
 }
 
-// 取消任务
 export function cancelMediaTask(id) {
   return api.post(`/media-tools/tasks/${id}/cancel`)
+}
+
+export function deleteMediaTask(id) {
+  return api.delete(`/media-tools/tasks/${id}`)
+}
+
+export function deleteMediaTasks(taskIds) {
+  return api.post('/media-tools/tasks/delete-batch', { task_ids: taskIds })
 }
 
 // 重试失败任务
