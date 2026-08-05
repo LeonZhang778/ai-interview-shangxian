@@ -76,12 +76,110 @@
         <div class="footer-stats">
           <span>👁 {{ note.view_count || 0 }}</span>
           <span>👍 {{ note.like_count || 0 }}</span>
+          <span>★ {{ note.collect_count || 0 }}</span>
+          <span>💬 {{ note.comment_count || 0 }}</span>
         </div>
         <div v-if="note.is_owner" class="footer-actions">
+          <button class="btn-edit" :disabled="flashcardLoading" @click="handleGenerateFlashcards">
+            {{ flashcardLoading ? '生成中...' : '生成闪卡' }}
+          </button>
+          <button class="btn-edit" @click="handlePrintPdf">打印/PDF</button>
+          <button class="btn-export-word" :disabled="exportStatus === 'loading'" @click="handleExportWord">
+            {{ exportStatus === 'loading' ? '导出中...' : '导出 Word' }}
+          </button>
           <button class="btn-edit" @click="goEdit">✏️ 编辑</button>
           <button class="btn-delete" @click="handleDelete">🗑️ 删除</button>
         </div>
       </div>
+      <p v-if="flashcardMessage" class="action-tip">{{ flashcardMessage }}</p>
+      <p v-if="exportMessage" :class="['action-tip', exportMessageType]">{{ exportMessage }}</p>
+
+      <!-- 公开互动 -->
+      <section v-if="note.visibility === 'public' && note.status === 'published'" class="interaction-panel">
+        <div class="interaction-actions">
+          <button
+            type="button"
+            class="interaction-btn"
+            :class="{ active: interaction.liked }"
+            :disabled="!authStore.isLoggedIn || interactionLoading"
+            @click="handleLike"
+          >
+            {{ interaction.liked ? '已点赞' : '点赞' }}
+          </button>
+          <button
+            type="button"
+            class="interaction-btn"
+            :class="{ active: interaction.collected }"
+            :disabled="!authStore.isLoggedIn || interactionLoading"
+            @click="handleCollect"
+          >
+            {{ interaction.collected ? '已收藏' : '收藏' }}
+          </button>
+          <router-link v-if="!authStore.isLoggedIn" to="/login" class="login-tip">登录后参与互动</router-link>
+        </div>
+
+        <div class="comment-box">
+          <div class="section-title">评论</div>
+          <div v-if="commentsLoading" class="sub-loading">评论加载中...</div>
+          <div v-else-if="comments.length === 0" class="sub-empty">还没有评论，来写第一条吧。</div>
+          <div v-else class="comment-list">
+            <div v-for="comment in comments" :key="comment.id" class="comment-item">
+              <div class="comment-main">
+                <span class="comment-author">{{ comment.user?.first_name || '用户' }}</span>
+                <span class="comment-time">{{ formatTime(comment.created_at) }}</span>
+              </div>
+              <p>{{ comment.content }}</p>
+              <button
+                v-if="Number(authStore.userId) === comment.user?.id"
+                type="button"
+                class="comment-delete"
+                @click="handleDeleteComment(comment.id)"
+              >
+                删除
+              </button>
+              <div v-if="comment.replies?.length" class="reply-list">
+                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                  <span>{{ reply.user?.first_name || '用户' }}：</span>{{ reply.content }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="authStore.isLoggedIn" class="comment-form">
+            <textarea
+              v-model="commentContent"
+              maxlength="500"
+              placeholder="写下你的看法..."
+              :disabled="commentSubmitting"
+            ></textarea>
+            <button
+              type="button"
+              class="interaction-btn active"
+              :disabled="commentSubmitting || !commentContent.trim()"
+              @click="handleCreateComment"
+            >
+              {{ commentSubmitting ? '发布中...' : '发布评论' }}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 相关推荐 -->
+      <section v-if="relatedNotes.length" class="related-panel">
+        <div class="section-title">相关笔记</div>
+        <div class="related-list">
+          <button
+            v-for="item in relatedNotes"
+            :key="item.id"
+            type="button"
+            class="related-item"
+            @click="goRelated(item.id)"
+          >
+            <span class="related-title">{{ item.title }}</span>
+            <span class="related-meta">{{ typeLabel(item.note_type) }} · {{ Math.round((item.similarity || 0) * 100) }}% 相关</span>
+          </button>
+        </div>
+      </section>
         </div>
         <!-- 目录侧栏 -->
         <aside v-if="tocList.length > 1" class="note-toc">
@@ -132,7 +230,21 @@ import gfm from '@bytemd/plugin-gfm'
 import highlight from '@bytemd/plugin-highlight'
 import 'bytemd/dist/index.css'
 import 'highlight.js/styles/github-dark.css'
-import { getNoteDetail, deleteNote, generateSummary } from '../api/learningNote'
+import { useAuthStore } from '../stores/auth'
+import {
+  collectNote,
+  createNoteComment,
+  deleteNote,
+  deleteNoteComment,
+  exportNoteDocx,
+  generateFlashcards,
+  generateSummary,
+  getNoteComments,
+  getNoteDetail,
+  getNoteInteractionStatus,
+  getRelatedNotes,
+  likeNote,
+} from '../api/learningNote'
 
 const plugins = [
   gfm(),
@@ -141,6 +253,7 @@ const plugins = [
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const note = ref(null)
 const loading = ref(true)
@@ -150,6 +263,18 @@ const summaryLoading = ref(false)
 const tocList = ref([])
 const activeTocId = ref('')
 const showTocDrawer = ref(false)
+const interaction = ref({ liked: false, collected: false })
+const interactionLoading = ref(false)
+const comments = ref([])
+const commentsLoading = ref(false)
+const commentContent = ref('')
+const commentSubmitting = ref(false)
+const relatedNotes = ref([])
+const flashcardLoading = ref(false)
+const flashcardMessage = ref('')
+const exportStatus = ref('idle')
+const exportMessage = ref('')
+const exportMessageType = ref('')
 
 const typeOptions = [
   { value: 'note', label: '笔记' },
@@ -178,6 +303,30 @@ function goEdit() {
   router.push(`/learning-notes/edit/${note.value.id}`)
 }
 
+function goRelated(id) {
+  router.push(`/learning-notes/${id}`)
+}
+
+function handlePrintPdf() {
+  window.print()
+}
+
+async function handleExportWord() {
+  if (!note.value?.id || exportStatus.value === 'loading') return
+  exportStatus.value = 'loading'
+  exportMessage.value = ''
+  try {
+    await exportNoteDocx(note.value.id)
+    exportMessage.value = 'Word 笔记已开始下载'
+    exportMessageType.value = 'success'
+  } catch (e) {
+    exportMessage.value = e.message || '导出失败，请稍后重试'
+    exportMessageType.value = 'error'
+  } finally {
+    exportStatus.value = 'idle'
+  }
+}
+
 async function handleDelete() {
   if (!confirm('确定删除这篇笔记？此操作不可撤销。')) return
   try {
@@ -200,6 +349,11 @@ async function loadData() {
     // bytemd Viewer 异步渲染，双重等待确保 DOM 就绪
     await nextTick()
     requestAnimationFrame(() => buildToc())
+    await Promise.all([
+      loadRelatedNotes(),
+      loadCommentsIfPublic(),
+      loadInteractionIfLoggedIn(),
+    ])
     // 如果笔记有内容但无摘要，且是所有者，自动触发 AI 摘要生成
     if (data.is_owner && data.content && data.content.trim() && !data.summary) {
       regenerateSummary()
@@ -209,6 +363,108 @@ async function loadData() {
     note.value = null
   } finally {
     loading.value = false
+  }
+}
+
+async function loadInteractionIfLoggedIn() {
+  if (!authStore.isLoggedIn || !note.value?.id || note.value.visibility !== 'public') return
+  try {
+    interaction.value = await getNoteInteractionStatus(note.value.id)
+  } catch (e) {
+    console.error('加载互动状态失败:', e)
+  }
+}
+
+async function loadCommentsIfPublic() {
+  if (!note.value?.id || note.value.visibility !== 'public' || note.value.status !== 'published') return
+  commentsLoading.value = true
+  try {
+    const res = await getNoteComments(note.value.id, { page: 1, size: 20 })
+    comments.value = res.items || []
+  } catch (e) {
+    console.error('加载评论失败:', e)
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+async function loadRelatedNotes() {
+  if (!note.value?.id) return
+  try {
+    const res = await getRelatedNotes(note.value.id, 5)
+    relatedNotes.value = res.items || []
+  } catch (e) {
+    console.error('加载相关推荐失败:', e)
+    relatedNotes.value = []
+  }
+}
+
+async function handleLike() {
+  if (!authStore.isLoggedIn || interactionLoading.value) return
+  interactionLoading.value = true
+  try {
+    const res = await likeNote(note.value.id)
+    interaction.value.liked = res.liked
+    note.value.like_count = res.like_count
+  } catch (e) {
+    console.error('点赞失败:', e)
+  } finally {
+    interactionLoading.value = false
+  }
+}
+
+async function handleCollect() {
+  if (!authStore.isLoggedIn || interactionLoading.value) return
+  interactionLoading.value = true
+  try {
+    const res = await collectNote(note.value.id)
+    interaction.value.collected = res.collected
+    note.value.collect_count = res.collect_count
+  } catch (e) {
+    console.error('收藏失败:', e)
+  } finally {
+    interactionLoading.value = false
+  }
+}
+
+async function handleCreateComment() {
+  const content = commentContent.value.trim()
+  if (!content || commentSubmitting.value) return
+  commentSubmitting.value = true
+  try {
+    await createNoteComment(note.value.id, { content })
+    commentContent.value = ''
+    note.value.comment_count = (note.value.comment_count || 0) + 1
+    await loadCommentsIfPublic()
+  } catch (e) {
+    console.error('发布评论失败:', e)
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
+async function handleDeleteComment(commentId) {
+  if (!confirm('确定删除这条评论？')) return
+  try {
+    await deleteNoteComment(commentId)
+    note.value.comment_count = Math.max(0, (note.value.comment_count || 0) - 1)
+    await loadCommentsIfPublic()
+  } catch (e) {
+    console.error('删除评论失败:', e)
+  }
+}
+
+async function handleGenerateFlashcards() {
+  if (!note.value?.is_owner || flashcardLoading.value) return
+  flashcardLoading.value = true
+  flashcardMessage.value = ''
+  try {
+    const res = await generateFlashcards(note.value.id)
+    flashcardMessage.value = res.message || '闪卡生成完成'
+  } catch (e) {
+    flashcardMessage.value = e?.message || '生成闪卡失败'
+  } finally {
+    flashcardLoading.value = false
   }
 }
 
@@ -598,9 +854,11 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .footer-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .btn-edit,
-.btn-delete {
+.btn-delete,
+.btn-export-word {
   padding: 6px 16px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
@@ -609,6 +867,20 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+}
+.btn-export-word {
+  background: rgba(16,185,129,0.12);
+  border-color: rgba(16,185,129,0.28);
+  color: #6ee7b7;
+}
+.btn-export-word:hover {
+  background: rgba(16,185,129,0.22);
+  border-color: rgba(16,185,129,0.45);
+  color: #a7f3d0;
+}
+.btn-export-word:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .btn-edit:hover {
   background: rgba(99,102,241,0.15);
@@ -619,6 +891,183 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   background: rgba(239,68,68,0.15);
   border-color: rgba(239,68,68,0.3);
   color: #ef4444;
+}
+.btn-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.action-tip {
+  margin: 10px 0 0;
+  color: var(--accent-light);
+  font-size: 13px;
+}
+.action-tip.success {
+  color: #10b981;
+}
+.action-tip.error {
+  color: #ef4444;
+}
+.interaction-panel,
+.related-panel {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.035);
+}
+.interaction-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.interaction-btn {
+  padding: 7px 14px;
+  border: 1px solid rgba(99,102,241,0.28);
+  border-radius: 8px;
+  background: rgba(99,102,241,0.1);
+  color: var(--accent-light);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.interaction-btn:hover:not(:disabled),
+.interaction-btn.active {
+  background: rgba(99,102,241,0.2);
+  border-color: rgba(99,102,241,0.45);
+}
+.interaction-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.login-tip {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+.login-tip:hover {
+  color: var(--accent-light);
+}
+.section-title {
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+.sub-loading,
+.sub-empty {
+  padding: 16px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.comment-list {
+  display: grid;
+  gap: 10px;
+}
+.comment-item {
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.035);
+}
+.comment-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.comment-author {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.comment-time,
+.comment-delete,
+.reply-item {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.comment-item p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.comment-delete {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.comment-delete:hover {
+  color: #ef4444;
+}
+.reply-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(255,255,255,0.08);
+}
+.comment-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.comment-form textarea {
+  min-height: 86px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  line-height: 1.6;
+}
+.comment-form textarea:focus {
+  border-color: var(--border-focus);
+}
+.related-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.related-item {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.035);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+.related-item:hover {
+  border-color: rgba(99,102,241,0.35);
+  background: rgba(99,102,241,0.08);
+}
+.related-title,
+.related-meta {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.related-title {
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.related-meta {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 /* 布局：正文 + 目录侧栏 */
@@ -689,6 +1138,18 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 @media (max-width: 960px) {
   .note-layout {
     flex-direction: column;
+  }
+  .note-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .footer-stats,
+  .footer-actions {
+    flex-wrap: wrap;
+  }
+  .related-list {
+    grid-template-columns: 1fr;
   }
   /* 移动端隐藏固定侧栏，改用浮动按钮 + 抽屉 */
   .note-toc {
@@ -786,5 +1247,37 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .toc-drawer-enter-from, .toc-drawer-leave-to {
   transform: translateX(100%);
   opacity: 0;
+}
+@media print {
+  .back-btn,
+  .footer-actions,
+  .interaction-panel,
+  .related-panel,
+  .note-toc,
+  .toc-fab,
+  .toc-drawer,
+  .summary-block .btn-regenerate {
+    display: none !important;
+  }
+  .note-detail-page,
+  .main-container,
+  .note-content-col {
+    padding: 0;
+    max-width: none;
+    color: #111827;
+    background: #ffffff;
+  }
+  .note-header h1,
+  .note-body :deep(h1),
+  .note-body :deep(h2),
+  .note-body :deep(h3),
+  .note-body :deep(strong) {
+    color: #111827;
+  }
+  .note-body,
+  .summary-text,
+  .key-points li {
+    color: #374151;
+  }
 }
 </style>

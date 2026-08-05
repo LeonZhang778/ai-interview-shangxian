@@ -1,86 +1,36 @@
 import api from './request'
-import axios from 'axios'
-import { useAuthStore } from '../stores/auth'
-
-const exportApi = axios.create({
-  baseURL: '/api/v1',
-  timeout: 60000,
-})
-
-exportApi.interceptors.response.use(
-  response => response,
-  async error => {
-    const data = error.response?.data
-    let message = data?.message || data?.detail || error.message || '导出失败，请稍后重试'
-    if (typeof message !== 'string') message = '导出失败，请稍后重试'
-    return Promise.reject(new Error(message))
-  },
-)
+import { downloadBinary } from './download'
 
 // ==================== 学习笔记 ====================
 
 // 导出单个笔记为 Markdown
 export async function exportNote(id) {
-  return requestExport(`/api/v1/learning-notes/${id}/export`, `${id}.md`)
+  return downloadBinary(`/api/v1/learning-notes/${id}/export`, `${id}.md`)
+}
+
+// 导出单个笔记为 Word
+export async function exportNoteDocx(id) {
+  return downloadBinary(`/api/v1/learning-notes/${id}/export-docx`, `${id}.docx`)
 }
 
 // 导出整个笔记本（含子笔记本）为 ZIP
 export async function exportNotebook(notebookId) {
-  return requestExport(`/api/v1/learning-notes/export/notebook/${notebookId}`, `notebook_${notebookId}.zip`)
+  return downloadBinary(`/api/v1/learning-notes/export/notebook/${notebookId}`, `notebook_${notebookId}.zip`)
+}
+
+// 导出整个笔记本（含子笔记本）为 Word ZIP
+export async function exportNotebookDocx(notebookId) {
+  return downloadBinary(`/api/v1/learning-notes/export-docx/notebook/${notebookId}`, `notebook_${notebookId}_docx.zip`)
 }
 
 // 导出全部笔记为 ZIP
 export async function exportAllNotes() {
-  return requestExport('/api/v1/learning-notes/export/all', 'all_notes.zip')
+  return downloadBinary('/api/v1/learning-notes/export/all', 'all_notes.zip')
 }
 
-async function requestExport(url, fallbackName) {
-  const authStore = useAuthStore()
-  try {
-  const res = await exportApi.get(url.replace('/api/v1', ''), {
-      responseType: 'blob',
-      headers: { Authorization: `Bearer ${authStore.token}` },
-      validateStatus: () => true,
-    })
-
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(await getBlobErrorMessage(res.data, res.status))
-    }
-
-    triggerDownload(res, fallbackName)
-    return true
-  } catch (error) {
-    if (error instanceof Error) throw error
-    throw new Error('导出失败，请稍后重试')
-  }
-}
-
-async function getBlobErrorMessage(blob, status) {
-  const fallback = `导出失败（${status}），请稍后重试`
-  if (!(blob instanceof Blob)) return fallback
-  try {
-    const text = await blob.text()
-    const data = JSON.parse(text)
-    return data.message || data.detail || fallback
-  } catch {
-    return fallback
-  }
-}
-
-// 通用下载触发：从 Content-Disposition 提取文件名，回退用 fallback
-function triggerDownload(res, fallbackName) {
-  const cd = res.headers['content-disposition'] || ''
-  let filename = fallbackName
-  const m = cd.match(/filename="?([^"]+)"?/i)
-  if (m && m[1]) filename = decodeURIComponent(m[1])
-  const url = window.URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  window.URL.revokeObjectURL(url)
+// 导出全部笔记为 Word ZIP
+export async function exportAllNotesDocx() {
+  return downloadBinary('/api/v1/learning-notes/export-docx/all', 'all_notes_docx.zip')
 }
 
 // 获取我的笔记列表
@@ -138,6 +88,46 @@ export function applyTags(id, tags) {
   return api.post(`/learning-notes/${id}/apply-tags`, { tags })
 }
 
+// 点赞/取消点赞公开笔记
+export function likeNote(id) {
+  return api.post(`/learning-notes/${id}/like`)
+}
+
+// 收藏/取消收藏公开笔记
+export function collectNote(id) {
+  return api.post(`/learning-notes/${id}/collect`)
+}
+
+// 获取当前用户对公开笔记的互动状态
+export function getNoteInteractionStatus(id) {
+  return api.get(`/learning-notes/${id}/interaction-status`)
+}
+
+// 获取公开笔记评论
+export function getNoteComments(id, params) {
+  return api.get(`/learning-notes/${id}/comments`, { params })
+}
+
+// 创建公开笔记评论
+export function createNoteComment(id, data) {
+  return api.post(`/learning-notes/${id}/comments`, data)
+}
+
+// 删除自己的公开笔记评论
+export function deleteNoteComment(commentId) {
+  return api.delete(`/learning-notes/comments/${commentId}`)
+}
+
+// 获取相关笔记推荐
+export function getRelatedNotes(id, limit = 5) {
+  return api.get(`/learning-notes/${id}/related`, { params: { limit } })
+}
+
+// 基于面试报告关键词推荐我的相关笔记
+export function recommendForInterview(keywords, limit = 5) {
+  return api.post('/learning-notes/recommend/interview', { keywords, limit })
+}
+
 // 获取笔记统计
 export function getNoteStats(params) {
   return api.get('/learning-notes/stats', { params })
@@ -155,6 +145,42 @@ export function uploadNoteImage(file) {
   return api.post('/learning-notes/upload-image', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+}
+
+// ==================== 闪卡复习 ====================
+
+export function getFlashcards(params) {
+  return api.get('/flashcards', { params })
+}
+
+export function getDueCards(limit = 20) {
+  return api.get('/flashcards/due', { params: { limit } })
+}
+
+export function reviewCard(cardId, quality) {
+  return api.post(`/flashcards/${cardId}/review`, { quality })
+}
+
+export function getFlashcardStats() {
+  return api.get('/flashcards/stats')
+}
+
+export function generateFlashcards(noteId) {
+  return api.post(`/flashcards/generate/${noteId}`)
+}
+
+// ==================== 错题本仪表盘 ====================
+
+export function getMistakeDashboard() {
+  return api.get('/weakness/dashboard')
+}
+
+export function getWeaknessHeatmap(limit = 30) {
+  return api.get('/weakness/heatmap', { params: { limit } })
+}
+
+export function getWeaknessRecommendations(limit = 5) {
+  return api.get('/weakness/recommendations', { params: { limit } })
 }
 
 // ==================== 笔记模板 ====================

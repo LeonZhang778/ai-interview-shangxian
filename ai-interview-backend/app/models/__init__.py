@@ -16,5 +16,8 @@ from .audit_log import AuditLog
 from .page_view import PageView
 from .notification import Notification
 from .media_tool import MediaEvent, MediaFile, MediaTask
+from .note_interaction import PublicNoteCollection, PublicNoteComment, PublicNoteLike
+from .flashcard import Flashcard
+from .weakness_stat import WeaknessStat
 
-__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "CollectionGroup", "LearningNote", "Notebook", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView", "Notification", "MediaFile", "MediaTask", "MediaEvent"]
+__all__ = ["User", "Token", "Admin", "WaitingList", "Resume", "Interview", "InterviewMessage", "Experience", "ExperienceTag", "UserCollection", "UserLike", "ExperienceComment", "CollectionGroup", "LearningNote", "Notebook", "ImageTask", "Announcement", "SystemSetting", "Feedback", "AuditLog", "PageView", "Notification", "MediaFile", "MediaTask", "MediaEvent", "PublicNoteLike", "PublicNoteCollection", "PublicNoteComment", "Flashcard", "WeaknessStat"]

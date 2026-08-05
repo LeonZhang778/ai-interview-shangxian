@@ -213,6 +213,44 @@ class MediaTaskRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_by_id_admin(db: AsyncSession, task_id: int) -> Optional[MediaTask]:
+        """按 ID 查询任务（管理员，仅元数据使用）。"""
+        result = await db.execute(select(MediaTask).where(MediaTask.id == task_id))
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def list_admin(
+        db: AsyncSession,
+        page: int = 1,
+        size: int = 20,
+        status: Optional[str] = None,
+        tool_name: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> Dict:
+        """管理员查询任务列表。"""
+        query = select(MediaTask).order_by(MediaTask.created_at.desc())
+        if status:
+            query = query.where(MediaTask.status == status)
+        if tool_name:
+            query = query.where(MediaTask.tool_name == tool_name)
+        if user_id:
+            query = query.where(MediaTask.user_id == user_id)
+
+        count_q = select(func.count()).select_from(query.subquery())
+        total = await db.scalar(count_q)
+
+        result = await db.execute(query.offset((page - 1) * size).limit(size))
+        items = result.scalars().all()
+
+        return {
+            "items": items,
+            "total": total or 0,
+            "page": page,
+            "size": size,
+            "has_more": (page * size) < (total or 0),
+        }
+
+    @staticmethod
     async def list_by_user(
         db: AsyncSession,
         user_id: int,
@@ -332,6 +370,24 @@ class MediaTaskRepository:
         await db.commit()
         return True
 
+    @staticmethod
+    async def terminate_task_admin(db: AsyncSession, task_id: int) -> MediaTask:
+        """管理员终止 pending/processing 任务。"""
+        task = await MediaTaskRepository.get_by_id_admin(db, task_id)
+        if not task:
+            raise NotFoundError(message="任务不存在")
+        if task.status not in ("pending", "processing"):
+            raise APIException(code=10400, message="任务当前状态不可终止", status_code=400)
+
+        task.status = "cancelled"
+        task.progress = min(task.progress or 0, 99)
+        task.error_code = "ADMIN_TERMINATED"
+        task.error_message = "管理员已终止任务"
+        task.finished_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(task)
+        return task
+
     async def delete_task(db: AsyncSession, task_id: int, user_id: int) -> bool:
         """删除一条已结束的任务记录。正在执行的任务必须先取消。"""
         result = await db.execute(
@@ -392,6 +448,29 @@ class MediaTaskRepository:
         task.finished_at = None
         task.retry_count = (task.retry_count or 0) + 1
         await db.commit()
+        return task
+
+    @staticmethod
+    async def retry_task_admin(db: AsyncSession, task_id: int) -> MediaTask:
+        """管理员重试失败任务。"""
+        task = await MediaTaskRepository.get_by_id_admin(db, task_id)
+        if not task:
+            raise NotFoundError(message="任务不存在")
+        if task.status != "failed":
+            raise APIException(code=10400, message="仅失败任务可重试", status_code=400)
+        if task.retry_count >= 3:
+            raise APIException(code=10400, message="超过最大重试次数", status_code=400)
+
+        task.status = "pending"
+        task.progress = 0
+        task.error_code = None
+        task.error_message = None
+        task.started_at = None
+        task.finished_at = None
+        task.celery_task_id = None
+        task.retry_count = (task.retry_count or 0) + 1
+        await db.commit()
+        await db.refresh(task)
         return task
 
 

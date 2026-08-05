@@ -20,6 +20,7 @@
       <div class="menu-item" @click="handleAddChild">添加子笔记本</div>
       <div class="menu-item" @click="handleRename">重命名</div>
       <div class="menu-item" @click="handleExport">导出为 ZIP</div>
+      <div class="menu-item" @click="handleExportDocx">导出为 Word ZIP</div>
       <div class="menu-item danger" @click="handleDelete">删除</div>
     </div>
 
@@ -59,6 +60,7 @@
         @rename="(id) => $emit('rename', id)"
         @delete="(id) => $emit('delete', id)"
         @export="(id) => $emit('export', id)"
+        @export-docx="(id) => $emit('export-docx', id)"
         @refresh="$emit('refresh')"
       />
     </div>
@@ -73,7 +75,7 @@ const props = defineProps({
   activeId: { type: [Number, null], default: null },
 })
 
-const emit = defineEmits(['select', 'add-child', 'rename', 'delete', 'refresh', 'export'])
+const emit = defineEmits(['select', 'add-child', 'rename', 'delete', 'refresh', 'export', 'export-docx'])
 
 const expanded = ref(true)
 const showMenu = ref(false)
@@ -145,6 +147,11 @@ function handleDelete() {
 function handleExport() {
   showMenu.value = false
   emit('export', props.node.id)
+}
+
+function handleExportDocx() {
+  showMenu.value = false
+  emit('export-docx', props.node.id)
 }
 </script>
 

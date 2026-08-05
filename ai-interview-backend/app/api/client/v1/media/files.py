@@ -25,6 +25,7 @@ from app.services.media import (
     format_config,
     MediaFileRepository,
 )
+from app.services.media.observability import log_media_event, log_media_metric
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,17 @@ async def upload_media_file(
             metadata_json=probe_info.probe_summary,
             expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.MEDIA_RESULT_EXPIRY_HOURS),
         )
+        log_media_event(
+            event="media.file.uploaded",
+            file_id=record.id,
+            user_id=current_user.id,
+            extra={
+                "media_type": record.media_type,
+                "format": record.source_format,
+                "size_bytes": record.size_bytes,
+            },
+        )
+        log_media_metric("media_storage_bytes", record.size_bytes, {"media_type": record.media_type, "format": record.source_format})
 
         # 6. 返回结果
         return ApiResponse.success(
@@ -197,6 +209,13 @@ async def delete_media_file(
 ):
     """删除媒体文件（软删除）"""
     await MediaFileRepository.soft_delete(db, file_id, current_user.id)
+    log_media_event(
+        event="media.file.cleaned",
+        file_id=file_id,
+        user_id=current_user.id,
+        extra={"reason": "user_delete"},
+        level="info",
+    )
     return ApiResponse.success(message="文件已删除")
 
 
@@ -231,6 +250,7 @@ async def download_media_file_raw(
     """流式下载媒体文件原始内容"""
     record = await MediaFileRepository.get_by_id(db, file_id, current_user.id)
     if not record:
+        log_media_metric("media_download_403_total", 1, {"resource": "file_raw"})
         raise NotFoundError(message="文件不存在")
 
     if record.expires_at and record.expires_at < datetime.now(timezone.utc):
@@ -241,6 +261,12 @@ async def download_media_file_raw(
         raise NotFoundError(message="文件已从磁盘移除")
 
     media_type = format_config.get_mime_type(record.source_format)
+    log_media_event(
+        event="media.result.downloaded",
+        file_id=record.id,
+        user_id=current_user.id,
+        extra={"bytes": record.size_bytes, "format": record.source_format},
+    )
     return FileResponse(
         path=file_path,
         media_type=media_type,

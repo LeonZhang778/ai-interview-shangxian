@@ -38,6 +38,12 @@
         <span v-if="authStore.isLoggedIn" class="mode-tab mode-add" @click="goCreate">
           + 新建笔记
         </span>
+        <router-link v-if="authStore.isLoggedIn" class="mode-tab mode-link" to="/flashcards">
+          闪卡复习
+        </router-link>
+        <router-link v-if="authStore.isLoggedIn" class="mode-tab mode-link" to="/mistakes">
+          错题仪表盘
+        </router-link>
       </div>
 
       <div class="content-layout" v-if="mode === 'my'">
@@ -55,7 +61,10 @@
             >
               <span class="node-icon">📋</span>
               <span class="node-name">全部笔记</span>
-              <button class="btn-export-all" :disabled="actionLoading" @click.stop="handleExportAll" title="导出全部笔记为 ZIP">⬇ 导出</button>
+              <div class="all-notes-actions">
+                <button class="btn-export-all" :disabled="actionLoading" @click.stop="handleExportAll" title="导出全部笔记为 ZIP">⬇ MD</button>
+                <button class="btn-export-all btn-export-word" :disabled="actionLoading" @click.stop="handleExportAllDocx" title="导出全部笔记为 Word ZIP">⬇ DOCX</button>
+              </div>
             </div>
             <NotebookTreeNode
               v-for="nb in notebookTree"
@@ -67,6 +76,7 @@
               @rename="handleRename"
               @delete="handleDelete"
               @export="handleExportNotebook"
+              @export-docx="handleExportNotebookDocx"
               @refresh="loadNotebooks"
             />
           </div>
@@ -165,6 +175,7 @@
                 </div>
                 <div class="card-actions">
                   <button class="btn-export-note" @click.stop="handleExportNote(note.id)" title="导出为 Markdown">⬇ MD</button>
+                  <button class="btn-export-note btn-export-word" @click.stop="handleExportNoteDocx(note.id)" title="导出为 Word">⬇ DOCX</button>
                   <span class="card-time">{{ formatTime(note.updated_at || note.created_at) }}</span>
                 </div>
               </div>
@@ -295,7 +306,7 @@ import {
   getMyNotes, getPublicNotes, getNoteStats, searchNotes,
   getNotebooks, createNotebook as createNotebookApi, updateNotebook, deleteNotebook,
   getPublicTags,
-  exportNote, exportNotebook, exportAllNotes,
+  exportNote, exportNoteDocx, exportNotebook, exportNotebookDocx, exportAllNotes, exportAllNotesDocx,
 } from '../api/learningNote'
 
 const router = useRouter()
@@ -416,6 +427,21 @@ async function handleExportNote(id) {
   }
 }
 
+async function handleExportNoteDocx(id) {
+  if (actionLoading.value) return
+  actionLoading.value = true
+  errorMessage.value = ''
+  actionMessage.value = ''
+  try {
+    await exportNoteDocx(id)
+    actionMessage.value = 'Word 笔记已开始下载'
+  } catch (e) {
+    errorMessage.value = e.message || '导出失败，请稍后重试'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 async function handleExportNotebook(id) {
   if (actionLoading.value) return
   actionLoading.value = true
@@ -431,6 +457,21 @@ async function handleExportNotebook(id) {
   }
 }
 
+async function handleExportNotebookDocx(id) {
+  if (actionLoading.value) return
+  actionLoading.value = true
+  errorMessage.value = ''
+  actionMessage.value = ''
+  try {
+    await exportNotebookDocx(id)
+    actionMessage.value = '笔记本 Word ZIP 已开始下载'
+  } catch (e) {
+    errorMessage.value = e.message || '导出失败，请稍后重试'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 async function handleExportAll() {
   if (actionLoading.value) return
   actionLoading.value = true
@@ -439,6 +480,21 @@ async function handleExportAll() {
   try {
     await exportAllNotes()
     actionMessage.value = '全部笔记已开始下载'
+  } catch (e) {
+    errorMessage.value = e.message || '导出失败，请稍后重试'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleExportAllDocx() {
+  if (actionLoading.value) return
+  actionLoading.value = true
+  errorMessage.value = ''
+  actionMessage.value = ''
+  try {
+    await exportAllNotesDocx()
+    actionMessage.value = '全部笔记 Word ZIP 已开始下载'
   } catch (e) {
     errorMessage.value = e.message || '导出失败，请稍后重试'
   } finally {
@@ -703,6 +759,9 @@ onMounted(async () => {
   border-style: dashed;
   margin-left: auto;
 }
+.mode-link {
+  text-decoration: none;
+}
 
 /* 双栏布局 */
 .content-layout {
@@ -795,6 +854,12 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.all-notes-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
 }
 
 /* 新建笔记本表单 */
@@ -1079,11 +1144,14 @@ onMounted(async () => {
 .card-time {
   font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 .card-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .btn-export-note {
   padding: 2px 8px;
@@ -1094,13 +1162,13 @@ onMounted(async () => {
   font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 .btn-export-note:hover {
   background: rgba(99, 102, 241, 0.25);
   border-color: rgba(99, 102, 241, 0.45);
 }
 .btn-export-all {
-  margin-left: auto;
   padding: 2px 8px;
   background: rgba(99, 102, 241, 0.12);
   border: 1px solid rgba(99, 102, 241, 0.25);
@@ -1110,10 +1178,20 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .btn-export-all:hover {
   background: rgba(99, 102, 241, 0.25);
   border-color: rgba(99, 102, 241, 0.45);
+}
+.btn-export-word {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+}
+.btn-export-word:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.45);
 }
 
 /* 分页 */

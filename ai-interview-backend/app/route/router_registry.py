@@ -92,7 +92,7 @@ CLIENT_ROUTES = [
         prefix=f"{settings.API_V1_STR}/shared",
         tags=["client-shared"]
     ),
-RouteConfig(
+    RouteConfig(
         module_path="app.api.client.v1.notebook",
         prefix=f"{settings.API_V1_STR}/notebooks",
         tags=["client-notebook"]
@@ -101,6 +101,16 @@ RouteConfig(
         module_path="app.api.client.v1.note_template",
         prefix=f"{settings.API_V1_STR}/note-templates",
         tags=["client-note-template"]
+    ),
+    RouteConfig(
+        module_path="app.api.client.v1.flashcard",
+        prefix=f"{settings.API_V1_STR}/flashcards",
+        tags=["client-flashcard"]
+    ),
+    RouteConfig(
+        module_path="app.api.client.v1.weakness",
+        prefix=f"{settings.API_V1_STR}/weakness",
+        tags=["client-weakness"]
     ),
     RouteConfig(
         module_path="app.api.client.v1.media.files",
@@ -175,6 +185,11 @@ BACKOFFICE_ROUTES = [
         module_path="app.api.backoffice.v1.experience",
         prefix=f"{settings.API_V1_STR}/backoffice/experiences",
         tags=["backoffice-experience"]
+    ),
+    RouteConfig(
+        module_path="app.api.backoffice.v1.media_tasks",
+        prefix=f"{settings.API_V1_STR}/backoffice/media/tasks",
+        tags=["backoffice-media-tasks"]
     ),
 ]
 

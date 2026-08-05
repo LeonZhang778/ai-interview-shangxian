@@ -1,9 +1,10 @@
 import os
 import uuid
 import mimetypes
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import quote
-from fastapi import APIRouter, Depends, Query, UploadFile, File
+from fastapi import APIRouter, Depends, Query, UploadFile, File, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +15,10 @@ from app.models.user import User
 from app.models.learning_note import LearningNote
 from app.models.notebook import Notebook
 from app.schemas.response import ApiResponse
+from app.services.client.document_export_service import DOCX_MEDIA_TYPE, document_export_service
 from app.services.client.learning_note_service import learning_note_service
+from app.services.client.note_interaction_service import note_interaction_service
+from app.services.client.note_recommend_service import note_recommend_service
 from sqlalchemy import select
 
 router = APIRouter()
@@ -66,13 +70,23 @@ class TagApplyBody(BaseModel):
         return list(dict.fromkeys(cleaned))[:5]
 
 
+class CommentCreateBody(BaseModel):
+    content: str = Field(..., min_length=1, max_length=500)
+    parent_id: Optional[int] = None
+
+
+class RecommendForInterviewBody(BaseModel):
+    keywords: list[str] = Field(default_factory=list, max_length=10)
+    limit: int = Field(5, ge=1, le=20)
+
+
 @router.post("/upload-image")
 async def upload_note_image(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
     """上传笔记中的图片，返回可访问的 URL"""
-    allowed_types = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"}
+    allowed_types = {"image/jpeg", "image/png", "image/gif", "image/webp"}
     content_type = file.content_type or "application/octet-stream"
     if content_type not in allowed_types:
         return ApiResponse.failed(message=f"不支持的文件类型: {content_type}", body_code=400)
@@ -99,7 +113,7 @@ async def search_notes(
     note_type: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
-    scope: str = Query("my"),
+    scope: Literal["my", "public"] = Query("my"),
     current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
@@ -253,6 +267,115 @@ async def apply_suggested_tags(
     return ApiResponse.success(data={"tags": tags, "message": "标签已应用"})
 
 
+@router.post("/{note_id}/like")
+async def like_note(
+    note_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await note_interaction_service.toggle_like(
+        db=db, note_id=note_id, user_id=current_user.id
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.post("/{note_id}/collect")
+async def collect_note(
+    note_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await note_interaction_service.toggle_collect(
+        db=db, note_id=note_id, user_id=current_user.id
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.get("/{note_id}/interaction-status")
+async def get_note_interaction_status(
+    note_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await note_interaction_service.get_interaction_status(
+        db=db, note_id=note_id, user_id=current_user.id
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.get("/{note_id}/comments")
+async def get_note_comments(
+    note_id: int,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await note_interaction_service.get_comments(
+        db=db, note_id=note_id, page=page, size=size
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.post("/{note_id}/comments")
+async def create_note_comment(
+    note_id: int,
+    body: CommentCreateBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await note_interaction_service.create_comment(
+        db=db,
+        note_id=note_id,
+        user_id=current_user.id,
+        content=body.content,
+        parent_id=body.parent_id,
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.delete("/comments/{comment_id}")
+async def delete_note_comment(
+    comment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await note_interaction_service.delete_comment(
+        db=db, comment_id=comment_id, user_id=current_user.id
+    )
+    return ApiResponse.success(message="评论已删除")
+
+
+@router.get("/{note_id}/related")
+async def get_related_notes(
+    note_id: int,
+    limit: int = Query(5, ge=1, le=20),
+    current_user: User | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await note_recommend_service.get_related_notes(
+        db=db,
+        note_id=note_id,
+        user_id=current_user.id if current_user else None,
+        limit=limit,
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.post("/recommend/interview")
+async def recommend_notes_for_interview(
+    body: RecommendForInterviewBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await note_recommend_service.recommend_for_interview(
+        db=db,
+        user_id=current_user.id,
+        keywords=body.keywords,
+        limit=body.limit,
+    )
+    return ApiResponse.success(data=result)
+
+
 @router.get("/{note_id}")
 async def get_note_detail(
     note_id: int,
@@ -352,12 +475,39 @@ async def export_single_note(
 
     note = await db.get(LearningNote, note_id)
     if not note or note.user_id != current_user.id:
-        return ApiResponse.failed(message="笔记不存在", body_code=404)
+        return ApiResponse.failed(message="笔记不存在", body_code=404, http_code=status.HTTP_404_NOT_FOUND)
 
     filename = f"{_safe_filename(note.title, f'note_{note_id}')}.md"
     return StreamingResponse(
         io.BytesIO(_note_markdown(note).encode("utf-8")),
         media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": _content_disposition(filename)},
+    )
+
+
+@router.get("/{note_id}/export-docx")
+async def export_single_note_docx(
+    note_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出单个笔记为 DOCX 文件。"""
+    import io
+
+    result = await db.execute(
+        select(LearningNote, Notebook.name)
+        .outerjoin(Notebook, LearningNote.notebook_id == Notebook.id)
+        .where(LearningNote.id == note_id, LearningNote.user_id == current_user.id)
+    )
+    row = result.first()
+    if not row:
+        return ApiResponse.failed(message="笔记不存在", body_code=404, http_code=status.HTTP_404_NOT_FOUND)
+
+    note, notebook_name = row
+    filename = f"{_safe_filename(note.title, f'note_{note_id}')}.docx"
+    return StreamingResponse(
+        io.BytesIO(document_export_service.build_note_docx(note, notebook_name)),
+        media_type=DOCX_MEDIA_TYPE,
         headers={"Content-Disposition": _content_disposition(filename)},
     )
 
@@ -401,6 +551,29 @@ async def _export_notes_zip(
     return buf.getvalue(), None
 
 
+async def _export_notes_docx_zip(
+    db: AsyncSession,
+    user_id: int,
+    notebook_ids: list[int] | None = None,
+) -> tuple[bytes | None, str | None]:
+    """生成 DOCX 笔记 ZIP，返回二进制内容和空结果错误信息。"""
+    conditions = [LearningNote.user_id == user_id]
+    if notebook_ids is not None:
+        conditions.append(LearningNote.notebook_id.in_(notebook_ids))
+
+    result = await db.execute(
+        select(LearningNote, Notebook.name)
+        .outerjoin(Notebook, LearningNote.notebook_id == Notebook.id)
+        .where(*conditions)
+        .order_by(LearningNote.notebook_id, LearningNote.created_at)
+    )
+    rows = result.all()
+    if not rows:
+        return None, "该笔记本下没有可导出的笔记" if notebook_ids is not None else "没有可导出的笔记"
+
+    return document_export_service.build_notes_docx_zip(rows), None
+
+
 @router.get("/export/notebook/{notebook_id}")
 async def export_notebook(
     notebook_id: int,
@@ -413,13 +586,38 @@ async def export_notebook(
 
     root, notebook_ids = await _collect_notebook_ids(db, notebook_id, current_user.id)
     if not root:
-        return ApiResponse.failed(message="笔记本不存在", body_code=404)
+        return ApiResponse.failed(message="笔记本不存在", body_code=404, http_code=status.HTTP_404_NOT_FOUND)
 
     content, error = await _export_notes_zip(db, current_user.id, notebook_ids)
     if error:
-        return ApiResponse.failed(message=error, body_code=400)
+        return ApiResponse.failed(message=error, body_code=400, http_code=status.HTTP_400_BAD_REQUEST)
 
     filename = f"{_safe_filename(root.name, f'notebook_{notebook_id}')}.zip"
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/zip",
+        headers={"Content-Disposition": _content_disposition(filename)},
+    )
+
+
+@router.get("/export-docx/notebook/{notebook_id}")
+async def export_notebook_docx(
+    notebook_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出整个笔记本（含子笔记本）为 DOCX ZIP 文件。"""
+    import io
+
+    root, notebook_ids = await _collect_notebook_ids(db, notebook_id, current_user.id)
+    if not root:
+        return ApiResponse.failed(message="笔记本不存在", body_code=404, http_code=status.HTTP_404_NOT_FOUND)
+
+    content, error = await _export_notes_docx_zip(db, current_user.id, notebook_ids)
+    if error:
+        return ApiResponse.failed(message=error, body_code=400, http_code=status.HTTP_400_BAD_REQUEST)
+
+    filename = f"{_safe_filename(root.name, f'notebook_{notebook_id}')}_docx.zip"
     return StreamingResponse(
         io.BytesIO(content),
         media_type="application/zip",
@@ -438,10 +636,29 @@ async def export_all_notes(
 
     content, error = await _export_notes_zip(db, current_user.id)
     if error:
-        return ApiResponse.failed(message=error, body_code=400)
+        return ApiResponse.failed(message=error, body_code=400, http_code=status.HTTP_400_BAD_REQUEST)
 
     return StreamingResponse(
         io.BytesIO(content),
         media_type="application/zip",
         headers={"Content-Disposition": _content_disposition("all_notes.zip")},
+    )
+
+
+@router.get("/export-docx/all")
+async def export_all_notes_docx(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出当前用户的全部笔记为 DOCX ZIP 文件。"""
+    import io
+
+    content, error = await _export_notes_docx_zip(db, current_user.id)
+    if error:
+        return ApiResponse.failed(message=error, body_code=400, http_code=status.HTTP_400_BAD_REQUEST)
+
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/zip",
+        headers={"Content-Disposition": _content_disposition("all_notes_docx.zip")},
     )

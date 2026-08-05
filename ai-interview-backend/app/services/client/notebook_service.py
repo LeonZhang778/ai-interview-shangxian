@@ -72,6 +72,11 @@ class NotebookService:
         icon: Optional[str] = None,
     ) -> Dict:
         """创建笔记本"""
+        if parent_id is not None:
+            parent = await db.get(Notebook, parent_id)
+            if not parent or parent.user_id != user_id:
+                raise NotFoundError(message="父级笔记本不存在")
+
         notebook = Notebook(
             user_id=user_id,
             name=name.strip(),
@@ -110,13 +115,17 @@ class NotebookService:
         target_parent_id = notebook.parent_id
 
         # 子笔记本移到父级
-        sub_query = select(Notebook).where(Notebook.parent_id == notebook_id)
+        sub_query = select(Notebook).where(
+            Notebook.user_id == user_id,
+            Notebook.parent_id == notebook_id,
+        )
         sub_result = await db.execute(sub_query)
         for sub in sub_result.scalars():
             sub.parent_id = target_parent_id
 
         # 笔记移到父级
         note_query = select(LearningNote).where(
+            LearningNote.user_id == user_id,
             LearningNote.notebook_id == notebook_id
         )
         note_result = await db.execute(note_query)

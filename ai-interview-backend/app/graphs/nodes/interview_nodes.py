@@ -339,6 +339,17 @@ async def save_results_node(state: dict) -> dict:
         except Exception as e:
             logger.warning(f"自动生成学习笔记草稿失败: {e}")
 
+        # 错题本仪表盘：记录本次面试报告中的薄弱点。
+        try:
+            from app.services.client.weakness_service import weakness_service
+            await weakness_service.record_from_interview(
+                db=db,
+                user_id=user_id,
+                interview_id=interview_id,
+            )
+        except Exception as e:
+            logger.warning(f"记录薄弱点统计失败: {e}")
+
     # 组装最终结果
     result = {
         "score": score,

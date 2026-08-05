@@ -1,4 +1,5 @@
 import api from './request'
+import { downloadBinary } from './download'
 
 export function startInterview(data) {
   return api.post('/interviews/start', data)
@@ -48,6 +49,10 @@ export async function submitAnswerStream(interviewId, answer, onChunk, onDone) {
 
 export function getReport(interviewId) {
   return api.get(`/interviews/${interviewId}/report`)
+}
+
+export function exportReportDocx(interviewId) {
+  return downloadBinary(`/api/v1/interviews/${interviewId}/report/export-docx`, `interview_${interviewId}_report.docx`)
 }
 
 export function getMessages(interviewId) {

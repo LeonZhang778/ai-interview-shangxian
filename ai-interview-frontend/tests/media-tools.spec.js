@@ -18,7 +18,7 @@ test.describe('媒体工具 GIF、合并和水印 API', () => {
     })
     expect(response.status()).toBe(400)
     const body = await response.json()
-    expect(body.message).toContain('GIF 片段时长')
+    expect(body.message).toContain('GIF 时长')
   })
 
   test('视频合并少于两个文件被拒绝', async ({ request }) => {

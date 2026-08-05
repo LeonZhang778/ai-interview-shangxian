@@ -25,6 +25,7 @@ from app.services.media import (
     MediaEventRepository,
     format_config,
 )
+from app.services.media.observability import log_media_event, log_media_metric
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,20 @@ async def _create_special_task(data: dict, tool_code: str, current_user: User, d
     options = dict(data)
     options.update({"target_format": target_format, "tool_code": tool_code})
     task = await MediaTaskRepository.create(db, current_user.id, tool_code, file_ids, options)
-    await MediaEventRepository.create(db, task.id, current_user.id, "task_created", {"tool_code": tool_code})
+    await MediaEventRepository.create(
+        db,
+        task.id,
+        current_user.id,
+        "media.task.created",
+        {"tool_name": tool_code, "input_count": len(file_ids)},
+    )
+    log_media_event(
+        event="media.task.created",
+        task_id=task.id,
+        user_id=current_user.id,
+        tool_name=tool_code,
+        extra={"input_count": len(file_ids)},
+    )
     try:
         from app.schedule.jobs.media_tasks import process_media_task
         result = process_media_task.delay(task.id)
@@ -250,8 +264,15 @@ async def create_convert_task(
         db=db,
         task_id=task.id,
         user_id=current_user.id,
-        event_name="task_created",
-        payload_json={"tool_code": tool_code, "target_format": target_format},
+        event_name="media.task.created",
+        payload_json={"tool_name": tool_code, "target_format": target_format, "input_count": len(input_file_ids)},
+    )
+    log_media_event(
+        event="media.task.created",
+        task_id=task.id,
+        user_id=current_user.id,
+        tool_name=tool_code,
+        extra={"target_format": target_format, "input_count": len(input_file_ids)},
     )
 
     # 7. 异步提交到 Celery 媒体队列
@@ -348,7 +369,7 @@ async def cancel_media_task(
     await MediaTaskRepository.cancel_task(db, task_id, current_user.id)
 
     await MediaEventRepository.create(
-        db=db, task_id=task_id, user_id=current_user.id, event_name="task_cancelled"
+        db=db, task_id=task_id, user_id=current_user.id, event_name="media.task.cancelled"
     )
     return ApiResponse.success(message="任务已取消")
 
@@ -418,7 +439,7 @@ async def retry_media_task(
         db=db,
         task_id=task_id,
         user_id=current_user.id,
-        event_name="task_retry",
+        event_name="media.task.retry",
         payload_json={"retry_count": task.retry_count},
     )
     return ApiResponse.success(
@@ -440,6 +461,7 @@ async def download_media_task(
     """获取任务输出文件的下载地址"""
     task = await MediaTaskRepository.get_by_id(db, task_id, current_user.id)
     if not task:
+        log_media_metric("media_download_403_total", 1, {"resource": "task_result"})
         raise NotFoundError(message="任务不存在")
 
     if task.status != "completed":
@@ -450,11 +472,28 @@ async def download_media_task(
 
     output_file = await MediaFileRepository.get_by_id(db, task.output_file_id, current_user.id)
     if not output_file:
+        log_media_metric("media_download_403_total", 1, {"resource": "task_output"})
         raise NotFoundError(message="输出文件不存在")
 
 # 检查文件是否过期
     if output_file.expires_at and output_file.expires_at < datetime.now(timezone.utc):
         raise APIException(code=10414, message="文件已过期", status_code=410)
+
+    await MediaEventRepository.create(
+        db=db,
+        task_id=task.id,
+        user_id=current_user.id,
+        event_name="media.result.downloaded",
+        payload_json={"file_id": output_file.id, "bytes": output_file.size_bytes},
+    )
+    log_media_event(
+        event="media.result.downloaded",
+        task_id=task.id,
+        file_id=output_file.id,
+        user_id=current_user.id,
+        tool_name=task.tool_name,
+        extra={"bytes": output_file.size_bytes},
+    )
 
     # 返回本地文件路径（实际场景应使用 S3 短期签名 URL）
     return ApiResponse.success(

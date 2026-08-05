@@ -159,8 +159,31 @@
         <p v-if="noteMessage" :class="['note-msg', noteMessageType]">{{ noteMessage }}</p>
       </div>
 
+      <!-- 相关笔记推荐 -->
+      <div class="card recommend-note-panel" style="margin-top:16px" v-if="recommendNotes.length">
+        <h3 style="margin-bottom:12px;color:var(--accent-light)">相关笔记推荐</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+          根据本次报告的薄弱点，推荐你已经沉淀过的相关笔记
+        </p>
+        <div class="recommend-note-list">
+          <button
+            v-for="note in recommendNotes"
+            :key="note.id"
+            type="button"
+            class="recommend-note-item"
+            @click="router.push(`/learning-notes/${note.id}`)"
+          >
+            <span>{{ note.title }}</span>
+            <small>{{ note.tags || typeLabel(note.note_type) }}</small>
+          </button>
+        </div>
+      </div>
+
       <!-- 操作 -->
       <div style="text-align:center;margin-top:24px;margin-bottom:40px">
+        <button @click.stop="handleExportDocx" class="btn-export-docx" style="padding:10px 24px;border-radius:8px;margin-right:12px" :disabled="exportStatus === 'loading'">
+          {{ exportStatus === 'loading' ? '导出中...' : '导出 Word' }}
+        </button>
         <button @click.stop="handleShareImage" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px" :disabled="shareStatus === 'generating'">
           {{ shareStatus === 'generating' ? '生成图片中...' : '截图分享' }}
         </button>
@@ -170,6 +193,7 @@
         <router-link to="/dashboard" class="btn-secondary" style="display:inline-block;padding:10px 24px;border-radius:8px">
           返回首页
         </router-link>
+        <p v-if="exportMessage" :class="['note-msg', exportMessageType]">{{ exportMessage }}</p>
       </div>
 
       <!-- 截图预览弹窗 -->
@@ -203,8 +227,8 @@
 import QRCode from 'qrcode'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getReport, shareInterview, unshareInterview } from '../api/interview'
-import { generateFromInterview } from '../api/learningNote'
+import { getReport, shareInterview, unshareInterview, exportReportDocx } from '../api/interview'
+import { generateFromInterview, recommendForInterview } from '../api/learningNote'
 import StarryBackground from '../components/StarryBackground.vue'
 
 const route = useRoute()
@@ -224,6 +248,10 @@ const previewImage = ref(null)
 const noteStatus = ref('idle')
 const noteMessage = ref('')
 const noteMessageType = ref('')
+const exportStatus = ref('idle')
+const exportMessage = ref('')
+const exportMessageType = ref('')
+const recommendNotes = ref([])
 
 const shareUrl = computed(() => {
   if (!shareToken.value) return ''
@@ -235,6 +263,7 @@ onMounted(async () => {
     const res = await getReport(interviewId)
     data.value = res
     report.value = res.report || {}
+    await loadRecommendNotes()
     // 如果已有分享token
     if (res.share_token) {
       shareToken.value = res.share_token
@@ -246,6 +275,25 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function typeLabel(type) {
+  const map = { review: '复盘', mistake: '错题', experience: '面经', material: '资料', note: '笔记' }
+  return map[type] || '笔记'
+}
+
+async function loadRecommendNotes() {
+  const keywords = [
+    ...(report.value?.weaknesses || []),
+    ...(report.value?.suggestions || []),
+  ].slice(0, 8)
+  if (!keywords.length) return
+  try {
+    const res = await recommendForInterview(keywords, 5)
+    recommendNotes.value = res.items || []
+  } catch (e) {
+    console.error('加载相关笔记推荐失败', e)
+  }
+}
 
 async function handleShareImage() {
   if (shareStatus.value === 'generating') return
@@ -378,6 +426,22 @@ async function handleSaveToNote() {
     noteMessageType.value = 'error'
   } finally {
     noteStatus.value = 'idle'
+  }
+}
+
+async function handleExportDocx() {
+  if (exportStatus.value === 'loading') return
+  exportStatus.value = 'loading'
+  exportMessage.value = ''
+  try {
+    await exportReportDocx(interviewId)
+    exportMessage.value = 'Word 报告已开始下载'
+    exportMessageType.value = 'success'
+  } catch (e) {
+    exportMessage.value = e.message || '导出失败，请稍后重试'
+    exportMessageType.value = 'error'
+  } finally {
+    exportStatus.value = 'idle'
   }
 }
 </script>
@@ -682,6 +746,24 @@ ul li::before {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(245,158,11,0.4);
 }
+.btn-export-docx {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-export-docx:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(14,165,233,0.35);
+}
+.btn-export-docx:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
 
 /* Share link panel */
 .share-link-panel {
@@ -776,6 +858,43 @@ ul li::before {
 }
 .note-msg.error {
   color: #ef4444;
+}
+.recommend-note-list {
+  display: grid;
+  gap: 10px;
+}
+.recommend-note-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.recommend-note-item:hover {
+  border-color: rgba(99,102,241,0.35);
+  background: rgba(99,102,241,0.08);
+}
+.recommend-note-item span,
+.recommend-note-item small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recommend-note-item span {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.recommend-note-item small {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 /* 截图预览弹窗 */

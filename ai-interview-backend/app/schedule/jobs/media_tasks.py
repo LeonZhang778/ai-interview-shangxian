@@ -10,7 +10,6 @@ import asyncio
 import json
 import logging
 import os
-import subprocess
 import time
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -24,6 +23,7 @@ from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.models.media_tool import MediaFile, MediaTask, MediaEvent
 from app.services.media.format_config import format_config
+from app.services.media.observability import log_media_alert, log_media_event, log_media_metric
 
 logger = logging.getLogger(__name__)
 
@@ -42,20 +42,18 @@ def _log_structured(
     level: str = "info",
 ):
     """输出结构化日志条目，包含 trace/span 上下文"""
-    record = {
-        "event": event,
-        "task_id": task_id,
-        "trace_id": trace_id,
-        "span_id": span_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    if user_id is not None:
-        record["user_id"] = user_id
+    safe_extra = {"span_id": span_id}
     if extra:
-        record.update(extra)
-
-    log_fn = getattr(logger, level, logger.info)
-    log_fn("MEDIA_TRACE: %s", json.dumps(record))
+        safe_extra.update(extra)
+    log_media_event(
+        event=event,
+        task_id=task_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        tool_name=safe_extra.get("tool_code") or safe_extra.get("tool_name"),
+        extra=safe_extra,
+        level=level,
+    )
 
 
 def _log_error_alert(
@@ -67,18 +65,41 @@ def _log_error_alert(
     retry_count: int,
 ):
     """输出高优先级错误告警日志（可在日志聚合系统中触发告警规则）"""
-    record = {
-        "event": "task_failed_alert",
-        "task_id": task_id,
-        "trace_id": trace_id,
-        "error_code": error_code,
-        "error_message": error_message[:200],
-        "user_id": user_id,
-        "retry_count": retry_count,
-        "severity": "high",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    logger.error("MEDIA_ALERT: %s", json.dumps(record))
+    log_media_alert(
+        "media.worker_failure_total",
+        severity="high",
+        task_id=task_id,
+        trace_id=trace_id,
+        user_id=user_id,
+        error_code=error_code,
+        extra={"retry_count": retry_count, "error_message": error_message[:200]},
+    )
+
+
+def _task_duration_ms(task: MediaTask) -> Optional[int]:
+    if not task.started_at:
+        return None
+    finished_at = task.finished_at or datetime.now(timezone.utc)
+    return int((finished_at - task.started_at).total_seconds() * 1000)
+
+
+def _queue_wait_ms(task: MediaTask) -> Optional[int]:
+    if not task.created_at:
+        return None
+    started_at = task.started_at or datetime.now(timezone.utc)
+    return int((started_at - task.created_at).total_seconds() * 1000)
+
+
+def _status_event_name(status: str, progress: Optional[int]) -> str:
+    if status == "processing":
+        return "media.task.started" if progress is not None and progress <= 5 else "media.task.progress"
+    if status == "completed":
+        return "media.task.completed"
+    if status == "failed":
+        return "media.task.failed"
+    if status == "cancelled":
+        return "media.task.cancelled"
+    return f"media.task.{status}"
 
 # 避免重复创建引擎，用模块级缓存
 _engine = None
@@ -149,24 +170,43 @@ async def _update_task_status(
 
     await db.commit()
 
+    event_name = _status_event_name(status, progress)
+    duration_ms = _task_duration_ms(task) if status in ("completed", "failed", "cancelled") else None
+    queue_wait_ms = _queue_wait_ms(task) if event_name == "media.task.started" else None
+    output_size = None
+    if output_file_id is not None:
+        output_result = await db.execute(select(MediaFile.size_bytes).where(MediaFile.id == output_file_id))
+        output_size = output_result.scalar_one_or_none()
+
     # 结构化日志追踪
     if trace_id and span_id:
         extra = {
-            "progress": progress,
-            "error_code": error_code,
+            "span_id": span_id,
             "stage": status,
+            "queue_wait_ms": queue_wait_ms,
             "output_file_id": output_file_id,
+            "output_size": output_size,
         }
         log_level = "error" if status == "failed" else "warning" if status == "cancelled" else "info"
-        _log_structured(
-            event=f"task_{status}",
+        log_media_event(
+            event=event_name,
             task_id=task_id,
-            trace_id=trace_id,
-            span_id=span_id,
             user_id=task.user_id,
+            trace_id=trace_id,
+            tool_name=task.tool_name,
+            percent=progress,
+            duration_ms=duration_ms,
+            error_code=error_code,
             extra=extra,
             level=log_level,
         )
+        if event_name == "media.task.started" and queue_wait_ms is not None:
+            log_media_metric("media_queue_wait_seconds", queue_wait_ms / 1000, {"tool_name": task.tool_name})
+        if event_name == "media.task.completed" and duration_ms is not None:
+            log_media_metric("media_task_duration_seconds", duration_ms / 1000, {"tool_name": task.tool_name})
+            log_media_metric("media_task_success_total", 1, {"tool_name": task.tool_name})
+        if event_name == "media.task.failed":
+            log_media_metric("media_worker_failure_total", 1, {"tool_name": task.tool_name, "error_code": error_code})
         # 失败告警
         if status == "failed" and error_code:
             _log_error_alert(
@@ -182,13 +222,16 @@ async def _update_task_status(
     event = MediaEvent(
         task_id=task_id,
         user_id=task.user_id,
-        event_name=f"task_{status}",
+        event_name=event_name,
         payload_json={
-            "progress": progress,
+            "percent": progress,
             "error_code": error_code,
-            "stage": status,
+            "status": status,
             "trace_id": trace_id,
             "span_id": span_id,
+            "duration_ms": duration_ms,
+            "queue_wait_ms": queue_wait_ms,
+            "output_size": output_size,
         },
     )
     db.add(event)
@@ -364,7 +407,13 @@ async def _process_convert_task(task_id: int):
                     cmd.extend(["-vn"])
                 cmd.append(output_path)
 
-            logger.info(f"FFmpeg cmd: {' '.join(cmd)}")
+            logger.info(
+                "FFmpeg command prepared: task_id=%s tool=%s target_format=%s arg_count=%s",
+                task_id,
+                tool_code,
+                target_format,
+                len(cmd),
+            )
             span_id = "span_ffmpeg_start"
             _log_structured(
                 event="ffmpeg_executing", task_id=task_id, trace_id=trace_id,
@@ -470,7 +519,7 @@ async def _process_convert_task(task_id: int):
                 progress=100, output_file_id=output_file.id,
                 trace_id=trace_id, span_id=span_id,
             )
-            logger.info(f"Task {task_id} completed: {output_path} ({output_size} bytes)")
+            logger.info("Media task completed: task_id=%s output_size=%s", task_id, output_size)
 
         except asyncio.CancelledError:
             # 任务被取消，清理半成品
@@ -570,10 +619,13 @@ async def _check_stuck_tasks():
             )
             stuck_tasks = result.scalars().all()
             for task in stuck_tasks:
-                logger.warning(
-                    "MEDIA_STUCK_TASK: task_id=%s user_id=%s tool=%s started=%s",
-                    task.id, task.user_id, task.tool_name,
-                    task.started_at.isoformat() if task.started_at else "N/A",
+                log_media_alert(
+                    "media_queue_depth",
+                    severity="warning",
+                    task_id=task.id,
+                    user_id=task.user_id,
+                    tool_name=task.tool_name,
+                    extra={"started_at": task.started_at.isoformat() if task.started_at else None},
                 )
 
             # 2. 检查最近 1 小时内失败超过 3 次的任务
@@ -586,10 +638,9 @@ async def _check_stuck_tasks():
             )
             failed_tasks = result.scalars().all()
             if len(failed_tasks) > 3:
-                logger.error(
-                    "MEDIA_HIGH_FAILURE_RATE: %d tasks failed in last hour",
-                    len(failed_tasks),
-                )
+                log_media_alert("media_task_success_rate", severity="high", extra={"failed_last_hour": len(failed_tasks)})
+            log_media_metric("media_queue_depth", len(stuck_tasks), {"status": "processing_over_15m"})
+            log_media_metric("media_worker_failure_total", len(failed_tasks), {"window": "1h"})
 
             logger.info(
                 "Media health check: stuck=%d, recent_failures=%d",

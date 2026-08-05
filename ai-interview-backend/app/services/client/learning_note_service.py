@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime, timezone
 from math import ceil
 from typing import Optional, Dict, List
 from sqlalchemy import select, func, desc, or_
@@ -8,14 +9,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
+from app.models.learning_note import LearningNote
+from app.models.notebook import Notebook
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
 from app.prompts.learning_note import NOTE_SUMMARIZE_PROMPT, NOTE_TAG_SUGGEST_PROMPT
-from app.utils.utils import normalize_tag
 
 logger = logging.getLogger(__name__)
 
 
 class LearningNoteService:
+    @staticmethod
+    async def _validate_notebook_owner(
+        db: AsyncSession,
+        notebook_id: Optional[int],
+        user_id: int,
+    ) -> None:
+        """校验笔记本归属；None 表示未分类，允许通过。"""
+        if notebook_id is None:
+            return
+        notebook = await db.get(Notebook, notebook_id)
+        if not notebook or notebook.user_id != user_id:
+            raise NotFoundError(message="笔记本不存在")
 
     @staticmethod
     def _safe_parse_json(value, default=None):
@@ -50,6 +64,11 @@ class LearningNoteService:
             size: 每页条数
             scope: "my" 搜索我的笔记，"public" 搜索公开广场
         """
+        if scope not in {"my", "public"}:
+            raise ValidationError(message="搜索范围不合法")
+        if scope == "my" and not user_id:
+            raise ValidationError(message="需要登录才能搜索我的笔记")
+
         query_vec = func.plainto_tsquery("simple", keyword)
 
         conditions = [
@@ -162,6 +181,8 @@ class LearningNoteService:
                 "interview_id": n.interview_id,
                 "view_count": n.view_count,
                 "like_count": n.like_count,
+                "collect_count": n.collect_count,
+                "comment_count": n.comment_count,
                 "summary": n.summary,
                 "created_at": n.created_at.isoformat() if n.created_at else None,
                 "updated_at": n.updated_at.isoformat() if n.updated_at else None,
@@ -230,7 +251,10 @@ class LearningNoteService:
                 "tags": n.tags,
                 "view_count": n.view_count,
                 "like_count": n.like_count,
+                "collect_count": n.collect_count,
+                "comment_count": n.comment_count,
                 "summary": n.summary,
+                "published_at": n.published_at.isoformat() if n.published_at else None,
                 "created_at": n.created_at.isoformat() if n.created_at else None,
             }
             for n in notes
@@ -308,6 +332,8 @@ class LearningNoteService:
             "interview_id": note.interview_id,
             "view_count": note.view_count,
             "like_count": note.like_count,
+            "collect_count": note.collect_count,
+            "comment_count": note.comment_count,
             "summary": note.summary,
 "key_points": LearningNoteService._safe_parse_json(note.key_points, []),
             "is_owner": is_owner,
@@ -330,6 +356,13 @@ class LearningNoteService:
         source: str = "manual"
     ) -> Dict:
         """创建笔记"""
+        await LearningNoteService._validate_notebook_owner(db, notebook_id, user_id)
+        published_at = (
+            datetime.now(timezone.utc)
+            if visibility == "public" and status == "published"
+            else None
+        )
+
         note = LearningNote(
             user_id=user_id,
             title=title,
@@ -341,6 +374,7 @@ class LearningNoteService:
             notebook_id=notebook_id,
             interview_id=interview_id,
             source=source,
+            published_at=published_at,
         )
         db.add(note)
         await db.commit()
@@ -361,9 +395,23 @@ class LearningNoteService:
         if note.user_id != user_id:
             raise ValidationError(message="无权修改此笔记")
 
+        if "notebook_id" in kwargs:
+            await LearningNoteService._validate_notebook_owner(
+                db, kwargs["notebook_id"], user_id
+            )
+
         for key, value in kwargs.items():
-            if value is not None and hasattr(note, key):
+            if key == "notebook_id" and hasattr(note, key):
                 setattr(note, key, value)
+            elif value is not None and hasattr(note, key):
+                setattr(note, key, value)
+
+        if note.visibility == "public" and note.status == "published":
+            if not note.published_at:
+                note.published_at = datetime.now(timezone.utc)
+        else:
+            note.published_at = None
+
         await db.commit()
         return {"id": note.id, "message": "更新成功"}
 
@@ -542,6 +590,7 @@ class LearningNoteService:
         """
         from app.services.client.ai_service import AIService
         from app.services.common.redis import redis_client
+        from app.utils.utils import normalize_tag
 
         note = await db.get(LearningNote, note_id)
         if not note or note.user_id != user_id:

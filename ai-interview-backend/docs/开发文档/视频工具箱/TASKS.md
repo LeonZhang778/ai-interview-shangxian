@@ -16,8 +16,8 @@
 - [x] T012 · 增加 GIF 片段处理，参考 `STORY-003-video-to-gif.md`。
 - [x] T013 · 增加视频合并，参考 `STORY-004-video-merge.md`。
 - [x] T014 · 增加添加水印，参考 `STORY-005-video-watermark.md`。
-- [ ] T015 · 实现后台任务查询、重试和终止，参考 `05-rbac.md`。
-- [ ] T016 · 增加事件、日志、指标和告警，参考 `07-observability.md`。
+- [x] T015 · 实现后台任务查询、重试和终止，参考 `05-rbac.md`。
+- [x] T016 · 增加事件、日志、指标和告警，参考 `07-observability.md`。
 - [ ] T017 · 按 `10-test-plan.md` 完成单元、集成、E2E、负载和安全测试。
 - [ ] T018 · 配置功能开关、灰度、清理和回滚演练，参考 `08-rollout.md`、`12-milestones.md`。
 
