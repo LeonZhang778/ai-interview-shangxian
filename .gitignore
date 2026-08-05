@@ -49,6 +49,9 @@ ai-interview-backend/logs/
 ai-interview-backend/__pycache__/
 ai-interview-backend/celerybeat-schedule.db/
 
+# ---------- 本地 PostgreSQL 数据目录 ----------
+.local-postgres/
+
 # ---------- 上传文件 ----------
 ai-interview-backend/uploads/avatars/*
 ai-interview-backend/uploads/resumes/*

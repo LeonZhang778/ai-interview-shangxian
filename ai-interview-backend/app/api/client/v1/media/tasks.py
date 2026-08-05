@@ -74,22 +74,34 @@ def _validate_special_options(data: dict, tool_code: str) -> None:
         file_ids = data.get("file_ids")
         if not isinstance(file_ids, list) or len(file_ids) < 2 or len(file_ids) > 10:
             raise APIException(code=10401, message="视频合并至少需要 2 个、最多 10 个文件", status_code=400)
+        if any(isinstance(file_id, bool) or not isinstance(file_id, int) or file_id <= 0 for file_id in file_ids):
+            raise APIException(code=10401, message="文件 ID 无效", status_code=400)
     if tool_code == "gif":
         try:
             start = float(data.get("start_time", 0) or 0)
             duration = float(data.get("duration", 0) or 0)
+            frame_rate = float(data.get("frame_rate", 0) or 0)
+            width = float(data.get("width", 0) or 0)
         except (TypeError, ValueError):
+            raise APIException(code=10401, message="GIF 时间参数必须为数字", status_code=400)
+        if not math.isfinite(start) or not math.isfinite(duration) or not math.isfinite(frame_rate) or not math.isfinite(width):
             raise APIException(code=10401, message="GIF 时间参数必须为数字", status_code=400)
         if duration <= 0 or duration > 60:
             raise APIException(code=10401, message="GIF 时长必须大于 0 且不超过 60 秒", status_code=400)
         if start < 0:
             raise APIException(code=10401, message="GIF 开始时间不能为负数", status_code=400)
+        if frame_rate and not 1 <= frame_rate <= 60:
+            raise APIException(code=10401, message="GIF 帧率必须在 1 到 60 之间", status_code=400)
+        if width and (width < 16 or width > 1920 or width != int(width)):
+            raise APIException(code=10401, message="GIF 宽度必须在 16 到 1920 像素之间", status_code=400)
         if data.get("quality", "medium") not in format_config.GIF_QUALITY:
             raise APIException(code=10401, message="GIF 质量参数无效", status_code=400)
     if tool_code == "watermark":
         watermark_file_id = data.get("watermark_file_id")
-        if not watermark_file_id:
+        if watermark_file_id is None:
             raise APIException(code=10401, message="缺少 watermark_file_id", status_code=400)
+        if isinstance(watermark_file_id, bool) or not isinstance(watermark_file_id, int) or watermark_file_id <= 0:
+            raise APIException(code=10401, message="水印文件 ID 无效", status_code=400)
         if data.get("position", "bottom-right") not in {"top-left", "top-right", "bottom-left", "bottom-right", "center"}:
             raise APIException(code=10401, message="水印位置无效", status_code=400)
         try:
@@ -109,7 +121,7 @@ async def _create_special_task(data: dict, tool_code: str, current_user: User, d
         raise APIException(code=10400, message="媒体工具功能已关闭", status_code=403)
     _validate_special_options(data, tool_code)
     file_ids = data.get("file_ids") or [data.get("file_id")]
-    if not isinstance(file_ids, list) or any(not isinstance(file_id, int) or file_id <= 0 for file_id in file_ids):
+    if not isinstance(file_ids, list) or any(isinstance(file_id, bool) or not isinstance(file_id, int) or file_id <= 0 for file_id in file_ids):
         raise APIException(code=10401, message="文件 ID 无效", status_code=400)
     records = []
     for file_id in file_ids:

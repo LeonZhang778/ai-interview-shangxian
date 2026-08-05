@@ -294,7 +294,7 @@ async def _process_convert_task(task_id: int):
             elif tool_code == "gif":
                 quality = options.get("quality", "medium")
                 gif_quality = format_config.GIF_QUALITY[quality]
-                width = int(options.get("watermark_width", 0) or gif_quality["width"])
+                width = int(options.get("width", 0) or gif_quality["width"])
                 fps = int(options.get("frame_rate", 0) or gif_quality["fps"])
                 start_time = float(options.get("start_time", 0) or 0)
                 duration = float(options.get("duration", 0) or 0)
