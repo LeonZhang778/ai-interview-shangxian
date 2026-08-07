@@ -98,11 +98,24 @@ def _validate_special_options(data: dict, tool_code: str) -> None:
         if data.get("quality", "medium") not in format_config.GIF_QUALITY:
             raise APIException(code=10401, message="GIF 质量参数无效", status_code=400)
     if tool_code == "watermark":
-        watermark_file_id = data.get("watermark_file_id")
-        if watermark_file_id is None:
-            raise APIException(code=10401, message="缺少 watermark_file_id", status_code=400)
-        if isinstance(watermark_file_id, bool) or not isinstance(watermark_file_id, int) or watermark_file_id <= 0:
-            raise APIException(code=10401, message="水印文件 ID 无效", status_code=400)
+        watermark_type = data.get("watermark_type", "image")
+        if watermark_type not in {"image", "text"}:
+            raise APIException(code=10401, message="水印类型无效，仅支持 image 或 text", status_code=400)
+        if watermark_type == "image":
+            watermark_file_id = data.get("watermark_file_id")
+            if watermark_file_id is None:
+                raise APIException(code=10401, message="缺少 watermark_file_id", status_code=400)
+            if isinstance(watermark_file_id, bool) or not isinstance(watermark_file_id, int) or watermark_file_id <= 0:
+                raise APIException(code=10401, message="水印文件 ID 无效", status_code=400)
+        else:  # text
+            watermark_text = data.get("watermark_text", "").strip()
+            if not watermark_text:
+                raise APIException(code=10401, message="文字水印内容不能为空", status_code=400)
+            if len(watermark_text) > 100:
+                raise APIException(code=10401, message="文字水印内容不能超过 100 个字符", status_code=400)
+            watermark_font_size = data.get("watermark_font_size", 36)
+            if not isinstance(watermark_font_size, int) or watermark_font_size < 8 or watermark_font_size > 200:
+                raise APIException(code=10401, message="文字水印字号必须在 8 到 200 之间", status_code=400)
         if data.get("position", "bottom-right") not in {"top-left", "top-right", "bottom-left", "bottom-right", "center"}:
             raise APIException(code=10401, message="水印位置无效", status_code=400)
         try:
@@ -131,12 +144,17 @@ async def _create_special_task(data: dict, tool_code: str, current_user: User, d
             raise NotFoundError(message="文件不存在")
         records.append(record)
     if tool_code == "watermark":
-        watermark = await MediaFileRepository.get_by_id(db, data["watermark_file_id"], current_user.id)
-        if not watermark or watermark.media_type != "image":
-            raise APIException(code=10401, message="水印文件必须是图片", status_code=400)
-        if watermark.size_bytes > 10 * 1024 * 1024:
-            raise APIException(code=10402, message="水印文件不能超过 10MB", status_code=413)
-        file_ids = [file_ids[0], watermark.id]
+        watermark_type = data.get("watermark_type", "image")
+        if watermark_type == "image":
+            watermark = await MediaFileRepository.get_by_id(db, data["watermark_file_id"], current_user.id)
+            if not watermark or watermark.media_type != "image":
+                raise APIException(code=10401, message="水印文件必须是图片", status_code=400)
+            if watermark.size_bytes > 10 * 1024 * 1024:
+                raise APIException(code=10402, message="水印文件不能超过 10MB", status_code=413)
+            file_ids = [file_ids[0], watermark.id]
+        else:
+            # 文字水印，不需要额外文件
+            file_ids = file_ids[:1]
     target_format = "gif" if tool_code == "gif" else data.get("target_format", "mp4").lower()
     if not format_config.is_valid_format(target_format):
         raise APIException(code=10401, message=f"不支持的目标格式: {target_format}", status_code=400)

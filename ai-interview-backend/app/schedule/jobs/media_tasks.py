@@ -343,19 +343,43 @@ async def _process_convert_task(task_id: int):
                 duration = float(options.get("duration", 0) or 0)
                 vf = f"fps={fps},scale={width}:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256[p];[s1][p]paletteuse=dither=bayer"
                 cmd = ["ffmpeg", "-ss", str(start_time), "-t", str(duration), "-i", input_path, "-filter_complex", vf, "-loop", "0", "-y", output_path]
+
             elif tool_code == "watermark":
-                watermark_file = input_files[input_ids[1]]
+                watermark_type = options.get("watermark_type", "image")
                 position = options.get("position", "bottom-right")
+                opacity = float(options.get("opacity", 1) or 1)
                 positions = {
                     "top-left": "10:10", "top-right": "main_w-overlay_w-10:10",
                     "bottom-left": "10:main_h-overlay_h-10", "bottom-right": "main_w-overlay_w-10:main_h-overlay_h-10",
                     "center": "(main_w-overlay_w)/2:(main_h-overlay_h)/2",
                 }
-                opacity = float(options.get("opacity", 1) or 1)
-                watermark_width = int(options.get("watermark_width", 0) or 0)
-                scale = f",scale={watermark_width}:-1" if watermark_width else ""
-                filter_graph = f"[1:v]format=rgba,colorchannelmixer=aa={opacity}{scale}[wm];[0:v][wm]overlay={positions[position]}"
-                cmd = ["ffmpeg", "-i", input_path, "-i", watermark_file.storage_key, "-filter_complex", filter_graph, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
+                text_positions = {
+                    "top-left": "x=10:y=10", "top-right": "x=w-tw-10:y=10",
+                    "bottom-left": "x=10:y=h-th-10", "bottom-right": "x=w-tw-10:y=h-th-10",
+                    "center": "x=(w-tw)/2:y=(h-th)/2",
+                }
+                if watermark_type == "text":
+                    watermark_text = options.get("watermark_text", "")
+                    watermark_text = watermark_text.replace(":", "\\:").replace("'", "'\\''")
+                    font_size = int(options.get("watermark_font_size", 36) or 36)
+                    font_color = options.get("watermark_font_color", "white")
+                    alpha = opacity
+                    drawtext_filter = (
+                        f"drawtext=text='{watermark_text}'"
+                        f":fontsize={font_size}"
+                        f":fontcolor={font_color}@alpha"
+                        f":{text_positions[position]}"
+                    )
+                    filter_graph = f"[0:v]{drawtext_filter}"
+                    cmd = ["ffmpeg", "-i", input_path, "-filter_complex", filter_graph, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
+                else:
+                    watermark_file = input_files.get(input_ids[1]) if len(input_ids) > 1 else None
+                    if not watermark_file:
+                        raise RuntimeError("图片水印缺少水印文件")
+                    watermark_width = int(options.get("watermark_width", 0) or 0)
+                    scale = f",scale={watermark_width}:-1" if watermark_width else ""
+                    filter_graph = f"[1:v]format=rgba,colorchannelmixer=aa={opacity}{scale}[wm];[0:v][wm]overlay={positions[position]}"
+                    cmd = ["ffmpeg", "-i", input_path, "-i", watermark_file.storage_key, "-filter_complex", filter_graph, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
             else:
                 cmd = ["ffmpeg", "-i", input_path, "-y"]
 

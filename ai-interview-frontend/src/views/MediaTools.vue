@@ -37,9 +37,9 @@
           <span class="format-hint">支持 {{ allowedExtensionsLabel }}</span>
         </div>
 
-        <div
+<div
           class="drop-zone"
-          :class="{ dragging: dragging, 'has-file': selectedFile }"
+          :class="{ dragging: dragging, 'has-file': selectedFile || selectedFiles.length > 0 }"
           role="button"
           tabindex="0"
           @click="openFilePicker"
@@ -49,8 +49,13 @@
           @dragleave.prevent="dragging = false"
           @drop.prevent="handleDrop"
         >
-          <input ref="fileInput" type="file" class="visually-hidden" :accept="acceptTypes" @change="handleFileChange" />
-          <template v-if="selectedFile">
+          <input ref="fileInput" type="file" class="visually-hidden" :accept="acceptTypes" :multiple="selectedTool === 'merge'" @change="handleFileChange" />
+          <template v-if="selectedTool === 'merge' && selectedFiles.length > 0">
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <strong>继续添加文件，或点击选择</strong>
+            <span>已选择 {{ selectedFiles.length }} 个文件</span>
+          </template>
+          <template v-else-if="selectedFile">
             <span class="file-icon" aria-hidden="true">{{ selectedFile.media_type === 'audio' ? '♫' : '▣' }}</span>
             <div class="file-info">
               <strong>{{ selectedFile.original_name }}</strong>
@@ -70,11 +75,30 @@
             <strong>拖拽文件到这里，或点击选择</strong>
             <span>单个文件最大 {{ maxFileSize }}MB</span>
           </template>
+</div>
+
+        <!-- 合并文件列表 -->
+        <div v-if="selectedTool === 'merge' && selectedFiles.length > 0" class="merge-file-list">
+          <div class="merge-file-header">
+            <span class="merge-file-label">已选择文件（共 {{ selectedFiles.length }} 个，拖动可调整顺序）</span>
+          </div>
+          <div v-for="(file, index) in selectedFiles" :key="file.id" class="merge-file-item">
+            <span class="merge-file-index">{{ index + 1 }}</span>
+            <div class="merge-file-info">
+              <strong>{{ file.original_name }}</strong>
+              <span>{{ formatBytes(file.size_bytes) }}<template v-if="file.duration_ms"> · {{ formatDuration(file.duration_ms) }}</template></span>
+            </div>
+            <div class="merge-file-actions">
+              <button type="button" class="move-btn" :disabled="index === 0" @click="moveFileUp(index)" aria-label="上移">↑</button>
+              <button type="button" class="move-btn" :disabled="index === selectedFiles.length - 1" @click="moveFileDown(index)" aria-label="下移">↓</button>
+              <button type="button" class="remove-file" @click="removeMergeFile(index)" aria-label="移除">移除</button>
+            </div>
+          </div>
         </div>
 
         <p v-if="errorMessage" class="message error-message" role="alert">{{ errorMessage }}</p>
 
-        <form v-if="selectedFile" class="options-form" @submit.prevent="submitTask">
+<form v-if="selectedFile || (selectedTool === 'merge' && selectedFiles.length >= 2) || (selectedTool === 'watermark' && selectedFile)" class="options-form" @submit.prevent="submitTask">
           <div class="section-heading compact">
             <div>
               <p class="section-kicker">STEP 02</p>
@@ -83,8 +107,8 @@
             <span class="format-hint">可随时重新处理</span>
           </div>
 
-          <div class="form-grid">
-            <label>
+<div class="form-grid">
+            <label v-if="selectedTool !== 'merge' && selectedTool !== 'watermark'">
               <span>输出格式</span>
               <select v-model="form.target_format">
                 <option v-for="format in targetFormats" :key="format" :value="format">{{ format.toUpperCase() }}</option>
@@ -98,14 +122,14 @@
                 <option value="low">小体积</option>
               </select>
             </label>
-            <label v-if="isVideoTool">
+            <label v-if="isVideoTool && selectedTool !== 'watermark'">
               <span>分辨率</span>
               <select v-model="form.resolution">
                 <option value="">保持原尺寸</option>
                 <option v-for="resolution in resolutionOptions" :key="resolution" :value="resolution">{{ resolution }}</option>
               </select>
             </label>
-            <label v-if="isVideoTool">
+            <label v-if="isVideoTool && selectedTool !== 'watermark'">
               <span>帧率</span>
               <select v-model="form.frame_rate">
                 <option :value="0">保持原帧率</option>
@@ -129,6 +153,89 @@
                 <option value="128k">128 kbps</option>
                 <option value="192k">192 kbps</option>
                 <option value="320k">320 kbps</option>
+              </select>
+            </label>
+            <!-- 水印参数 -->
+            <template v-if="selectedTool === 'watermark'">
+              <label class="full-width">
+                <span>水印类型</span>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input v-model="watermarkType" type="radio" value="image" />
+                    <span>图片水印</span>
+                  </label>
+                  <label class="radio-label">
+                    <input v-model="watermarkType" type="radio" value="text" />
+                    <span>文字水印</span>
+                  </label>
+                </div>
+              </label>
+              <label class="full-width">
+                <span>水印位置</span>
+                <select v-model="form.position">
+                  <option value="top-left">左上角</option>
+                  <option value="top-right">右上角</option>
+                  <option value="bottom-left">左下角</option>
+                  <option value="bottom-right">右下角</option>
+                  <option value="center">居中</option>
+                </select>
+              </label>
+              <label>
+                <span>透明度</span>
+                <input v-model.number="form.opacity" type="number" min="0.1" max="1" step="0.1" placeholder="1.0" />
+              </label>
+            </template>
+          </div>
+
+          <!-- 水印图片上传 -->
+          <div v-if="selectedTool === 'watermark' && watermarkType === 'image'" class="watermark-image-section">
+            <div
+              class="watermark-drop"
+              role="button"
+              tabindex="0"
+              @click="watermarkFileInput?.click()"
+              @keydown.enter.prevent="watermarkFileInput?.click()"
+              @keydown.space.prevent="watermarkFileInput?.click()"
+            >
+              <input ref="watermarkFileInput" type="file" class="visually-hidden" accept=".png,.jpg,.jpeg,.webp" @change="handleWatermarkFileChange" />
+              <template v-if="watermarkImageFile">
+                <span class="file-icon" aria-hidden="true">◇</span>
+                <div class="file-info">
+                  <strong>{{ watermarkImageFile.original_name }}</strong>
+                  <span>{{ formatBytes(watermarkImageFile.size_bytes) }}</span>
+                </div>
+                <button type="button" class="remove-file" @click.stop="watermarkImageFile = null">移除</button>
+              </template>
+              <template v-else-if="uploadingWatermark">
+                <span class="upload-spinner" aria-hidden="true"></span>
+                <strong>正在上传水印图片...</strong>
+              </template>
+              <template v-else>
+                <span class="upload-icon small" aria-hidden="true">◇</span>
+                <strong>点击上传水印图片</strong>
+                <span>支持 PNG / JPG / WebP</span>
+              </template>
+            </div>
+          </div>
+
+          <!-- 文字水印参数 -->
+          <div v-if="selectedTool === 'watermark' && watermarkType === 'text'" class="form-grid">
+            <label class="full-width">
+              <span>水印文字</span>
+              <input v-model="watermarkText" type="text" placeholder="请输入水印文字" maxlength="100" />
+            </label>
+            <label>
+              <span>字号</span>
+              <input v-model.number="watermarkFontSize" type="number" min="8" max="200" placeholder="36" />
+            </label>
+            <label>
+              <span>文字颜色</span>
+              <select v-model="watermarkFontColor">
+                <option value="white">白色</option>
+                <option value="black">黑色</option>
+                <option value="red">红色</option>
+                <option value="yellow">黄色</option>
+                <option value="gray">灰色</option>
               </select>
             </label>
           </div>
@@ -163,12 +270,18 @@
             </label>
           </div>
 
-          <button class="submit-button" type="submit" :disabled="submitting || !selectedFile">
+<button class="submit-button" type="submit" :disabled="submitting || (selectedTool !== 'merge' && selectedTool !== 'watermark' && !selectedFile) || (selectedTool === 'merge' && selectedFiles.length < 2)">
             <span v-if="submitting" class="button-spinner"></span>
-            {{ submitting ? '提交中...' : '开始处理' }}
+            {{ submitting ? '提交中...' : selectedTool === 'merge' ? `开始合并 (${selectedFiles.length} 个文件)` : selectedTool === 'watermark' ? '添加水印' : '开始处理' }}
           </button>
         </form>
 
+<div v-else-if="selectedTool === 'merge'" class="empty-hint">
+          至少上传 2 个视频文件，调整顺序后提交合并。
+        </div>
+        <div v-else-if="selectedTool === 'watermark'" class="empty-hint">
+          先选择一个视频文件，然后设置水印参数。
+        </div>
         <div v-else class="empty-hint">
           选择一个文件后，这里会出现格式、质量和时间范围设置。
         </div>
@@ -222,7 +335,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import {
   cancelMediaTask,
@@ -231,7 +344,7 @@ import {
   createMergeTask,
   createWatermarkTask,
   getCapabilities,
-
+  getMediaTask,
   getMediaTaskDownload,
   listMediaTasks,
   deleteMediaTask,
@@ -248,12 +361,13 @@ const tools = [
   { code: 'audio_convert', name: '音频转换', icon: '◖', description: '转换音频编码和格式' },
   { code: 'gif', name: '视频转 GIF', icon: '✦', description: '截取视频片段生成 GIF' },
   { code: 'merge', name: '视频合并', icon: '⊕', description: '按顺序合并多个视频' },
-  { code: 'watermark', name: '添加水印', icon: '◇', description: '给视频添加图片水印' }
+{ code: 'watermark', name: '添加水印', icon: '◇', description: '给视频添加图片或文字水印' }
 ]
 
 const selectedTool = ref('convert')
 const authStore = useAuthStore()
 const fileInput = ref(null)
+const watermarkFileInput = ref(null)
 const selectedFile = ref(null)
 const capabilities = ref({})
 const dragging = ref(false)
@@ -268,6 +382,15 @@ const deletingTaskId = ref(null)
 const deletingTasks = ref(false)
 let pollTimer = null
 
+// 合并多文件状态
+const selectedFiles = ref([])
+const watermarkType = ref('image')
+const watermarkImageFile = ref(null)
+const watermarkText = ref('')
+const watermarkFontSize = ref(36)
+const watermarkFontColor = ref('white')
+const uploadingWatermark = ref(false)
+
 const form = reactive({
   target_format: 'mp4',
   quality: 'medium',
@@ -279,7 +402,10 @@ const form = reactive({
   duration: 0,
   video_codec: '',
   audio_codec: '',
-  audio_bitrate: ''
+  audio_bitrate: '',
+  position: 'bottom-right',
+  opacity: 1,
+  watermark_width: 0
 })
 
 const currentTool = computed(() => tools.find(tool => tool.code === selectedTool.value) || tools[0])
@@ -306,6 +432,10 @@ const mediaMetaLabel = computed(() => {
 function selectTool(code) {
   selectedTool.value = code
   errorMessage.value = ''
+  selectedFiles.value = []
+  watermarkImageFile.value = null
+  watermarkText.value = ''
+  watermarkType.value = 'image'
   if (code === 'extract_audio') form.target_format = 'mp3'
   else if (code === 'audio_convert') form.target_format = 'mp3'
   else if (!['mp4', 'mov', 'mkv', 'webm'].includes(form.target_format)) form.target_format = 'mp4'
@@ -316,15 +446,35 @@ function openFilePicker() {
 }
 
 function handleFileChange(event) {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+  if (selectedTool.value === 'merge') {
+    for (const file of files) {
+      uploadFile(file)
+    }
+  } else {
+    uploadFile(files[0])
+  }
+  event.target.value = ''
+}
+
+function handleWatermarkFileChange(event) {
   const file = event.target.files?.[0]
-  if (file) uploadFile(file)
+  if (file) uploadWatermarkFile(file)
   event.target.value = ''
 }
 
 function handleDrop(event) {
   dragging.value = false
-  const file = event.dataTransfer.files?.[0]
-  if (file) uploadFile(file)
+  const files = event.dataTransfer.files
+  if (!files || files.length === 0) return
+  if (selectedTool.value === 'merge') {
+    for (const file of files) {
+      uploadFile(file)
+    }
+  } else {
+    uploadFile(files[0])
+  }
 }
 
 async function uploadFile(file) {
@@ -333,7 +483,12 @@ async function uploadFile(file) {
   uploadProgress.value = 0
   selectedFile.value = null
   try {
-    selectedFile.value = await uploadMediaFile(file, progress => { uploadProgress.value = progress })
+    const result = await uploadMediaFile(file, progress => { uploadProgress.value = progress })
+    if (selectedTool.value === 'merge') {
+      selectedFiles.value.push(result)
+    } else {
+      selectedFile.value = result
+    }
     if (selectedTool.value === 'extract_audio') form.target_format = 'mp3'
   } catch (error) {
     errorMessage.value = error.message || '上传失败，请检查文件格式后重试'
@@ -342,41 +497,121 @@ async function uploadFile(file) {
   }
 }
 
+async function uploadWatermarkFile(file) {
+  uploadingWatermark.value = true
+  try {
+    watermarkImageFile.value = await uploadMediaFile(file)
+  } catch (error) {
+    errorMessage.value = error.message || '水印图片上传失败'
+  } finally {
+    uploadingWatermark.value = false
+  }
+}
+
 function removeFile() {
   selectedFile.value = null
   errorMessage.value = ''
 }
 
+function removeMergeFile(index) {
+  selectedFiles.value.splice(index, 1)
+}
+
+function moveFileUp(index) {
+  if (index <= 0) return
+  const tmp = selectedFiles.value[index]
+  selectedFiles.value[index] = selectedFiles.value[index - 1]
+  selectedFiles.value[index - 1] = tmp
+}
+
+function moveFileDown(index) {
+  if (index >= selectedFiles.value.length - 1) return
+  const tmp = selectedFiles.value[index]
+  selectedFiles.value[index] = selectedFiles.value[index + 1]
+  selectedFiles.value[index + 1] = tmp
+}
+
 async function submitTask() {
-  if (!selectedFile.value || submitting.value) return
+  if (selectedTool.value === 'merge') {
+    if (selectedFiles.value.length < 2) {
+      errorMessage.value = '视频合并至少需要上传 2 个文件'
+      return
+    }
+  } else if (selectedTool.value === 'watermark') {
+    if (watermarkType.value === 'image' && !watermarkImageFile.value) {
+      errorMessage.value = '请上传水印图片'
+      return
+    }
+    if (watermarkType.value === 'text' && !watermarkText.value.trim()) {
+      errorMessage.value = '请输入水印文字内容'
+      return
+    }
+  } else if (!selectedFile.value) {
+    errorMessage.value = '请先上传文件'
+    return
+  }
+  if (submitting.value) return
   errorMessage.value = ''
   submitting.value = true
   try {
-    const payload = {
-      file_id: selectedFile.value.id,
-      target_format: form.target_format,
-      tool_code: selectedTool.value,
-      video_codec: form.video_codec || '',
-      audio_codec: form.audio_codec || '',
-      audio_bitrate: form.audio_bitrate || '',
-      resolution: form.resolution || '',
-      frame_rate: form.frame_rate || 0,
-      sample_rate: form.sample_rate || 0,
-      channels: form.channels || 0,
-      start_time: form.start_time || 0,
-      duration: form.duration || 0,
-      quality: form.quality
-    }
-    if (selectedTool.value === 'gif') {
-      await createGifTask(payload)
-    } else if (selectedTool.value === 'merge') {
-      await createMergeTask({ ...payload, file_ids: [selectedFile.value.id] })
+    if (selectedTool.value === 'merge') {
+      await createMergeTask({
+        file_ids: selectedFiles.value.map(f => f.id),
+        target_format: 'mp4',
+        tool_code: 'merge'
+      })
+      selectedFiles.value = []
     } else if (selectedTool.value === 'watermark') {
+      const payload = {
+        file_id: selectedFile.value.id,
+        target_format: form.target_format,
+        tool_code: 'watermark',
+        watermark_type: watermarkType.value,
+        position: form.position || 'bottom-right',
+        opacity: form.opacity || 1,
+        watermark_width: form.watermark_width || 0
+      }
+      if (watermarkType.value === 'image') {
+        payload.watermark_file_id = watermarkImageFile.value.id
+      } else {
+        payload.watermark_text = watermarkText.value.trim()
+        payload.watermark_font_size = watermarkFontSize.value
+        payload.watermark_font_color = watermarkFontColor.value
+      }
       await createWatermarkTask(payload)
+      selectedFile.value = null
+      watermarkImageFile.value = null
+      watermarkText.value = ''
+    } else if (selectedTool.value === 'gif') {
+      const payload = {
+        file_id: selectedFile.value.id,
+        tool_code: 'gif',
+        quality: form.quality,
+        start_time: form.start_time || 0,
+        duration: form.duration || 0,
+        frame_rate: form.frame_rate || 0
+      }
+      await createGifTask(payload)
+      selectedFile.value = null
     } else {
+      const payload = {
+        file_id: selectedFile.value.id,
+        target_format: form.target_format,
+        tool_code: selectedTool.value,
+        video_codec: form.video_codec || '',
+        audio_codec: form.audio_codec || '',
+        audio_bitrate: form.audio_bitrate || '',
+        resolution: form.resolution || '',
+        frame_rate: form.frame_rate || 0,
+        sample_rate: form.sample_rate || 0,
+        channels: form.channels || 0,
+        start_time: form.start_time || 0,
+        duration: form.duration || 0,
+        quality: form.quality
+      }
       await createConvertTask(payload)
+      selectedFile.value = null
     }
-    selectedFile.value = null
     await loadTasks()
   } catch (error) {
     errorMessage.value = error.message || '任务提交失败，请稍后重试'
@@ -661,6 +896,37 @@ onUnmounted(() => {
 .submit-button { width: 100%; margin-top: 22px; padding: 13px 20px; color: white; background: var(--accent-gradient); font-weight: 700; }
 .submit-button:disabled { opacity: .6; cursor: not-allowed; }
 .empty-hint { padding: 21px 0 3px; color: var(--text-muted); font-size: 13px; }
+
+/* 合并文件列表 */
+.merge-file-list { margin-top: 14px; }
+.merge-file-header { margin-bottom: 10px; }
+.merge-file-label { color: var(--text-secondary); font-size: 12px; }
+.merge-file-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; margin-bottom: 6px; border: 1px solid var(--border-default); border-radius: 9px; background: var(--bg-input); }
+.merge-file-index { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-primary); color: #fff; font-size: 11px; font-weight: 700; flex: 0 0 22px; }
+.merge-file-info { flex: 1; min-width: 0; }
+.merge-file-info strong { display: block; overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.merge-file-info span { color: var(--text-muted); font-size: 11px; }
+.merge-file-actions { display: flex; gap: 4px; flex: 0 0 auto; align-items: center; }
+.move-btn { padding: 3px 6px; color: var(--text-secondary); background: transparent; font-size: 13px; }
+.move-btn:hover { color: var(--text-primary); }
+.move-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+/* 水印图片上传 */
+.watermark-image-section { margin-top: 16px; }
+.watermark-drop { display: flex; align-items: center; gap: 11px; padding: 14px; border: 1px dashed var(--border-hover); border-radius: 11px; background: var(--bg-input); cursor: pointer; }
+.watermark-drop:hover { border-color: var(--accent-primary); background: var(--bg-hover); }
+.watermark-drop strong { font-size: 13px; }
+.watermark-drop span { color: var(--text-muted); font-size: 11px; }
+.upload-icon.small { width: 36px; height: 36px; font-size: 20px; }
+
+/* 单选按钮组 */
+.radio-group { display: flex; gap: 16px; }
+.radio-label { display: flex !important; flex-direction: row !important; align-items: center; gap: 6px; cursor: pointer; }
+.radio-label input[type="radio"] { cursor: pointer; }
+.radio-label span { color: var(--text-primary); font-size: 14px; }
+
+/* 全宽表单字段 */
+.full-width { grid-column: 1 / -1; }
 .history-card { min-height: 300px; }
 .history-loading, .history-empty { padding: 42px 12px; color: var(--text-muted); text-align: center; }
 .history-empty span { display: block; margin-bottom: 12px; color: var(--accent-purple); font-size: 34px; }
