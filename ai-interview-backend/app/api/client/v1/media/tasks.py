@@ -127,6 +127,24 @@ def _validate_special_options(data: dict, tool_code: str) -> None:
             raise APIException(code=10401, message="水印透明度必须在 0 到 1 之间", status_code=400)
         if width and not 16 <= width <= 1920:
             raise APIException(code=10401, message="水印宽度必须在 16 到 1920 像素之间", status_code=400)
+    if tool_code == "redact":
+        redact_type = data.get("redact_type", "blur")
+        if redact_type not in {"blur", "pixelate", "solid"}:
+            raise APIException(code=10401, message="遮挡类型无效，仅支持 blur、pixelate 或 solid", status_code=400)
+        rx = int(data.get("region_x", 0) or 0)
+        ry = int(data.get("region_y", 0) or 0)
+        rw = int(data.get("region_width", 0) or 0)
+        rh = int(data.get("region_height", 0) or 0)
+        if rw <= 0 or rh <= 0:
+            raise APIException(code=10401, message="遮挡区域宽度和高度必须大于 0", status_code=400)
+        if rx < 0 or ry < 0:
+            raise APIException(code=10401, message="遮挡区域坐标不能为负数", status_code=400)
+        if rw > 9999 or rh > 9999:
+            raise APIException(code=10401, message="遮挡区域尺寸不能超过 9999 像素", status_code=400)
+        if redact_type == "solid":
+            solid_color = data.get("solid_color", "black").strip()
+            if not solid_color or len(solid_color) > 20:
+                raise APIException(code=10401, message="遮挡颜色参数无效", status_code=400)
 
 
 async def _create_special_task(data: dict, tool_code: str, current_user: User, db: AsyncSession):
@@ -160,6 +178,14 @@ async def _create_special_task(data: dict, tool_code: str, current_user: User, d
         raise APIException(code=10401, message=f"不支持的目标格式: {target_format}", status_code=400)
     options = dict(data)
     options.update({"target_format": target_format, "tool_code": tool_code})
+    # 保留 output_name 用于自定义输出文件名
+    if "output_name" in data:
+        output_name = str(data["output_name"]).strip()
+        if output_name:
+            # 去掉不安全字符
+            safe_name = "".join(c for c in output_name if c.isalnum() or c in "._- ").strip()
+            if safe_name:
+                options["output_name"] = safe_name
     task = await MediaTaskRepository.create(db, current_user.id, tool_code, file_ids, options)
     await MediaEventRepository.create(
         db,
@@ -198,6 +224,11 @@ async def create_merge_task(data: dict = Body(...), current_user: User = Depends
 @router.post("/tasks/watermark", status_code=202)
 async def create_watermark_task(data: dict = Body(...), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _create_special_task(data, "watermark", current_user, db)
+
+
+@router.post("/tasks/redact", status_code=202)
+async def create_redact_task(data: dict = Body(...), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _create_special_task(data, "redact", current_user, db)
 
 
 @router.post("/tasks/convert", status_code=202)
@@ -267,6 +298,12 @@ async def create_convert_task(
         "duration": data.get("duration", 0),
         "quality": data.get("quality", "medium"),
     }
+    # 保留 output_name 用于自定义输出文件名
+    output_name = data.get("output_name", "").strip()
+    if output_name:
+        safe_name = "".join(c for c in output_name if c.isalnum() or c in "._- ").strip()
+        if safe_name:
+            options["output_name"] = safe_name
 
     # 5. 创建任务
     task = await MediaTaskRepository.create(
@@ -467,6 +504,48 @@ async def retry_media_task(
             "retry_count": task.retry_count,
         },
         message="任务已重新提交",
+    )
+
+
+@router.post("/tasks/retry-batch")
+async def retry_media_tasks_batch(
+    task_ids: list[int] = Body(..., embed=True),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量重试失败任务"""
+    normalized_ids = list(dict.fromkeys(task_ids))
+    if not normalized_ids:
+        raise APIException(code=10401, message="请选择要重试的任务", status_code=400)
+
+    succeeded = []
+    failed = []
+    for task_id in normalized_ids:
+        try:
+            task = await MediaTaskRepository.retry_task(db, task_id, current_user.id)
+            from app.schedule.jobs.media_tasks import process_media_task
+            celery_result = process_media_task.delay(task.id)
+            await MediaTaskRepository.update_status(
+                db=db,
+                task_id=task.id,
+                status="pending",
+                celery_task_id=celery_result.id,
+            )
+            await MediaEventRepository.create(
+                db=db,
+                task_id=task_id,
+                user_id=current_user.id,
+                event_name="media.task.retry",
+                payload_json={"retry_count": task.retry_count},
+            )
+            succeeded.append(task_id)
+        except Exception as e:
+            logger.warning("批量重试失败: task_id=%s error=%s", task_id, e)
+            failed.append(task_id)
+
+    return ApiResponse.success(
+        data={"succeeded": succeeded, "failed": failed},
+        message=f"成功重试 {len(succeeded)} 个任务，{len(failed)} 个失败",
     )
 
 

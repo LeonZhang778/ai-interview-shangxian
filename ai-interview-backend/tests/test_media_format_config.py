@@ -27,5 +27,5 @@ def test_tool_code_mapping_only_allows_implemented_tools():
     assert format_config.is_valid_tool_code("merge")
     assert format_config.is_valid_tool_code("gif")
     assert format_config.is_valid_tool_code("watermark")
-    assert not format_config.is_valid_tool_code("redact")
+    assert format_config.is_valid_tool_code("redact")
     assert not format_config.is_valid_tool_code("remove_watermark")

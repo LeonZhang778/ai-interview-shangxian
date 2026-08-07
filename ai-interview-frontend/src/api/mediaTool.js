@@ -52,6 +52,10 @@ export function createWatermarkTask(data) {
   return api.post('/media-tools/tasks/watermark', data)
 }
 
+export function createRedactTask(data) {
+  return api.post('/media-tools/tasks/redact', data)
+}
+
 // 查询任务状态
 export function getMediaTask(id) {
   return api.get(`/media-tools/tasks/${id}`)
@@ -72,6 +76,11 @@ export function deleteMediaTasks(taskIds) {
 // 重试失败任务
 export function retryMediaTask(id) {
   return api.post(`/media-tools/tasks/${id}/retry`)
+}
+
+// 批量重试失败任务
+export function retryMediaTasks(taskIds) {
+  return api.post('/media-tools/tasks/retry-batch', { task_ids: taskIds })
 }
 
 // 获取任务输出下载地址

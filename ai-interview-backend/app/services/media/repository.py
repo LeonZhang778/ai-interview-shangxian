@@ -276,14 +276,33 @@ class MediaTaskRepository:
         )
         items = result.scalars().all()
 
+        # 收集输出文件信息
+        output_file_ids = [t.output_file_id for t in items if t.output_file_id]
+        output_files = {}
+        if output_file_ids:
+            f_result = await db.execute(
+                select(MediaFile).where(MediaFile.id.in_(output_file_ids))
+            )
+            for f in f_result.scalars().all():
+                output_files[f.id] = {
+                    "id": f.id,
+                    "original_name": f.original_name,
+                    "size_bytes": f.size_bytes,
+                    "media_type": f.media_type,
+                    "source_format": f.source_format,
+                }
+
         return {
             "items": [
                 {
                     "id": t.id,
+                    "tool_code": t.tool_name,
                     "tool_name": t.tool_name,
                     "status": t.status,
                     "progress": t.progress,
                     "error_code": t.error_code,
+                    "error_message": t.error_message,
+                    "output_file": output_files.get(t.output_file_id) if t.output_file_id else None,
                     "created_at": t.created_at.isoformat() if t.created_at else None,
                     "started_at": t.started_at.isoformat() if t.started_at else None,
                     "finished_at": t.finished_at.isoformat() if t.finished_at else None,

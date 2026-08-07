@@ -320,7 +320,12 @@ async def _process_convert_task(task_id: int):
             output_dir = os.path.join(settings.MEDIA_UPLOAD_DIR, str(user_id), "output")
             os.makedirs(output_dir, exist_ok=True)
 
-            output_name = f"{uuid.uuid4().hex}.{target_format}"
+            output_name_option = options.get("output_name", "")
+            if output_name_option:
+                safe_name = "".join(c for c in output_name_option if c.isalnum() or c in "._- ").strip()
+                output_name = f"{safe_name}_{uuid.uuid4().hex[:8]}.{target_format}" if safe_name else f"{uuid.uuid4().hex}.{target_format}"
+            else:
+                output_name = f"{uuid.uuid4().hex}.{target_format}"
             output_path = os.path.join(output_dir, output_name)
 
             # 4. 构建 FFmpeg 命令。特殊工具只使用固定滤镜和参数，不接受原始表达式。
@@ -380,6 +385,30 @@ async def _process_convert_task(task_id: int):
                     scale = f",scale={watermark_width}:-1" if watermark_width else ""
                     filter_graph = f"[1:v]format=rgba,colorchannelmixer=aa={opacity}{scale}[wm];[0:v][wm]overlay={positions[position]}"
                     cmd = ["ffmpeg", "-i", input_path, "-i", watermark_file.storage_key, "-filter_complex", filter_graph, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
+
+            elif tool_code == "redact":
+                redact_type = options.get("redact_type", "blur")
+                rx = int(options.get("region_x", 0) or 0)
+                ry = int(options.get("region_y", 0) or 0)
+                rw = int(options.get("region_width", 0) or 0)
+                rh = int(options.get("region_height", 0) or 0)
+                if redact_type == "blur":
+                    # 用 boxblur 对指定区域进行模糊
+                    vf = f"drawbox=x={rx}:y={ry}:w={rw}:h={rh}:color=black@0:t=fill,boxblur=x={rx}:y={ry}:w={rw}:h={rh}:lr=6:lp=3"
+                    cmd = ["ffmpeg", "-i", input_path, "-vf", vf, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
+                elif redact_type == "pixelate":
+                    # 像素化：先缩小再放大到原区域
+                    p_w = max(1, rw // 20)
+                    p_h = max(1, rh // 20)
+                    vf = (
+                        f"[0:v]crop={rw}:{rh}:{rx}:{ry},scale={p_w}:{p_h},scale={rw}:{rh}:flags=neighbor"
+                        f"[pixelated];[0:v][pixelated]overlay={rx}:{ry}"
+                    )
+                    cmd = ["ffmpeg", "-i", input_path, "-filter_complex", vf, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
+                else:  # solid
+                    solid_color = options.get("solid_color", "black")
+                    vf = f"drawbox=x={rx}:y={ry}:w={rw}:h={rh}:color={solid_color}@1:t=fill"
+                    cmd = ["ffmpeg", "-i", input_path, "-vf", vf, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
             else:
                 cmd = ["ffmpeg", "-i", input_path, "-y"]
 
@@ -514,10 +543,16 @@ async def _process_convert_task(task_id: int):
             )
 
             # 7. 创建输出文件记录
+            output_display_name = options.get("output_name", "")
+            if output_display_name:
+                safe_name = "".join(c for c in output_display_name if c.isalnum() or c in "._- ").strip()
+                output_original_name = f"{safe_name}.{target_format}" if safe_name else f"output_{uuid.uuid4().hex[:8]}.{target_format}"
+            else:
+                output_original_name = f"output_{uuid.uuid4().hex[:8]}.{target_format}"
             output_file = MediaFile(
                 user_id=user_id,
                 storage_key=output_path,
-                original_name=f"output_{uuid.uuid4().hex[:8]}.{target_format}",
+                original_name=output_original_name,
                 media_type=format_config.get_media_kind(target_format),
                 source_format=target_format,
                 size_bytes=output_size,
