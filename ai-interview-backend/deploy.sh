@@ -26,7 +26,9 @@ docker compose up -d --no-deps nginx
 echo "=== [5/5] 健康检查 ==="
 sleep 5
 for i in {1..6}; do
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8006/api/v1/config/health 2>/dev/null || echo "000")
+    # 通过 Docker Nginx 链路检查 (app 无对外端口映射)
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v1/config/health 2>/dev/null || echo "000")
+    # 或用容器内部方式: docker exec ai-interview-app python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8006/api/v1/config/health', timeout=5).status)"
     if [ "$STATUS" = "200" ]; then
         echo "部署成功！服务正常运行。"
         docker compose ps
