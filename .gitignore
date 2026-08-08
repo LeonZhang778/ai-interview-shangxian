@@ -45,6 +45,7 @@ ai-interview-frontend/test-results/
 
 
 # ---------- 后端运行时 ----------
+logs/
 ai-interview-backend/logs/
 ai-interview-backend/__pycache__/
 ai-interview-backend/celerybeat-schedule.db/
@@ -55,8 +56,10 @@ ai-interview-backend/celerybeat-schedule.db/
 # ---------- 上传文件 ----------
 ai-interview-backend/uploads/avatars/*
 ai-interview-backend/uploads/resumes/*
+ai-interview-backend/uploads/media/*
 !ai-interview-backend/uploads/avatars/.gitkeep
 !ai-interview-backend/uploads/resumes/.gitkeep
+!ai-interview-backend/uploads/media/.gitkeep
 
 # ---------- Docker 大文件 ----------
 ai-interview-backend/docker-compose-linux-x86_64
@@ -89,6 +92,7 @@ test_*.png
 ai-interview-backend/test_media*.mp4
 ai-interview-backend/test_media*.mp3
 ai-interview-backend/test_media_converted*
+ai-interview-backend/media_test_*
 
 # ---------- 其他 ----------
 *.log

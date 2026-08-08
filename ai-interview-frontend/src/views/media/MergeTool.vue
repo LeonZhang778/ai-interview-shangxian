@@ -85,15 +85,14 @@ import MediaTaskHistory from '../../components/media/MediaTaskHistory.vue'
 
 const store = useMediaStore()
 const submitting = ref(false)
+const videoFormats = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'flv']
 
 const allowedExtensions = computed(() => {
-  const formats = store.capabilities.formats || ['mp4', 'mov', 'mkv', 'webm']
-  return formats.slice(0, 8).join('、')
+  return videoFormats.join('、')
 })
 
 const acceptTypes = computed(() => {
-  const formats = store.capabilities.formats || []
-  return formats.map(f => `.${f}`).join(',') || 'video/*'
+  return videoFormats.map(f => `.${f}`).join(',')
 })
 
 const maxFileSize = computed(() => store.capabilities.max_file_size_mb || 500)

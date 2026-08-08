@@ -184,9 +184,9 @@
             @change="updateForm('video_codec', $event.target.value)"
           >
             <option value="">自动</option>
-            <option value="h264">H.264</option>
-            <option value="h265">H.265 / HEVC</option>
-            <option value="vp9">VP9</option>
+            <option value="libx264">H.264</option>
+            <option value="libx265">H.265 / HEVC</option>
+            <option value="libvpx-vp9">VP9</option>
             <option value="av1">AV1</option>
           </select>
         </div>
@@ -201,9 +201,9 @@
           >
             <option value="">自动</option>
             <option value="aac">AAC</option>
-            <option value="mp3">MP3</option>
-            <option value="opus">Opus</option>
-            <option value="vorbis">Vorbis</option>
+            <option value="libmp3lame">MP3</option>
+            <option value="libopus">Opus</option>
+            <option value="libvorbis">Vorbis</option>
             <option value="pcm_s16le">PCM S16LE</option>
           </select>
         </div>

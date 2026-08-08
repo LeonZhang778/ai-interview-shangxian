@@ -129,6 +129,7 @@ class MediaFileRepository:
         result = await db.execute(
             select(func.count(MediaTask.id)).where(
                 MediaTask.output_file_id == file_id,
+                MediaTask.user_id == user_id,
                 MediaTask.status.in_( ["pending", "processing", "completed"]),
             )
 )
@@ -139,6 +140,21 @@ class MediaFileRepository:
                 message="文件正在被任务引用，无法删除",
                 status_code=409,
             )
+
+        active_tasks_result = await db.execute(
+            select(MediaTask).where(
+                MediaTask.user_id == user_id,
+                MediaTask.status.in_(["pending", "processing"]),
+            )
+        )
+        for task in active_tasks_result.scalars().all():
+            input_ids = json.loads(task.input_file_ids) if isinstance(task.input_file_ids, str) else task.input_file_ids
+            if file_id in (input_ids or []):
+                raise APIException(
+                    code=10406,
+                    message="文件正在被任务使用，无法删除",
+                    status_code=409,
+                )
 
         # 软删除：保留媒体类型，避免违反 media_type 的数据库约束。
         result = await db.execute(

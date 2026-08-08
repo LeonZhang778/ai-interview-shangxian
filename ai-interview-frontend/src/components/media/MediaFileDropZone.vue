@@ -137,6 +137,18 @@ function validateFile(file) {
     emit('error', `文件大小超过 ${props.maxSizeMb}MB 限制`)
     return false
   }
+  const allowedExtensions = props.accept
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(item => item.startsWith('.'))
+  if (allowedExtensions.length) {
+    const lowerName = file.name.toLowerCase()
+    const matched = allowedExtensions.some(ext => lowerName.endsWith(ext))
+    if (!matched) {
+      emit('error', `文件格式不支持，请选择 ${allowedExtensions.join('、')} 文件`)
+      return false
+    }
+  }
   return true
 }
 
@@ -305,16 +317,30 @@ function handleRemoveFile(fileId) {
 }
 .progress-bar {
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 999px;
   background: var(--border-default);
   overflow: hidden;
+  position: relative;
+}
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  transform: translateX(-100%);
+  animation: progress-shimmer 1.35s ease-in-out infinite;
 }
 .progress-fill {
   height: 100%;
-  background: var(--accent-gradient);
-  border-radius: 2px;
+  min-width: 10px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.25), transparent 35%, rgba(255,255,255,.25) 70%, transparent),
+    var(--accent-gradient);
+  background-size: 42px 100%, 100% 100%;
+  border-radius: 999px;
   transition: width .3s ease;
+  animation: progress-flow .85s linear infinite;
 }
 
 /* 已选态 */
@@ -398,4 +424,12 @@ function handleRemoveFile(fileId) {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes progress-flow {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 42px 0, 0 0; }
+}
+@keyframes progress-shimmer {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
 </style>

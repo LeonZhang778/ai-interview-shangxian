@@ -92,7 +92,10 @@ api.interceptors.response.use(
         msg = data.detail
       }
     }
-    return Promise.reject(new Error(msg))
+    const normalizedError = new Error(msg)
+    normalizedError.code = data?.code
+    normalizedError.data = data?.data
+    return Promise.reject(normalizedError)
   }
 )
 

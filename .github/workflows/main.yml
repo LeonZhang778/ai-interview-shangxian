@@ -18,6 +18,12 @@ jobs:
 
       - name: Validate deployment secrets
         env:
+          ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -25,7 +31,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          required_secrets="AI_API_KEY POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD"
+          required_secrets="ACR_REGISTRY ACR_USERNAME ACR_PASSWORD SERVER_HOST SERVER_USER SERVER_PASSWORD AI_API_KEY POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD"
           for secret_name in $required_secrets; do
             if [ -z "${!secret_name:-}" ]; then
               echo "Missing required GitHub Actions secret: $secret_name"
@@ -133,6 +139,8 @@ jobs:
                 'API_PORT': '8006',
                 'API_WORKERS': '2',
 
+                'POSTGRES_USER': 'postgres',
+                'POSTGRES_PASSWORD': os.environ['POSTGRES_PASSWORD'],
                 'POSTGRES_HOST': 'postgres',
                 'POSTGRES_PORT': '5432',
                 'POSTGRES_DB': 'postgres',

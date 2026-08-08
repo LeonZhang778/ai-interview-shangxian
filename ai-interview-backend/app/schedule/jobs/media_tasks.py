@@ -90,6 +90,23 @@ def _queue_wait_ms(task: MediaTask) -> Optional[int]:
     return int((started_at - task.created_at).total_seconds() * 1000)
 
 
+def _ffmpeg_color(value: str, fallback: str = "white") -> str:
+    color = (value or fallback).strip()
+    if color.startswith("#") and len(color) in (4, 7):
+        return "0x" + color[1:]
+    return color or fallback
+
+
+def _escape_drawtext(value: str) -> str:
+    return (
+        (value or "")
+        .replace("\\", "\\\\")
+        .replace(":", "\\:")
+        .replace("'", "\\'")
+        .replace("%", "\\%")
+    )
+
+
 def _status_event_name(status: str, progress: Optional[int]) -> str:
     if status == "processing":
         return "media.task.started" if progress is not None and progress <= 5 else "media.task.progress"
@@ -363,16 +380,20 @@ async def _process_convert_task(task_id: int):
                     "bottom-left": "x=10:y=h-th-10", "bottom-right": "x=w-tw-10:y=h-th-10",
                     "center": "x=(w-tw)/2:y=(h-th)/2",
                 }
+                if position == "custom":
+                    custom_x = int(options.get("custom_x", 0) or 0)
+                    custom_y = int(options.get("custom_y", 0) or 0)
+                    positions["custom"] = f"{custom_x}:{custom_y}"
+                    text_positions["custom"] = f"x={custom_x}:y={custom_y}"
                 if watermark_type == "text":
-                    watermark_text = options.get("watermark_text", "")
-                    watermark_text = watermark_text.replace(":", "\\:").replace("'", "'\\''")
+                    watermark_text = _escape_drawtext(options.get("watermark_text", ""))
                     font_size = int(options.get("watermark_font_size", 36) or 36)
-                    font_color = options.get("watermark_font_color", "white")
+                    font_color = _ffmpeg_color(options.get("watermark_font_color", "white"))
                     alpha = opacity
                     drawtext_filter = (
                         f"drawtext=text='{watermark_text}'"
                         f":fontsize={font_size}"
-                        f":fontcolor={font_color}@alpha"
+                        f":fontcolor={font_color}@{alpha}"
                         f":{text_positions[position]}"
                     )
                     filter_graph = f"[0:v]{drawtext_filter}"
@@ -393,9 +414,12 @@ async def _process_convert_task(task_id: int):
                 rw = int(options.get("region_width", 0) or 0)
                 rh = int(options.get("region_height", 0) or 0)
                 if redact_type == "blur":
-                    # 用 boxblur 对指定区域进行模糊
-                    vf = f"drawbox=x={rx}:y={ry}:w={rw}:h={rh}:color=black@0:t=fill,boxblur=x={rx}:y={ry}:w={rw}:h={rh}:lr=6:lp=3"
-                    cmd = ["ffmpeg", "-i", input_path, "-vf", vf, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
+                    # 裁剪指定区域后单独模糊，再覆盖回原视频。
+                    vf = (
+                        f"[0:v]crop={rw}:{rh}:{rx}:{ry},boxblur=6:3[blurred];"
+                        f"[0:v][blurred]overlay={rx}:{ry}"
+                    )
+                    cmd = ["ffmpeg", "-i", input_path, "-filter_complex", vf, "-c:a", "copy", "-c:v", "libx264", "-y", output_path]
                 elif redact_type == "pixelate":
                     # 像素化：先缩小再放大到原区域
                     p_w = max(1, rw // 20)
@@ -636,11 +660,12 @@ def process_media_task(self, task_id: int):
         logger.error(f"Media task {task_id} unhandled error: {e}", exc_info=True)
         raise
     finally:
-        loop.close()
         try:
             loop.run_until_complete(_dispose_engine())
         except Exception:
-            pass
+            logger.warning("媒体任务数据库引擎清理失败", exc_info=True)
+        finally:
+            loop.close()
 
 
 @celery_app.task(bind=True, name="media.health_check", max_retries=1)

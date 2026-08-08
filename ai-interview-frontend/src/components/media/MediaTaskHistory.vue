@@ -222,6 +222,12 @@
             controls
             class="preview-audio"
           ></audio>
+          <img
+            v-else-if="previewMediaType === 'image'"
+            :src="previewUrl"
+            :alt="previewTask.output_file?.original_name || '任务结果预览'"
+            class="preview-image"
+          />
           <div v-else class="preview-unavailable">
             <p>无法预览该格式</p>
             <a :href="previewUrl" target="_blank" class="preview-download-link">下载文件</a>
@@ -235,9 +241,11 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
+import { useAuthStore } from '../../stores/auth'
 import { getMediaTaskDownload } from '../../api/mediaTool'
 
 const store = useMediaStore()
+const authStore = useAuthStore()
 
 const selectedFailedIds = ref([])
 const previewTask = ref(null)
@@ -297,20 +305,35 @@ async function handleBatchRetry() {
 
 async function handlePreview(task) {
   try {
+    if (previewUrl.value?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl.value)
+    }
     const result = await getMediaTaskDownload(task.id)
     const url = result.download_url.startsWith('http')
       ? result.download_url
       : `${window.location.origin}${result.download_url}`
-    previewUrl.value = url
+    const response = await fetch(url, {
+      headers: authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {}
+    })
+    if (!response.ok) throw new Error('预览下载失败')
+    previewUrl.value = URL.createObjectURL(await response.blob())
     previewTask.value = task
     const mediaType = task.output_file?.media_type || ''
-    previewMediaType.value = mediaType === 'video' || mediaType === 'audio' ? mediaType : ''
+    const sourceFormat = (task.output_file?.source_format || '').toLowerCase()
+    previewMediaType.value = mediaType === 'video' || mediaType === 'audio' || mediaType === 'image'
+      ? mediaType
+      : sourceFormat === 'gif'
+        ? 'image'
+        : ''
   } catch {
     store.addToast('获取预览地址失败', 'error')
   }
 }
 
 function closePreview() {
+  if (previewUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
   previewTask.value = null
   previewUrl.value = ''
   previewMediaType.value = ''
@@ -553,16 +576,30 @@ function closePreview() {
 }
 .task-progress-bar {
   flex: 1;
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 999px;
   background: var(--border-default);
   overflow: hidden;
+  position: relative;
+}
+.task-progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  transform: translateX(-100%);
+  animation: progress-shimmer 1.35s ease-in-out infinite;
 }
 .task-progress-fill {
   height: 100%;
-  background: var(--accent-gradient);
-  border-radius: 2px;
+  min-width: 10px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.25), transparent 35%, rgba(255,255,255,.25) 70%, transparent),
+    var(--accent-gradient);
+  background-size: 42px 100%, 100% 100%;
+  border-radius: 999px;
   transition: width .3s ease;
+  animation: progress-flow .85s linear infinite;
 }
 .task-progress-text {
   color: var(--text-muted);
@@ -648,6 +685,13 @@ function closePreview() {
   width: 100%;
   max-width: 400px;
 }
+.preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
 .preview-unavailable {
   text-align: center;
   color: var(--text-muted);
@@ -666,4 +710,12 @@ function closePreview() {
   animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes progress-flow {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 42px 0, 0 0; }
+}
+@keyframes progress-shimmer {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
 </style>

@@ -22,10 +22,19 @@
       />
     </div>
 
+    <MediaVideoOverlayEditor
+      v-if="selectedFile"
+      mode="watermark"
+      :file="selectedFile"
+      :watermark="watermark"
+      @update:watermark="onWatermarkPreviewUpdate"
+    />
+
     <MediaWatermarkEditor
       v-if="selectedFile"
-      v-model="watermark"
+      :model-value="watermark"
       :capabilities="store.capabilities"
+      @update:model-value="onWatermarkEditorUpdate"
     />
 
     <div v-if="selectedFile" class="submit-section">
@@ -56,15 +65,19 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import MediaFileDropZone from '../../components/media/MediaFileDropZone.vue'
 import MediaFilePreview from '../../components/media/MediaFilePreview.vue'
+import MediaVideoOverlayEditor from '../../components/media/MediaVideoOverlayEditor.vue'
 import MediaWatermarkEditor from '../../components/media/MediaWatermarkEditor.vue'
 import MediaTaskHistory from '../../components/media/MediaTaskHistory.vue'
 
 const store = useMediaStore()
 const submitting = ref(false)
+const videoFormats = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'flv']
 
 const watermark = reactive({
   type: 'text',
   position: 'bottom-right',
+  custom_x: 0,
+  custom_y: 0,
   opacity: 0.8,
   watermark_width: 0,
   text: '',
@@ -76,13 +89,11 @@ const watermark = reactive({
 const selectedFile = computed(() => store.selectedFile)
 
 const allowedExtensions = computed(() => {
-  const formats = store.capabilities.formats || ['mp4', 'mov', 'mkv', 'webm']
-  return formats.slice(0, 8).join('、')
+  return videoFormats.join('、')
 })
 
 const acceptTypes = computed(() => {
-  const formats = store.capabilities.formats || []
-  return formats.map(f => `.${f}`).join(',') || 'video/*'
+  return videoFormats.map(f => `.${f}`).join(',')
 })
 
 const maxFileSize = computed(() => store.capabilities.max_file_size_mb || 500)
@@ -99,6 +110,26 @@ function onError(message) {
   store.errorMessage = message
 }
 
+function onWatermarkPreviewUpdate(next) {
+  Object.assign(watermark, next)
+}
+
+function onWatermarkEditorUpdate(next) {
+  Object.assign(watermark, next)
+}
+
+function clampNumber(value, min, max, fallback) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  return Math.min(max, Math.max(min, numeric))
+}
+
+function clampMinNumber(value, min, fallback) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  return Math.max(min, numeric)
+}
+
 async function handleSubmit() {
   if (!selectedFile.value || submitting.value) return
   submitting.value = true
@@ -109,8 +140,10 @@ async function handleSubmit() {
       tool_code: 'watermark',
       watermark_type: watermark.type,
       position: watermark.position || 'bottom-right',
-      opacity: watermark.opacity || 1,
-      watermark_width: watermark.watermark_width || 0
+      custom_x: Math.round(clampNumber(watermark.custom_x, 0, 9999, 0)),
+      custom_y: Math.round(clampNumber(watermark.custom_y, 0, 9999, 0)),
+      opacity: clampNumber(watermark.opacity, 0.1, 1, 0.8),
+      watermark_width: Math.round(clampMinNumber(watermark.watermark_width, 0, 0))
     }
     if (watermark.type === 'image') {
       if (!watermark.imageFile) {
@@ -126,7 +159,7 @@ async function handleSubmit() {
         return
       }
       payload.watermark_text = watermark.text.trim()
-      payload.watermark_font_size = watermark.fontSize || 36
+      payload.watermark_font_size = Math.round(clampMinNumber(watermark.fontSize, 8, 36))
       payload.watermark_font_color = watermark.fontColor || 'white'
     }
     await store.submitTask(payload, 'watermark')

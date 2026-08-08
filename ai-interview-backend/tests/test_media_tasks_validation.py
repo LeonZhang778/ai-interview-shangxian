@@ -30,6 +30,13 @@ def test_watermark_options_are_validated():
     assert_bad(lambda: _validate_special_options({}, "watermark"), "watermark_file_id")
     assert_bad(lambda: _validate_special_options({"watermark_file_id": 2, "opacity": 0}, "watermark"), "透明度")
     assert_bad(lambda: _validate_special_options({"watermark_file_id": 2, "watermark_width": 15}, "watermark"), "宽度")
+    assert_bad(
+        lambda: _validate_special_options(
+            {"watermark_type": "text", "watermark_text": "demo", "watermark_font_color": "red:enable=1"},
+            "watermark",
+        ),
+        "颜色",
+    )
 
 
 def test_conversion_numbers_must_be_finite_and_non_negative():

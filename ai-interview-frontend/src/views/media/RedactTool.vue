@@ -22,6 +22,15 @@
       />
     </div>
 
+    <MediaVideoOverlayEditor
+      v-if="selectedFile"
+      mode="redact"
+      :file="selectedFile"
+      :region="form"
+      :redact-type="form.redact_type"
+      @update:region="onRegionPreviewUpdate"
+    />
+
     <!-- 参数面板 -->
     <div v-if="selectedFile" class="param-section">
       <div class="section-heading compact">
@@ -127,10 +136,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import MediaFileDropZone from '../../components/media/MediaFileDropZone.vue'
 import MediaFilePreview from '../../components/media/MediaFilePreview.vue'
+import MediaVideoOverlayEditor from '../../components/media/MediaVideoOverlayEditor.vue'
 import MediaTaskHistory from '../../components/media/MediaTaskHistory.vue'
 
 const store = useMediaStore()
 const submitting = ref(false)
+const videoFormats = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'flv']
 
 const form = reactive({
   redact_type: 'blur',
@@ -165,13 +176,11 @@ const colorPreview = computed({
 })
 
 const allowedExtensions = computed(() => {
-  const formats = store.capabilities.formats || ['mp4', 'mov', 'mkv', 'webm']
-  return formats.slice(0, 8).join('、')
+  return videoFormats.join('、')
 })
 
 const acceptTypes = computed(() => {
-  const formats = store.capabilities.formats || []
-  return formats.map(f => `.${f}`).join(',') || 'video/*'
+  return videoFormats.map(f => `.${f}`).join(',')
 })
 
 const maxFileSize = computed(() => store.capabilities.max_file_size_mb || 500)
@@ -186,6 +195,10 @@ function onRemoveFile() {
 
 function onError(message) {
   store.errorMessage = message
+}
+
+function onRegionPreviewUpdate(next) {
+  Object.assign(form, next)
 }
 
 async function handleSubmit() {

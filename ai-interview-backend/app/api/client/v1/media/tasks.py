@@ -35,6 +35,7 @@ router = APIRouter()
 _NUMBER_FIELDS = ("frame_rate", "sample_rate", "channels", "start_time", "duration")
 _BITRATE_RE = re.compile(r"^[1-9][0-9]{0,5}(k|M)$", re.IGNORECASE)
 _RESOLUTION_RE = re.compile(r"^[1-9][0-9]{1,4}x[1-9][0-9]{1,4}$")
+_SAFE_COLOR_RE = re.compile(r"^(#[0-9A-Fa-f]{3}|#[0-9A-Fa-f]{6}|[A-Za-z][A-Za-z0-9_]*)$")
 
 
 def _validate_options(data: dict, target_format: str) -> None:
@@ -68,6 +69,19 @@ def _validate_options(data: dict, target_format: str) -> None:
         bitrate = data.get(field) or ""
         if bitrate and not _BITRATE_RE.fullmatch(str(bitrate)):
             raise APIException(code=10401, message=f"参数 {field} 格式无效", status_code=400)
+
+
+def _coerce_int_option(data: dict, field: str, default: int = 0) -> int:
+    value = data.get(field, default)
+    if isinstance(value, bool):
+        raise APIException(code=10401, message=f"参数 {field} 必须为整数", status_code=400)
+    try:
+        numeric = float(value if value is not None else default)
+    except (TypeError, ValueError):
+        raise APIException(code=10401, message=f"参数 {field} 必须为整数", status_code=400)
+    if not math.isfinite(numeric) or numeric != int(numeric):
+        raise APIException(code=10401, message=f"参数 {field} 必须为整数", status_code=400)
+    return int(numeric)
 
 
 def _validate_special_options(data: dict, tool_code: str) -> None:
@@ -114,10 +128,21 @@ def _validate_special_options(data: dict, tool_code: str) -> None:
             if len(watermark_text) > 100:
                 raise APIException(code=10401, message="文字水印内容不能超过 100 个字符", status_code=400)
             watermark_font_size = data.get("watermark_font_size", 36)
-            if not isinstance(watermark_font_size, int) or watermark_font_size < 8 or watermark_font_size > 200:
-                raise APIException(code=10401, message="文字水印字号必须在 8 到 200 之间", status_code=400)
-        if data.get("position", "bottom-right") not in {"top-left", "top-right", "bottom-left", "bottom-right", "center"}:
+            if not isinstance(watermark_font_size, int) or watermark_font_size < 8:
+                raise APIException(code=10401, message="文字水印字号必须大于等于 8", status_code=400)
+            watermark_font_color = data.get("watermark_font_color", "white")
+            if not isinstance(watermark_font_color, str) or not _SAFE_COLOR_RE.fullmatch(watermark_font_color.strip()):
+                raise APIException(code=10401, message="文字水印颜色格式无效", status_code=400)
+        position = data.get("position", "bottom-right")
+        if position not in {"top-left", "top-right", "bottom-left", "bottom-right", "center", "custom"}:
             raise APIException(code=10401, message="水印位置无效", status_code=400)
+        if position == "custom":
+            custom_x = _coerce_int_option(data, "custom_x")
+            custom_y = _coerce_int_option(data, "custom_y")
+            if custom_x < 0 or custom_y < 0:
+                raise APIException(code=10401, message="水印自定义坐标不能为负数", status_code=400)
+            if custom_x > 9999 or custom_y > 9999:
+                raise APIException(code=10401, message="水印自定义坐标不能超过 9999 像素", status_code=400)
         try:
             opacity = float(data.get("opacity", 1) or 0)
             width = int(data.get("watermark_width", 0) or 0)
@@ -125,16 +150,16 @@ def _validate_special_options(data: dict, tool_code: str) -> None:
             raise APIException(code=10401, message="水印透明度和宽度参数无效", status_code=400)
         if not 0 < opacity <= 1:
             raise APIException(code=10401, message="水印透明度必须在 0 到 1 之间", status_code=400)
-        if width and not 16 <= width <= 1920:
-            raise APIException(code=10401, message="水印宽度必须在 16 到 1920 像素之间", status_code=400)
+        if width and width < 16:
+            raise APIException(code=10401, message="水印宽度必须为 0 或大于等于 16 像素", status_code=400)
     if tool_code == "redact":
         redact_type = data.get("redact_type", "blur")
         if redact_type not in {"blur", "pixelate", "solid"}:
             raise APIException(code=10401, message="遮挡类型无效，仅支持 blur、pixelate 或 solid", status_code=400)
-        rx = int(data.get("region_x", 0) or 0)
-        ry = int(data.get("region_y", 0) or 0)
-        rw = int(data.get("region_width", 0) or 0)
-        rh = int(data.get("region_height", 0) or 0)
+        rx = _coerce_int_option(data, "region_x")
+        ry = _coerce_int_option(data, "region_y")
+        rw = _coerce_int_option(data, "region_width")
+        rh = _coerce_int_option(data, "region_height")
         if rw <= 0 or rh <= 0:
             raise APIException(code=10401, message="遮挡区域宽度和高度必须大于 0", status_code=400)
         if rx < 0 or ry < 0:
@@ -161,6 +186,11 @@ async def _create_special_task(data: dict, tool_code: str, current_user: User, d
         if not record:
             raise NotFoundError(message="文件不存在")
         records.append(record)
+    primary_file = records[0]
+    if tool_code in {"gif", "watermark", "redact"} and primary_file.media_type != "video":
+        raise APIException(code=10401, message="该工具仅支持视频文件", status_code=400)
+    if tool_code == "merge" and any(record.media_type != "video" for record in records):
+        raise APIException(code=10401, message="视频合并仅支持视频文件", status_code=400)
     if tool_code == "watermark":
         watermark_type = data.get("watermark_type", "image")
         if watermark_type == "image":

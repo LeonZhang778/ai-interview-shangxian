@@ -82,27 +82,31 @@
         <input
           type="number"
           min="8"
-          max="200"
           :value="local.fontSize"
           class="param-input"
           placeholder="36"
-          @input="updateLocal('fontSize', Number($event.target.value) || 36)"
+          @input="updateLocal('fontSize', clampMinNumber($event.target.value, 8, 36))"
         />
       </div>
 
       <div class="param-row">
         <label class="param-label">颜色</label>
-        <select
-          :value="local.fontColor"
-          class="param-select"
-          @change="updateLocal('fontColor', $event.target.value)"
-        >
-          <option value="#ffffff">白色</option>
-          <option value="#000000">黑色</option>
-          <option value="#ef4444">红色</option>
-          <option value="#eab308">黄色</option>
-          <option value="#6b7280">灰色</option>
-        </select>
+        <div class="color-input-row">
+          <input
+            type="text"
+            :value="local.fontColor"
+            class="param-input"
+            placeholder="#ffffff"
+            @input="updateLocal('fontColor', $event.target.value || '#ffffff')"
+          />
+          <input
+            type="color"
+            :value="colorPickerValue"
+            class="color-picker"
+            aria-label="选择水印颜色"
+            @input="updateLocal('fontColor', $event.target.value)"
+          />
+        </div>
       </div>
     </template>
 
@@ -119,7 +123,31 @@
         <option value="bottom-left">左下角</option>
         <option value="bottom-right">右下角</option>
         <option value="center">居中</option>
+        <option value="custom">自定义（拖动预览生成）</option>
       </select>
+    </div>
+
+    <div v-if="local.position === 'custom'" class="param-grid">
+      <label>
+        <span>X 坐标</span>
+        <input
+          type="number"
+          min="0"
+          :value="local.custom_x"
+          class="param-input"
+          @input="updateLocal('custom_x', Number($event.target.value) || 0)"
+        />
+      </label>
+      <label>
+        <span>Y 坐标</span>
+        <input
+          type="number"
+          min="0"
+          :value="local.custom_y"
+          class="param-input"
+          @input="updateLocal('custom_y', Number($event.target.value) || 0)"
+        />
+      </label>
     </div>
 
     <div class="param-row">
@@ -131,7 +159,7 @@
         step="0.1"
         :value="local.opacity"
         class="param-range"
-        @input="updateLocal('opacity', Number($event.target.value))"
+        @input="updateLocal('opacity', clampNumber($event.target.value, 0.1, 1, 0.8))"
       />
     </div>
 
@@ -140,11 +168,10 @@
       <input
         type="number"
         min="0"
-        max="1920"
         :value="local.watermark_width"
         class="param-input"
         placeholder="0（自动）"
-        @input="updateLocal('watermark_width', Number($event.target.value) || 0)"
+        @input="updateLocal('watermark_width', clampMinNumber($event.target.value, 0, 0))"
       />
       <p class="input-hint">0 表示自动宽度</p>
     </div>
@@ -152,7 +179,7 @@
 </template>
 
 <script setup>
-import { reactive, watch, ref } from 'vue'
+import { computed, reactive, watch, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 
 const props = defineProps({
@@ -167,26 +194,35 @@ const store = useMediaStore()
 const local = reactive({
   type: props.modelValue?.type || 'text',
   text: props.modelValue?.text || '',
-  fontSize: props.modelValue?.fontSize || 36,
+  fontSize: clampMinNumber(props.modelValue?.fontSize, 8, 36),
   fontColor: props.modelValue?.fontColor || '#ffffff',
   position: props.modelValue?.position || 'bottom-right',
-  opacity: props.modelValue?.opacity ?? 0.5,
-  watermark_width: props.modelValue?.watermark_width || 0,
+  custom_x: props.modelValue?.custom_x || 0,
+  custom_y: props.modelValue?.custom_y || 0,
+  opacity: clampNumber(props.modelValue?.opacity, 0.1, 1, 0.5),
+  watermark_width: clampMinNumber(props.modelValue?.watermark_width, 0, 0),
   imageFile: props.modelValue?.imageFile || null
 })
 
 const imageInput = ref(null)
+
+const colorPickerValue = computed(() => {
+  const color = local.fontColor || '#ffffff'
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#ffffff'
+})
 
 // 将 modelValue 的变更同步到 local
 watch(() => props.modelValue, (val) => {
   if (!val) return
   local.type = val.type || 'text'
   local.text = val.text || ''
-  local.fontSize = val.fontSize || 36
+  local.fontSize = clampMinNumber(val.fontSize, 8, 36)
   local.fontColor = val.fontColor || '#ffffff'
   local.position = val.position || 'bottom-right'
-  local.opacity = val.opacity ?? 0.5
-  local.watermark_width = val.watermark_width || 0
+  local.custom_x = val.custom_x || 0
+  local.custom_y = val.custom_y || 0
+  local.opacity = clampNumber(val.opacity, 0.1, 1, 0.5)
+  local.watermark_width = clampMinNumber(val.watermark_width, 0, 0)
   local.imageFile = val.imageFile || null
 }, { deep: true })
 
@@ -197,6 +233,18 @@ function emitLocal() {
 function updateLocal(key, value) {
   local[key] = value
   emitLocal()
+}
+
+function clampNumber(value, min, max, fallback) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  return Math.min(max, Math.max(min, numeric))
+}
+
+function clampMinNumber(value, min, fallback) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  return Math.max(min, numeric)
 }
 
 function triggerImageInput() {
@@ -313,6 +361,38 @@ async function onImageSelected(event) {
   color: var(--text-muted);
   font-size: 11px;
   margin: 2px 0 0;
+}
+.color-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.color-input-row .param-input {
+  flex: 1;
+}
+.color-picker {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--border-default);
+  border-radius: 7px;
+  background: var(--bg-input);
+  cursor: pointer;
+}
+.param-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.param-grid label {
+  display: grid;
+  gap: 5px;
+}
+.param-grid span {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 /* 滑块 */

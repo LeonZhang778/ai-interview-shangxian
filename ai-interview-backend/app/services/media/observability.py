@@ -75,5 +75,7 @@ def log_media_metric(name: str, value: float, labels: Optional[dict[str, Any]] =
 
 
 def log_media_alert(name: str, severity: str = "warning", **kwargs: Any) -> None:
-    payload = build_media_event_payload(event=name, extra={"severity": severity}, **kwargs)
+    extra = dict(kwargs.pop("extra", {}) or {})
+    extra.setdefault("severity", severity)
+    payload = build_media_event_payload(event=name, extra=extra, **kwargs)
     logger.error("MEDIA_ALERT: %s", json.dumps(payload, ensure_ascii=False, sort_keys=True))
