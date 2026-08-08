@@ -63,13 +63,13 @@ const store = useMediaStore()
 const submitting = ref(false)
 
 const watermark = reactive({
-  type: 'image',
+  type: 'text',
   position: 'bottom-right',
-  opacity: 1,
+  opacity: 0.8,
   watermark_width: 0,
   text: '',
   fontSize: 36,
-  fontColor: 'white',
+  fontColor: '#ffffff',
   imageFile: null
 })
 

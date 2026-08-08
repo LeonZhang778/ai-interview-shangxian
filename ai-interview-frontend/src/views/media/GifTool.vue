@@ -75,7 +75,8 @@ const form = reactive({
   sample_rate: 0,
   channels: 0,
   start_time: 0,
-  duration: 0
+  duration: 5,
+  width: 0
 })
 
 const selectedFile = computed(() => store.selectedFile)
@@ -122,6 +123,7 @@ async function handleSubmit() {
       channels: form.channels || 0,
       start_time: form.start_time || 0,
       duration: form.duration || 0,
+      width: form.width || 0,
       quality: form.quality
     })
   } catch {

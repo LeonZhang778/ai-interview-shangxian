@@ -5,7 +5,7 @@
       <p class="param-section-title">基本参数</p>
 
       <!-- 输出格式 -->
-      <div class="param-row">
+      <div v-if="toolCode !== 'gif'" class="param-row">
         <label class="param-label">输出格式</label>
         <select
           :value="form.target_format"
@@ -18,17 +18,17 @@
         </select>
       </div>
 
-      <!-- 质量（compress 模式） -->
-      <div v-if="toolCode === 'compress'" class="param-row">
-        <label class="param-label">压缩质量</label>
+      <!-- 质量（压缩和 GIF 模式） -->
+      <div v-if="toolCode === 'compress' || toolCode === 'gif'" class="param-row">
+        <label class="param-label">{{ toolCode === 'gif' ? 'GIF 质量' : '压缩质量' }}</label>
         <select
           :value="form.quality"
           class="param-select"
           @change="updateForm('quality', $event.target.value)"
         >
-          <option value="high">高质量（文件较大）</option>
+          <option value="high">高质量{{ toolCode === 'gif' ? '（尺寸较大）' : '（文件较大）' }}</option>
           <option value="medium">均衡</option>
-          <option value="low">小文件（质量较低）</option>
+          <option value="low">小文件{{ toolCode === 'gif' ? '（清晰度较低）' : '（质量较低）' }}</option>
         </select>
       </div>
 
@@ -65,6 +65,46 @@
           <option :value="10">10</option>
         </select>
       </div>
+
+      <!-- GIF 参数 -->
+      <template v-if="toolCode === 'gif'">
+        <div class="param-row">
+          <label class="param-label">开始时间 (秒)</label>
+          <input
+            type="number"
+            min="0"
+            :value="form.start_time"
+            class="param-input"
+            placeholder="0"
+            @input="updateForm('start_time', Number($event.target.value) || 0)"
+          />
+        </div>
+        <div class="param-row">
+          <label class="param-label">截取时长 (秒)</label>
+          <input
+            type="number"
+            min="0.1"
+            max="60"
+            step="0.1"
+            :value="form.duration"
+            class="param-input"
+            placeholder="例如 5"
+            @input="updateForm('duration', Number($event.target.value) || 0)"
+          />
+        </div>
+        <div class="param-row">
+          <label class="param-label">GIF 宽度 (px)</label>
+          <input
+            type="number"
+            min="16"
+            max="1920"
+            :value="form.width"
+            class="param-input"
+            placeholder="按质量档位自动设置"
+            @input="updateForm('width', Number($event.target.value) || 0)"
+          />
+        </div>
+      </template>
 
       <!-- 截取参数（trim 模式） -->
       <template v-if="toolCode === 'trim'">

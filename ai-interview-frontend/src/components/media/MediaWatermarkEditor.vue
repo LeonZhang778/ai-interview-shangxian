@@ -24,8 +24,7 @@
       </label>
     </div>
 
-    <!-- 图片水印上传 -->
-    <div v-if="local.type === 'image'" class="param-row">
+      <div v-if="local.type === 'image'" class="param-row">
       <label class="param-label">上传水印图片</label>
       <div
         class="image-upload-zone"
@@ -116,15 +115,10 @@
         @change="updateLocal('position', $event.target.value)"
       >
         <option value="top-left">左上角</option>
-        <option value="top-center">上方居中</option>
         <option value="top-right">右上角</option>
-        <option value="center-left">左侧居中</option>
-        <option value="center">居中</option>
-        <option value="center-right">右侧居中</option>
         <option value="bottom-left">左下角</option>
-        <option value="bottom-center">下方居中</option>
         <option value="bottom-right">右下角</option>
-        <option value="tile">平铺</option>
+        <option value="center">居中</option>
       </select>
     </div>
 

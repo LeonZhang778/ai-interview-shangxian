@@ -141,16 +141,17 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   // ─── 任务提交 ───
-async function submitTask(payload, toolCode) {
+  async function submitTask(payload, toolCode) {
     errorMessage.value = ''
+    const resolvedToolCode = toolCode || payload?.tool_code || 'convert'
     try {
-      if (toolCode === 'merge') {
+      if (resolvedToolCode === 'merge') {
         await createMergeTask(payload)
-      } else if (toolCode === 'watermark') {
+      } else if (resolvedToolCode === 'watermark') {
         await createWatermarkTask(payload)
-      } else if (toolCode === 'redact') {
+      } else if (resolvedToolCode === 'redact') {
         await createRedactTask(payload)
-      } else if (toolCode === 'gif') {
+      } else if (resolvedToolCode === 'gif') {
         await createGifTask(payload)
       } else {
         await createConvertTask(payload)
