@@ -4,8 +4,8 @@
     <!-- Hero -->
     <section class="hero">
       <div class="hero-content">
-        <h1>AI 帮你模拟面试<br /><span class="highlight">提升通过率</span></h1>
-        <p class="hero-desc">{{ siteSlogan }} — 上传简历，AI 自动生成个性化面试题，实时评分反馈</p>
+        <h1>AI 面试训练工作台<br /><span class="highlight">从简历到复盘一站完成</span></h1>
+        <p class="hero-desc">{{ siteSlogan }} — 围绕真实求职场景，提供简历解析、模拟面试、评分报告、面经学习和媒体工具</p>
         <div class="hero-actions">
           <button class="btn-glow" @click="handleGuest" :disabled="guestLoading">
             {{ guestLoading ? '进入中...' : '免费体验，无需注册' }}
@@ -15,6 +15,22 @@
         <p class="hero-stats">
           已服务 <strong>{{ userCount }}</strong> 位用户，完成 <strong>{{ interviewCount }}</strong> 次模拟面试
         </p>
+      </div>
+    </section>
+
+    <!-- Intro -->
+    <section class="intro">
+      <p class="intro-kicker">网站介绍</p>
+      <h2>智面 AI 专注帮求职者把面试准备做扎实</h2>
+      <p class="intro-desc">
+        平台以简历为起点，结合目标岗位生成针对性问题，并在回答过程中给出评分与改进建议。
+        面试结束后，你可以继续沉淀复盘报告、查看面经、整理学习笔记，也可以使用媒体工具处理视频素材。
+      </p>
+      <div class="intro-grid">
+        <div class="intro-item" v-for="item in introItems" :key="item.title">
+          <strong>{{ item.title }}</strong>
+          <span>{{ item.desc }}</span>
+        </div>
       </div>
     </section>
 
@@ -107,7 +123,14 @@ const features = [
   { icon: '📊', title: '即时评分', desc: '每道题实时评分（1-10 分），给出具体改进建议' },
   { icon: '📝', title: '综合报告', desc: '面试结束生成详细评估报告，含录用建议和提升方向' },
   { icon: '📚', title: '学习笔记', desc: '沉淀面试知识点，支持公开分享，形成广场互助学习' },
+  { icon: '🎬', title: '媒体工具箱', desc: '支持视频转换、压缩、裁剪、GIF、合并、水印和区域遮挡' },
   { icon: '🔄', title: '反复练习', desc: '不限次数练习，每次题目不同，持续提升面试技巧' }
+]
+
+const introItems = [
+  { title: '面试前', desc: '解析简历、明确岗位方向、生成更贴近经历的问题' },
+  { title: '面试中', desc: '通过 AI 面试官多轮追问，训练表达结构和临场反应' },
+  { title: '面试后', desc: '输出评分报告与改进建议，结合面经和笔记持续复盘' }
 ]
 
 const steps = [
@@ -228,6 +251,60 @@ async function handleGuest() {
 }
 
 /* Features */
+.intro {
+  position: relative;
+  z-index: 2;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 54px 20px 10px;
+  text-align: center;
+}
+.intro-kicker {
+  margin: 0 0 10px;
+  color: var(--accent-cyan);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+.intro h2 {
+  margin: 0 auto 14px;
+  max-width: 680px;
+  color: var(--text-primary);
+  font-size: 28px;
+  line-height: 1.35;
+}
+.intro-desc {
+  max-width: 760px;
+  margin: 0 auto 24px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.8;
+}
+.intro-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.intro-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-card);
+  text-align: left;
+}
+.intro-item strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+.intro-item span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .features {
   position: relative;
   z-index: 2;
@@ -377,6 +454,8 @@ async function handleGuest() {
   .hero { padding: 60px 20px 40px; }
   .hero h1 { font-size: 28px; }
   .feature-grid { grid-template-columns: 1fr 1fr; }
+  .intro-grid { grid-template-columns: 1fr; }
+  .intro h2 { font-size: 24px; }
 }
 @media (max-width: 640px) {
   .feature-grid { grid-template-columns: 1fr; }
