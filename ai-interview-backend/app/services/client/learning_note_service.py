@@ -13,6 +13,7 @@ from app.models.learning_note import LearningNote
 from app.models.notebook import Notebook
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
 from app.prompts.learning_note import NOTE_SUMMARIZE_PROMPT, NOTE_TAG_SUGGEST_PROMPT
+from app.services.client.search_backend_service import search_backend_service
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,18 @@ class LearningNoteService:
             raise ValidationError(message="搜索范围不合法")
         if scope == "my" and not user_id:
             raise ValidationError(message="需要登录才能搜索我的笔记")
+
+        external_result = await search_backend_service.search_learning_notes(
+            keyword=keyword,
+            user_id=user_id,
+            note_type=note_type,
+            page=page,
+            size=size,
+            scope=scope,
+        )
+        if external_result is not None:
+            external_result["items"] = await search_backend_service.rerank_notes(keyword, external_result["items"])
+            return external_result
 
         query_vec = func.plainto_tsquery("simple", keyword)
 
@@ -128,6 +141,8 @@ class LearningNoteService:
                 "headline": row.headline or "",
                 "created_at": note.created_at.isoformat() if note.created_at else None,
             })
+
+        items = await search_backend_service.rerank_notes(keyword, items)
 
         return {
             "items": items,

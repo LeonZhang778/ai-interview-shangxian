@@ -17,21 +17,31 @@ async def upload_resume(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """上传简历 PDF 并触发 AI 解析"""
+    """上传简历并触发异步 AI 解析"""
     # 验证文件类型
-    if not file.filename.lower().endswith(".pdf"):
-        raise ValidationError(message="仅支持 PDF 格式文件")
+    filename = file.filename or ""
+    if not filename.lower().endswith((".pdf", ".docx")):
+        raise ValidationError(message="仅支持 PDF 或 DOCX 格式文件")
 
-    # 验证文件大小（最大 10MB）
-    content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
-        raise ValidationError(message="文件大小不能超过 10MB")
+    # 验证文件大小（最大 30MB），分块读取避免一次性大文件读入
+    max_size = 30 * 1024 * 1024
+    chunks = []
+    total_size = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_size:
+            raise ValidationError(message="文件大小不能超过 30MB")
+        chunks.append(chunk)
+    content = b"".join(chunks)
 
     result = await resume_service.upload_and_parse(
         db=db,
         user_id=current_user.id,
         file_content=content,
-        file_name=file.filename,
+        file_name=filename,
         target_position=target_position
     )
     return ApiResponse.success(data=result)

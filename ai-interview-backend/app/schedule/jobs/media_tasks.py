@@ -332,6 +332,7 @@ async def _process_convert_task(task_id: int):
 
             input_path = input_file.storage_key
             input_ext = input_file.source_format
+            temp_paths = []
 
             # 3. 构建输出路径
             output_dir = os.path.join(settings.MEDIA_UPLOAD_DIR, str(user_id), "output")
@@ -353,7 +354,7 @@ async def _process_convert_task(task_id: int):
                         item = input_files[file_id]
                         escaped_path = Path(item.storage_key).resolve().as_posix().replace("'", "'\\''")
                         manifest.write(f"file '{escaped_path}'\n")
-                temp_paths = [manifest_path]
+                temp_paths.append(manifest_path)
                 cmd = ["ffmpeg", "-f", "concat", "-safe", "0", "-i", manifest_path, "-c", "copy", "-y", output_path]
 
             elif tool_code == "gif":
@@ -509,10 +510,31 @@ async def _process_convert_task(task_id: int):
                 stderr=asyncio.subprocess.PIPE,
             )
 
+            async def _terminate_ffmpeg():
+                if proc.returncode is not None:
+                    return
+                proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    proc.kill()
+                    await proc.wait()
+
             # 读取 stderr 获取进度信息
             stderr_lines = []
             while True:
-                line = await proc.stderr.readline()
+                if await _is_task_cancelled(db, task_id):
+                    await _terminate_ffmpeg()
+                    for temp_path in temp_paths:
+                        if os.path.exists(temp_path):
+                            os.remove(temp_path)
+                    if os.path.exists(output_path):
+                        os.remove(output_path)
+                    return
+                try:
+                    line = await asyncio.wait_for(proc.stderr.readline(), timeout=1)
+                except asyncio.TimeoutError:
+                    continue
                 if not line:
                     break
                 decoded = line.decode("utf-8", errors="replace").strip()
@@ -538,6 +560,10 @@ async def _process_convert_task(task_id: int):
             await proc.wait()
 
             if await _is_task_cancelled(db, task_id):
+                await _terminate_ffmpeg()
+                for temp_path in temp_paths:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
                 if os.path.exists(output_path):
                     os.remove(output_path)
                 return
@@ -607,6 +633,20 @@ async def _process_convert_task(task_id: int):
         except asyncio.CancelledError:
             # 任务被取消，清理半成品
             logger.warning(f"Task {task_id} cancelled")
+            if "proc" in locals() and proc.returncode is None:
+                try:
+                    proc.terminate()
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except Exception:
+                    proc.kill()
+                    await proc.wait()
+            if "temp_paths" in locals():
+                for temp_path in temp_paths:
+                    if os.path.exists(temp_path):
+                        try:
+                            os.remove(temp_path)
+                        except OSError:
+                            pass
             if "output_path" in locals() and os.path.exists(output_path):
                 try:
                     os.remove(output_path)

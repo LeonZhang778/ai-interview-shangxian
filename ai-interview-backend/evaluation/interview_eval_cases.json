@@ -1,0 +1,32 @@
+[
+  {
+    "id": "empty-answer",
+    "answer": "",
+    "expected_score": 1.0,
+    "tolerance": 0.0
+  },
+  {
+    "id": "empty-talk",
+    "answer": "嗯",
+    "expected_score": 1.0,
+    "tolerance": 0.0
+  },
+  {
+    "id": "honest-skip",
+    "answer": "不会",
+    "expected_score": 3.0,
+    "tolerance": 0.0
+  },
+  {
+    "id": "partial-attempt",
+    "answer": "不太清楚，但我觉得可以先从缓存命中率和过期策略分析",
+    "expected_score": 4.0,
+    "tolerance": 0.0
+  },
+  {
+    "id": "fallback-normal-answer",
+    "answer": "Redis 可以作为缓存、分布式锁和消息队列使用，需要关注淘汰策略和一致性。",
+    "expected_score": 5.0,
+    "tolerance": 0.0
+  }
+]

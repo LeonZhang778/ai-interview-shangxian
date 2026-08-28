@@ -1,0 +1,4 @@
+{
+  "min_pass_rate": 0.95,
+  "max_score_mae": 1.0
+}

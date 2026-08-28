@@ -6,6 +6,7 @@ from app.services.client.image_service import image_service
 from app.schemas.client.image import ImageGenerate
 from app.schemas.response import ApiResponse
 from app.models.user import User
+from app.exceptions.http_exceptions import APIException
 
 router = APIRouter()
 
@@ -29,7 +30,16 @@ async def generate_image(
     )
     # 异步执行图片生成
     from app.schedule.jobs.image_task import generate_image_task
-    generate_image_task.delay(result["task_id"])
+    try:
+        generate_image_task.delay(result["task_id"])
+    except Exception as exc:
+        await image_service.mark_task_failed(
+            db=db,
+            task_id=result["task_id"],
+            user_id=current_user.id,
+            message="后台任务提交失败，请稍后重试",
+        )
+        raise APIException(code=10503, message="后台任务提交失败，请稍后重试", status_code=503) from exc
     return ApiResponse.success(data=result)
 
 

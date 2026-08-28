@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.api.client.deps import get_current_user
+from app.core.celery_app import celery_app
 from app.models.user import User
 from app.schemas.response import ApiResponse
 from app.exceptions.http_exceptions import APIException, NotFoundError
@@ -451,7 +452,12 @@ async def cancel_media_task(
     db: AsyncSession = Depends(get_db),
 ):
     """取消 queued/processing 任务"""
-    await MediaTaskRepository.cancel_task(db, task_id, current_user.id)
+    task = await MediaTaskRepository.cancel_task(db, task_id, current_user.id)
+    if task.celery_task_id:
+        try:
+            celery_app.control.revoke(task.celery_task_id, terminate=True, signal="SIGTERM")
+        except Exception:
+            logger.warning("Celery revoke 失败，将仅标记任务为 cancelled: task_id=%s", task.id, exc_info=True)
 
     await MediaEventRepository.create(
         db=db, task_id=task_id, user_id=current_user.id, event_name="media.task.cancelled"

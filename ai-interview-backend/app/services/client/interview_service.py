@@ -104,6 +104,9 @@ class InterviewService:
 
         if not interview:
             raise NotFoundError(message="面试记录不存在")
+        duplicate = await InterviewService._get_duplicate_submission_result(db, interview, answer)
+        if duplicate:
+            return duplicate
         if interview.status == "completed":
             raise ValidationError(message="面试已结束")
 
@@ -136,7 +139,9 @@ class InterviewService:
 
         result = graph_result["result"]
         if result.get("error"):
-            raise NotFoundError(message=result["error"])
+            if result["error"] == "面试记录不存在":
+                raise NotFoundError(message=result["error"])
+            raise ValidationError(message=result["error"])
         return result
 
     @staticmethod
@@ -157,6 +162,10 @@ class InterviewService:
 
         if not interview:
             yield f"data: {json.dumps({'type': 'error', 'content': '面试记录不存在'})}\n\n"
+            return
+        duplicate = await InterviewService._get_duplicate_submission_result(db, interview, answer)
+        if duplicate:
+            yield f"data: {json.dumps({'type': 'done', **duplicate}, ensure_ascii=False)}\n\n"
             return
         if interview.status == "completed":
             yield f"data: {json.dumps({'type': 'error', 'content': '面试已结束'})}\n\n"
@@ -188,6 +197,46 @@ class InterviewService:
             "result": {},
         }):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    @staticmethod
+    async def _get_duplicate_submission_result(
+        db: AsyncSession,
+        interview: Interview,
+        answer: str
+    ) -> Dict | None:
+        """兼容无幂等键的旧前端：相同答案重试上一题时返回已有结果。"""
+        questions = interview.questions_data or []
+        current_index = interview.current_question_index or 0
+        previous_index = current_index - 1
+        if previous_index < 0:
+            return None
+
+        result = await db.execute(
+            select(InterviewMessage)
+            .where(
+                InterviewMessage.interview_id == interview.id,
+                InterviewMessage.role == "candidate",
+                InterviewMessage.question_index == previous_index,
+            )
+            .order_by(InterviewMessage.id.desc())
+            .limit(1)
+        )
+        message = result.scalars().first()
+        if not message or message.content != answer:
+            return None
+
+        is_finished = interview.status == "completed" or current_index >= len(questions)
+        duplicate = {
+            "score": float(message.score) if message.score is not None else 0.0,
+            "feedback": message.feedback or "",
+            "question_index": previous_index,
+            "is_finished": is_finished,
+            "next_question": None if is_finished else questions[current_index]["question"],
+            "idempotent": True,
+        }
+        if is_finished:
+            duplicate["overall_score"] = float(interview.overall_score or 0)
+        return duplicate
 
     @staticmethod
     async def get_report(

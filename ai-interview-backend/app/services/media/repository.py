@@ -387,7 +387,7 @@ class MediaTaskRepository:
             await db.commit()
 
     @staticmethod
-    async def cancel_task(db: AsyncSession, task_id: int, user_id: int) -> bool:
+    async def cancel_task(db: AsyncSession, task_id: int, user_id: int) -> MediaTask:
         """取消任务"""
         result = await db.execute(
             select(MediaTask).where(
@@ -403,7 +403,8 @@ class MediaTaskRepository:
         task.status = "cancelled"
         task.finished_at = datetime.now(timezone.utc)
         await db.commit()
-        return True
+        await db.refresh(task)
+        return task
 
     @staticmethod
     async def terminate_task_admin(db: AsyncSession, task_id: int) -> MediaTask:

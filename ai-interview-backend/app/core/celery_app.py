@@ -13,6 +13,8 @@ backend=settings.CELERY_RESULT_BACKEND,
         'app.schedule.jobs.email_tasks',  # 邮件任务
         'app.schedule.jobs.image_task',   # 图片生成任务
         'app.schedule.jobs.media_tasks',  # 媒体工具任务
+        'app.schedule.jobs.resume_tasks',  # 简历异步解析任务
+        'app.schedule.jobs.notification_tasks',  # 通知异步创建任务
     ]
 )
 
@@ -49,6 +51,8 @@ celery_app.conf.task_queues = {
 # 媒体任务路由：实际任务名为 media.process_media、media.health_check，统一投递到 media_tasks 队列
 celery_app.conf.task_routes = {
     "media.*": {"queue": "media_tasks"},
+    "resume.*": {"queue": "celery"},
+    "notification.*": {"queue": "celery"},
 }
 
 # Optional: Configure other Celery settings

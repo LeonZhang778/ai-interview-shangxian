@@ -39,6 +39,9 @@ jobs:
             fi
           done
 
+      - name: Run evaluation gate
+        run: python3 ai-interview-backend/scripts/eval_gate.py
+
       - name: Log in to ACR
         uses: docker/login-action@v3
         with:

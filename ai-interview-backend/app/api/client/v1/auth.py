@@ -13,6 +13,7 @@ from app.services.client.auth import client_auth_service
 from app.services.common.setting_service import get_setting_bool
 from app.schemas.response import ApiResponse
 from app.models.user import User
+from app.utils.file_names import safe_uuid_filename
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -201,15 +202,26 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db)
 ):
     """上传用户头像"""
-    if not file.content_type or not file.content_type.startswith("image/"):
-        return ApiResponse.error(message="仅支持图片文件")
+    allowed_types = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+    }
+    if file.content_type not in allowed_types:
+        return ApiResponse.failed(message="仅支持 jpg/png/webp/gif 图片", body_code=1001)
 
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
-        return ApiResponse.error(message="文件大小不能超过5MB")
+        return ApiResponse.failed(message="文件大小不能超过5MB", body_code=1001)
 
-    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-    filename = f"{current_user.id}.{ext}"
+    _, storage_name = safe_uuid_filename(
+        file.filename or "",
+        set(allowed_types.values()),
+        allowed_types[file.content_type],
+    )
+    ext = allowed_types[file.content_type]
+    filename = f"{current_user.id}_{storage_name.rsplit('.', 1)[0]}.{ext}"
     filepath = os.path.join(AVATAR_DIR, filename)
 
     with open(filepath, "wb") as f:

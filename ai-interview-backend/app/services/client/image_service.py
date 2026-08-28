@@ -121,6 +121,18 @@ class ImageService:
         }
 
     @staticmethod
+    async def mark_task_failed(db: AsyncSession, task_id: int, user_id: int, message: str) -> None:
+        result = await db.execute(
+            select(ImageTask).where(ImageTask.id == task_id, ImageTask.user_id == user_id)
+        )
+        task = result.scalar_one_or_none()
+        if not task:
+            raise NotFoundError(message="任务不存在")
+        task.status = "failed"
+        task.error_message = message[:500]
+        await db.commit()
+
+    @staticmethod
     async def delete_task(db: AsyncSession, task_id: int, user_id: int) -> None:
         result = await db.execute(
             select(ImageTask).where(ImageTask.id == task_id, ImageTask.user_id == user_id)

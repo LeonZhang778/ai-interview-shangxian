@@ -39,6 +39,40 @@ class NotificationService:
             await db.rollback()
 
     @staticmethod
+    async def enqueue_notification(
+        db: AsyncSession,
+        user_id: int,
+        title: str,
+        content: Optional[str] = None,
+        notification_type: str = "system",
+        related_id: Optional[int] = None,
+        related_type: Optional[str] = None,
+    ) -> None:
+        """投递非事务依赖通知；队列不可用时退回同步创建。"""
+        try:
+            from app.schedule.jobs.notification_tasks import create_notification_task
+            create_notification_task.delay(
+                user_id=user_id,
+                title=title,
+                content=content,
+                notification_type=notification_type,
+                related_id=related_id,
+                related_type=related_type,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to enqueue notification, fallback to sync create: {e}")
+            await NotificationService.create_notification(
+                db=db,
+                user_id=user_id,
+                title=title,
+                content=content,
+                notification_type=notification_type,
+                related_id=related_id,
+                related_type=related_type,
+                commit=True,
+            )
+
+    @staticmethod
     async def get_notifications(
         db: AsyncSession,
         user_id: int,

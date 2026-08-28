@@ -214,6 +214,21 @@ async def save_results_node(state: dict) -> dict:
     answer = state["answer"]
 
     interview = await db.get(Interview, interview_id)
+    if not interview:
+        return {"result": {"error": "面试记录不存在"}}
+
+    duplicate_result = await _get_existing_answer_result(
+        db=db,
+        interview=interview,
+        question_index=current_index,
+        answer=answer,
+        questions=questions,
+    )
+    if duplicate_result:
+        return {"result": duplicate_result, "overall_score": duplicate_result.get("overall_score", 0.0)}
+
+    if interview.current_question_index != current_index:
+        return {"result": {"error": "面试进度已更新，请刷新后继续"}}
 
     # 保存候选人回答
     candidate_msg = InterviewMessage(
@@ -311,7 +326,7 @@ async def save_results_node(state: dict) -> dict:
     if is_finished:
         try:
             from app.services.client.notification_service import notification_service
-            await notification_service.create_notification(
+            await notification_service.enqueue_notification(
                 db=db,
                 user_id=user_id,
                 title="面试已完成",
@@ -319,7 +334,6 @@ async def save_results_node(state: dict) -> dict:
                 notification_type="interview",
                 related_id=interview_id,
                 related_type="interview",
-                commit=False,
             )
         except Exception as e:
             logger.warning(f"发送面试完成通知失败: {e}")
@@ -362,3 +376,39 @@ async def save_results_node(state: dict) -> dict:
         result["overall_score"] = overall_score
 
     return {"result": result, "overall_score": overall_score}
+
+
+async def _get_existing_answer_result(
+    db: AsyncSession,
+    interview: Interview,
+    question_index: int,
+    answer: str,
+    questions: list,
+) -> dict | None:
+    result = await db.execute(
+        select(InterviewMessage)
+        .where(
+            InterviewMessage.interview_id == interview.id,
+            InterviewMessage.role == "candidate",
+            InterviewMessage.question_index == question_index,
+        )
+        .order_by(InterviewMessage.id.desc())
+        .limit(1)
+    )
+    message = result.scalars().first()
+    if not message or message.content != answer:
+        return None
+
+    current_index = interview.current_question_index or 0
+    is_finished = interview.status == "completed" or current_index >= len(questions)
+    duplicate = {
+        "score": float(message.score) if message.score is not None else 0.0,
+        "feedback": message.feedback or "",
+        "question_index": question_index,
+        "is_finished": is_finished,
+        "next_question": None if is_finished else questions[current_index]["question"],
+        "idempotent": True,
+    }
+    if is_finished:
+        duplicate["overall_score"] = float(interview.overall_score or 0)
+    return duplicate

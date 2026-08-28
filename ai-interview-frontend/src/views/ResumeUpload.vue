@@ -7,10 +7,10 @@
       <!-- Step 1: 上传简历 -->
       <div v-if="step === 1">
         <div class="form-group">
-          <label>上传简历 (PDF)</label>
+          <label>上传简历 (PDF / DOCX)</label>
           <div class="upload-area" @click="$refs.fileInput.click()" @dragover.prevent @drop.prevent="onDrop">
-            <input ref="fileInput" type="file" accept=".pdf" @change="onFileChange" hidden />
-            <p v-if="!file" style="color:var(--text-muted)">点击或拖拽上传 PDF 简历</p>
+            <input ref="fileInput" type="file" accept=".pdf,.docx" @change="onFileChange" hidden />
+            <p v-if="!file" style="color:var(--text-muted)">点击或拖拽上传 PDF / DOCX 简历</p>
             <p v-else>📎 {{ file.name }}</p>
           </div>
         </div>
@@ -233,7 +233,7 @@ onUnmounted(() => {
 function onFileChange(e) { file.value = e.target.files[0] }
 function onDrop(e) {
   const f = e.dataTransfer.files[0]
-  if (f && f.name.endsWith('.pdf')) file.value = f
+  if (f && /\.(pdf|docx)$/i.test(f.name)) file.value = f
 }
 
 async function handleUpload() {

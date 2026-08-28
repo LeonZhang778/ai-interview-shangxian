@@ -68,7 +68,7 @@ async def review_experience(
         if exp and exp.author_id:
             from app.services.client.notification_service import notification_service
             if action == "approve":
-                await notification_service.create_notification(
+                await notification_service.enqueue_notification(
                     db=db, user_id=exp.author_id,
                     title="面经审核通过",
                     content=f"你投稿的「{exp.title}」已通过审核，快去看看吧",
@@ -76,7 +76,7 @@ async def review_experience(
                     related_id=experience_id, related_type="experience"
                 )
             elif action == "reject":
-                await notification_service.create_notification(
+                await notification_service.enqueue_notification(
                     db=db, user_id=exp.author_id,
                     title="面经审核未通过",
                     content=f"你投稿的「{exp.title}」未通过审核，请修改后重新投稿",

@@ -88,6 +88,15 @@ class Settings(BaseSettings):
     LLM_CACHE_TTL_QUESTIONS: int = 3600
     LLM_CACHE_TTL_REPORT: int = 3600
 
+# 搜索与重排序配置
+    SEARCH_BACKEND: str = "postgres"
+    OPENSEARCH_URL: str = ""
+    OPENSEARCH_INDEX: str = "learning_notes"
+    OPENSEARCH_USERNAME: str = ""
+    OPENSEARCH_PASSWORD: str = ""
+    RERANKER_URL: str = ""
+    RERANKER_TIMEOUT: int = 5
+
 # 面试会话缓存
     INTERVIEW_SESSION_TTL: int = 7200
 

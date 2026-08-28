@@ -39,6 +39,9 @@ class _ScalarResult:
     def all(self):
         return self._items
 
+    def first(self):
+        return self._items[0] if self._items else None
+
 
 class _ExecuteResult:
     def __init__(self, items):
@@ -201,3 +204,49 @@ def test_save_results_generates_report_with_matched_answers_and_scores(monkeypat
         {"question": "Q2", "score": 7.0, "feedback": "F2"},
         {"question": "Q3", "score": 8.0, "feedback": "F3"},
     ]
+
+
+def test_save_results_duplicate_answer_does_not_advance_again():
+    interview = Interview(
+        id=1,
+        user_id=10,
+        target_position="后端开发",
+        status="in_progress",
+        current_question_index=1,
+        questions_data=[
+            {"question": "Q1"},
+            {"question": "Q2"},
+        ],
+    )
+    existing_answer = InterviewMessage(
+        interview_id=1,
+        role="candidate",
+        content="A1",
+        question_index=0,
+        score=Decimal("6.0"),
+        feedback="F1",
+    )
+    db = _FakeDb(interview, [existing_answer])
+
+    result = asyncio.run(save_results_node({
+        "db": db,
+        "interview_id": 1,
+        "user_id": 10,
+        "current_index": 0,
+        "is_finished": False,
+        "score": 6.0,
+        "feedback": "new feedback",
+        "questions": interview.questions_data,
+        "answer": "A1",
+        "parsed_resume": {},
+        "target_position": "后端开发",
+        "chat_history": [],
+        "next_question": "Q2",
+    }))
+
+    assert db.commits == 0
+    assert interview.current_question_index == 1
+    assert db.added == []
+    assert result["result"]["idempotent"] is True
+    assert result["result"]["question_index"] == 0
+    assert result["result"]["next_question"] == "Q2"
