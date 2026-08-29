@@ -204,5 +204,7 @@ async def reset_password(
             admin_id, 
             password_data.password
         )
+        if not result:
+            raise APIException(status_code=status.HTTP_404_NOT_FOUND, message="Admin not found")
         
         return ApiResponse.success(data={"message": "密码重置成功"})

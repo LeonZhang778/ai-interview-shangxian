@@ -111,7 +111,16 @@ class FFprobeService:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+            try:
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+            except asyncio.TimeoutError:
+                proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    proc.kill()
+                    await proc.wait()
+                raise
 
             if proc.returncode != 0:
                 error_msg = stderr.decode("utf-8", errors="replace").strip()
@@ -220,9 +229,14 @@ class FFprobeService:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, _ = await proc.communicate()
+            try:
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                return False
             return proc.returncode == 0
-        except FileNotFoundError:
+        except (FileNotFoundError, asyncio.TimeoutError):
             return False
 
 

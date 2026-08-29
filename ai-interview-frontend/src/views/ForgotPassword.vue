@@ -27,7 +27,9 @@
           <div class="card-content">
             <!-- Step 1: 输入邮箱 -->
             <template v-if="step === 1">
-              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">&#x1F511;</div>
+              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">
+                <img src="/site-logo.png" alt="智面 AI" />
+              </div>
               <h2>忘记密码</h2>
               <p class="subtitle">输入您的注册邮箱，我们将发送验证码</p>
               <form @submit.prevent="handleSendCode">
@@ -46,7 +48,9 @@
 
             <!-- Step 2: 输入验证码 -->
             <template v-else-if="step === 2">
-              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">&#x1F4E7;</div>
+              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">
+                <img src="/site-logo.png" alt="智面 AI" />
+              </div>
               <h2>验证邮箱</h2>
               <p class="subtitle">验证码已发送至 <strong>{{ email }}</strong></p>
               <form @submit.prevent="handleVerifyCode">
@@ -69,7 +73,9 @@
 
             <!-- Step 3: 设置新密码 -->
             <template v-else-if="step === 3">
-              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">&#x1F512;</div>
+              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">
+                <img src="/site-logo.png" alt="智面 AI" />
+              </div>
               <h2>设置新密码</h2>
               <p class="subtitle">请输入新密码</p>
               <form @submit.prevent="handleReset">
@@ -409,6 +415,7 @@ onUnmounted(() => {
 
 /* Logo */
 .logo-icon { width: 52px; height: 52px; margin: 0 auto 16px; background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2)); border: 1px solid rgba(139,92,246,0.25); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; position: relative; transition: transform 0.3s, box-shadow 0.3s; }
+.logo-icon img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
 .logo-icon:hover { transform: scale(1.1) rotate(5deg); box-shadow: 0 0 30px rgba(139,92,246,0.3); }
 .logo-icon::after { content: ''; position: absolute; inset: -5px; border-radius: 20px; border: 1px solid rgba(139,92,246,0.15); animation: logoPulse 2.5s ease-in-out infinite; }
 @keyframes logoPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0; } }

@@ -4,7 +4,10 @@
       <AnnouncementBanner />
       <nav class="navbar" v-if="authStore.token">
         <div class="nav-content">
-          <router-link to="/dashboard" class="nav-logo">智面</router-link>
+          <router-link to="/dashboard" class="nav-logo">
+            <img src="/site-logo.png" class="nav-logo-image" alt="智面 AI" />
+            <span class="nav-logo-text">智面</span>
+          </router-link>
           <button class="nav-toggle" @click="mobileMenuOpen = !mobileMenuOpen" aria-label="菜单">
             <span></span><span></span><span></span>
           </button>
@@ -35,7 +38,10 @@
       </nav>
       <nav class="navbar" v-else>
         <div class="nav-content">
-          <router-link to="/" class="nav-logo">智面</router-link>
+          <router-link to="/" class="nav-logo">
+            <img src="/site-logo.png" class="nav-logo-image" alt="智面 AI" />
+            <span class="nav-logo-text">智面</span>
+          </router-link>
           <button class="nav-toggle" @click="mobileMenuOpen = !mobileMenuOpen" aria-label="菜单">
             <span></span><span></span><span></span>
           </button>
@@ -163,17 +169,34 @@ async function logout() {
 }
 
 .nav-content {
-  max-width: 1080px;
+  max-width: 1320px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
   height: 56px;
 }
 
 .nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
   font-size: 18px;
   font-weight: 700;
+}
+
+.nav-logo-image {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.nav-logo-text {
+  white-space: nowrap;
+  line-height: 1;
   background: linear-gradient(135deg, #a855f7, #06b6d4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -182,13 +205,17 @@ async function logout() {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: clamp(8px, 1vw, 16px);
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 14px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
 .nav-links a {
+  flex: 0 0 auto;
+  white-space: nowrap;
   color: var(--text-secondary);
   transition: color 0.2s;
 }
@@ -278,6 +305,8 @@ async function logout() {
 }
 
 .btn-logout {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: 6px 14px;
   font-size: 13px;
   background: var(--bg-hover);

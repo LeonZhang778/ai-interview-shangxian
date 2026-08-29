@@ -9,14 +9,15 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
+from app.core.config import settings
 from app.models.image_task import ImageTask
 from app.exceptions.http_exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = "/app/uploads"
+UPLOAD_DIR = "uploads"
+GENERATED_IMAGE_DIR = os.path.join(UPLOAD_DIR, "generated-images")
 POLLINATIONS_API_URL = "https://apihub.agnes-ai.com/v1/images/generations"
-POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
 
 
 class ImageService:
@@ -143,7 +144,7 @@ class ImageService:
 
         # 删除图片文件
         if task.image_url:
-            file_path = task.image_url.replace("/uploads/", "")
+            file_path = task.image_url.removeprefix("/uploads/")
             full_path = os.path.join(UPLOAD_DIR, file_path)
             if os.path.exists(full_path):
                 os.remove(full_path)
@@ -159,6 +160,10 @@ class ImageService:
         height: int = 512,
     ) -> bytes:
         """调用 Pollinations API 生成图片，返回图片二进制数据"""
+        api_key = settings.POLLINATIONS_API_KEY or os.getenv("POLLINATIONS_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("图片生成服务未配置，请检查 POLLINATIONS_API_KEY")
+
         payload = {
             "model": "agnes-image-2.1-flash",
             "prompt": prompt,
@@ -172,12 +177,16 @@ class ImageService:
             response = await client.post(
                 POLLINATIONS_API_URL,
                 headers={
-                    "Authorization": f"Bearer {POLLINATIONS_API_KEY}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json=payload,
             )
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                detail = exc.response.text[:200] if exc.response is not None else str(exc)
+                raise RuntimeError(f"图片生成接口请求失败（HTTP {exc.response.status_code}）：{detail}") from exc
             result = response.json()
             data_item = result["data"][0]
             # API 可能返回 base64 或 URL
@@ -194,7 +203,7 @@ class ImageService:
     def save_image(image_data: bytes, task_id: int) -> str:
         """保存图片到本地文件系统，返回 URL 路径"""
         date_dir = datetime.now().strftime("%Y%m%d")
-        save_dir = os.path.join(UPLOAD_DIR, date_dir)
+        save_dir = os.path.join(GENERATED_IMAGE_DIR, date_dir)
         os.makedirs(save_dir, exist_ok=True)
 
         filename = f"img_{task_id}_{uuid.uuid4().hex[:8]}.png"
@@ -203,7 +212,7 @@ class ImageService:
         with open(file_path, "wb") as f:
             f.write(image_data)
 
-        return f"/uploads/{date_dir}/{filename}"
+        return f"/uploads/generated-images/{date_dir}/{filename}"
 
 
 image_service = ImageService()

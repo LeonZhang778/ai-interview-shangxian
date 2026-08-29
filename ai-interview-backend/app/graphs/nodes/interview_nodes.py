@@ -21,6 +21,17 @@ from app.utils.utils import safe_parse_json
 logger = logging.getLogger(__name__)
 
 
+def _get_question_text(questions: list, index: int) -> str | None:
+    if index < 0 or index >= len(questions):
+        return None
+    item = questions[index]
+    if isinstance(item, dict):
+        text = item.get("question")
+    else:
+        text = str(item)
+    return text.strip() if isinstance(text, str) and text.strip() else None
+
+
 # ---------------------------------------------------------------------------
 # 节点 1：加载上下文
 # ---------------------------------------------------------------------------
@@ -43,6 +54,8 @@ async def load_context_node(state: dict) -> dict:
         resume_query = select(Resume).where(Resume.id == interview.resume_id)
         resume_result = await db.execute(resume_query)
         resume = resume_result.scalar_one_or_none()
+        if not resume:
+            return {"error": "简历不存在或已删除"}
         parsed_resume = safe_parse_json(resume.parsed_content, {})
         resume_id = interview.resume_id
     elif interview.experience_id:
@@ -61,9 +74,13 @@ async def load_context_node(state: dict) -> dict:
     chat_history = [{"role": m.role, "content": m.content} for m in messages]
 
     # 当前题目
-    current_index = interview.current_question_index
-    questions = interview.questions_data
-    current_question = questions[current_index]["question"]
+    current_index = interview.current_question_index or 0
+    questions = interview.questions_data or []
+    if not isinstance(questions, list):
+        return {"error": "面试题目数据异常，请重新开始面试"}
+    current_question = _get_question_text(questions, current_index)
+    if current_question is None:
+        return {"error": "面试题目数据异常，请重新开始面试"}
 
     return {
         "current_question": current_question,
@@ -189,7 +206,7 @@ async def generate_next_node(state: dict) -> dict:
     else:
         return {
             "is_finished": False,
-            "next_question": questions[next_index]["question"],
+            "next_question": _get_question_text(questions, next_index),
         }
 
 
@@ -229,6 +246,12 @@ async def save_results_node(state: dict) -> dict:
 
     if interview.current_question_index != current_index:
         return {"result": {"error": "面试进度已更新，请刷新后继续"}}
+
+    next_question = None
+    if not is_finished:
+        next_question = _get_question_text(questions, current_index + 1)
+        if next_question is None:
+            return {"result": {"error": "面试题目数据异常，请重新开始面试"}}
 
     # 保存候选人回答
     candidate_msg = InterviewMessage(
@@ -309,7 +332,6 @@ async def save_results_node(state: dict) -> dict:
     else:
         # 进入下一题
         interview.current_question_index = current_index + 1
-        next_question = questions[current_index + 1]["question"]
 
         # 保存下一题作为面试官消息
         interviewer_msg = InterviewMessage(
@@ -406,7 +428,7 @@ async def _get_existing_answer_result(
         "feedback": message.feedback or "",
         "question_index": question_index,
         "is_finished": is_finished,
-        "next_question": None if is_finished else questions[current_index]["question"],
+        "next_question": None if is_finished else _get_question_text(questions, current_index),
         "idempotent": True,
     }
     if is_finished:

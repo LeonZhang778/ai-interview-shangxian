@@ -1,7 +1,10 @@
 <template>
   <div class="admin-layout" v-if="authStore.isLoggedIn">
     <aside class="sidebar">
-      <div class="sidebar-logo"><span class="logo-icon">🎯</span><span class="logo-text">智面</span></div>
+      <div class="sidebar-logo">
+        <img src="/site-logo.png" class="logo-icon" alt="智面" />
+        <span class="logo-text">智面</span>
+      </div>
       <div class="sidebar-subtitle">后台管理</div>
       <nav class="sidebar-nav">
         <router-link to="/" exact-active-class="active">
@@ -99,6 +102,10 @@ async function logout() { await authStore.logout(); router.push('/login') }
 }
 
 .logo-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
   -webkit-text-fill-color: initial;
 }
 

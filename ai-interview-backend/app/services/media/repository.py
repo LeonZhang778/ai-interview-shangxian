@@ -297,7 +297,10 @@ class MediaTaskRepository:
         output_files = {}
         if output_file_ids:
             f_result = await db.execute(
-                select(MediaFile).where(MediaFile.id.in_(output_file_ids))
+                select(MediaFile).where(
+                    MediaFile.id.in_(output_file_ids),
+                    MediaFile.user_id == user_id,
+                )
             )
             for f in f_result.scalars().all():
                 output_files[f.id] = {

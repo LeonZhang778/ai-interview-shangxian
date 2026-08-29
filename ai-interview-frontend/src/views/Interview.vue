@@ -172,6 +172,18 @@ function scrollToBottom() {
   })
 }
 
+async function loadMessages() {
+  const data = await getMessages(interviewId)
+  const msgList = Array.isArray(data) ? data : (data.items || [])
+  messages.value = msgList.map(m => ({
+    role: m.role, content: m.content, score: m.score, feedback: m.feedback, question_index: m.question_index
+  }))
+  const indices = msgList.map(m => m.question_index).filter(i => i != null)
+  if (indices.length) currentIndex.value = Math.max(...indices)
+  if (data.total_questions) totalQuestions.value = data.total_questions
+  scrollToBottom()
+}
+
 onMounted(async () => {
   // 准备动画
   let tipIdx = 0
@@ -185,14 +197,7 @@ onMounted(async () => {
   }, 100)
 
   try {
-    const data = await getMessages(interviewId)
-    const msgList = Array.isArray(data) ? data : (data.items || data)
-    messages.value = msgList.map(m => ({
-      role: m.role, content: m.content, score: m.score, feedback: m.feedback
-    }))
-    const indices = msgList.map(m => m.question_index).filter(i => i != null)
-    if (indices.length) currentIndex.value = Math.max(...indices)
-    if (data.total_questions) totalQuestions.value = data.total_questions
+    await loadMessages()
   } catch (e) {
     console.error('加载消息失败:', e)
   }
@@ -232,7 +237,7 @@ async function handleSubmit() {
         streamingText.value = display.trim()
         scrollToBottom()
       },
-      (data) => {
+      async (data) => {
         if (rawStreamText.trim()) {
           let displayText = rawStreamText
             .replace(/```json\s*\{[\s\S]*?\}\s*```/g, '')
@@ -247,11 +252,32 @@ async function handleSubmit() {
         const lastCandidate = [...messages.value].reverse().find(m => m.role === 'candidate')
         if (lastCandidate) lastCandidate.score = data.score
 
+        try {
+          await loadMessages()
+        } catch (e) {
+          console.error('刷新消息失败:', e)
+        }
+        const hasSavedAnswer = messages.value.some(m =>
+          m.role === 'candidate' &&
+          m.content === myAnswer &&
+          m.question_index === data.question_index
+        )
+        if (!hasSavedAnswer) {
+          messages.value.push({ role: 'candidate', content: myAnswer, score: data.score, question_index: data.question_index })
+        }
+
         if (data.is_finished) {
           finished.value = true
         } else if (data.next_question) {
           currentIndex.value = data.question_index + 1
-          messages.value.push({ role: 'interviewer', content: data.next_question })
+          const hasNextQuestion = messages.value.some(m =>
+            m.role === 'interviewer' &&
+            m.content === data.next_question &&
+            m.question_index === data.question_index + 1
+          )
+          if (!hasNextQuestion) {
+            messages.value.push({ role: 'interviewer', content: data.next_question, question_index: data.question_index + 1 })
+          }
         }
         scrollToBottom()
       }

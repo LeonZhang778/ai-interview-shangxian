@@ -74,7 +74,7 @@
         <!-- 头部品牌 -->
         <div class="share-brand">
           <div class="share-logo">
-            <span class="share-logo-icon">🎯</span>
+            <img src="/site-logo.png" class="share-logo-icon" alt="智面 AI" />
             <span class="share-logo-text">智面 AI</span>
           </div>
           <div class="share-tag">面试评估报告</div>
@@ -594,7 +594,12 @@ ul li::before {
   align-items: center;
   gap: 6px;
 }
-.share-logo-icon { font-size: 18px; }
+.share-logo-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
 .share-logo-text {
   font-size: 16px;
   font-weight: 700;

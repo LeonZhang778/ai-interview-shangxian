@@ -35,7 +35,7 @@ export async function submitAnswerStream(interviewId, answer, onChunk, onDone) {
           if (data.type === 'chunk') {
             onChunk(data.content)
           } else if (data.type === 'done') {
-            onDone(data)
+            await onDone(data)
           } else if (data.type === 'error') {
             throw new Error(data.content)
           }

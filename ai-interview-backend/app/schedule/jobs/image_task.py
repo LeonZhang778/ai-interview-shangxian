@@ -60,16 +60,18 @@ async def _process_task(task_id: int):
             logger.info(f"Task {task_id} completed: {image_url}")
 
         except Exception as e:
-                try:
+            logger.exception(f"Generate image task {task_id} failed")
+            try:
+                if task:
                     task.status = "failed"
                     task.error_message = str(e)[:500]
                     await db.commit()
-                except Exception as commit_err:
-                    logger.warning(f"Commit failed status for task {task_id}: {commit_err}")
-                    try:
-                        await db.rollback()
-                    except Exception as rollback_err:
-                        logger.warning(f"Rollback after commit failure failed (expected): {rollback_err}")
+            except Exception as commit_err:
+                logger.warning(f"Commit failed status for task {task_id}: {commit_err}")
+                try:
+                    await db.rollback()
+                except Exception as rollback_err:
+                    logger.warning(f"Rollback after commit failure failed (expected): {rollback_err}")
         finally:
             try:
                 await engine.dispose()

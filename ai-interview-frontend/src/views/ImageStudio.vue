@@ -97,6 +97,9 @@
               </div>
               <div class="task-info">
                 <p class="task-prompt" :title="task.prompt">{{ task.prompt }}</p>
+                <p v-if="task.status === 'failed' && task.error_message" class="task-error" :title="task.error_message">
+                  {{ task.error_message }}
+                </p>
                 <div class="task-meta">
                   <span class="task-time">{{ formatTime(task.created_at) }}</span>
                   <span class="task-status" :class="task.status">{{ statusText(task.status) }}</span>
@@ -388,6 +391,16 @@ onUnmounted(() => {
 
 .task-info { padding: 12px; }
 .task-prompt { font-size: 13px; color: var(--text-secondary); margin: 0 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-error {
+  font-size: 12px;
+  color: var(--red);
+  line-height: 1.5;
+  margin: -2px 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .task-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .task-time { font-size: 12px; color: var(--text-dim); }
 .task-status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }

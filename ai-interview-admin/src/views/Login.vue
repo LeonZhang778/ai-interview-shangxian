@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <h2>🎯 智面后台</h2>
+      <h2><img src="/site-logo.png" class="login-logo" alt="智面" />智面后台</h2>
       <form @submit.prevent="handleLogin">
         <div class="form-group">
           <label>邮箱</label>
@@ -51,7 +51,8 @@ async function handleLogin() {
 <style scoped>
 .login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%); }
 .login-card { width: 400px; background: white; border-radius: 16px; padding: 40px 36px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-.login-card h2 { font-size: 24px; color: #4f46e5; margin-bottom: 28px; }
+.login-card h2 { font-size: 24px; color: #4f46e5; margin-bottom: 28px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.login-logo { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
 .form-group { margin-bottom: 18px; text-align: left; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #374151; }
 .form-group input { width: 100%; padding: 11px 14px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; outline: none; transition: all 0.3s; background: #f9fafb; }

@@ -1,6 +1,8 @@
+import logging
 from typing import Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta, UTC
 from app.models.waiting_list import WaitingList
 from app.core.security import AuthBase
@@ -9,6 +11,17 @@ from app.db.session import transaction
 from app.exceptions.http_exceptions import APIException
 from app.services.common.redis import redis_client
 from app.schedule.jobs.email_tasks import send_waiting_list_verification_task, send_waiting_list_admin_notification_task
+
+logger = logging.getLogger(__name__)
+
+
+def _dispatch_waiting_list_email(task_func, *args, required: bool = True) -> None:
+    try:
+        task_func.delay(*args)
+    except Exception as exc:
+        logger.warning("等待名单邮件任务提交失败: task=%s error=%s", getattr(task_func, "name", task_func), exc)
+        if required:
+            raise APIException(code=10503, message="邮件任务提交失败，请稍后重试", status_code=503) from exc
 
 
 class WaitingListService:
@@ -96,7 +109,8 @@ class WaitingListService:
                 data["email"],
                 existing.id
             )
-            send_waiting_list_verification_task.delay(
+            _dispatch_waiting_list_email(
+                send_waiting_list_verification_task,
                 data["email"],
                 token,
                 data["first_name"]
@@ -106,35 +120,39 @@ class WaitingListService:
                 "message": "验证邮件已重新发送，请查收邮箱"
             }
 
-        async with transaction(db):
-            new_record = WaitingList(
-                first_name=data["first_name"],
-                last_name=data["last_name"],
-                email=data["email"],
-                university=data.get("university"),
-                ip_address=ip_address,
-                user_agent=user_agent,
-                is_verified=False
-            )
+        try:
+            async with transaction(db):
+                new_record = WaitingList(
+                    first_name=data["first_name"],
+                    last_name=data["last_name"],
+                    email=data["email"],
+                    university=data.get("university"),
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    is_verified=False
+                )
 
-            db.add(new_record)
-            await db.flush()
+                db.add(new_record)
+                await db.flush()
 
-            token = await WaitingListService.generate_verification_token(
-                data["email"],
-                new_record.id
-            )
+                token = await WaitingListService.generate_verification_token(
+                    data["email"],
+                    new_record.id
+                )
 
-            send_waiting_list_verification_task.delay(
-                data["email"],
-                token,
-                data["first_name"]
-            )
+                _dispatch_waiting_list_email(
+                    send_waiting_list_verification_task,
+                    data["email"],
+                    token,
+                    data["first_name"]
+                )
 
-            return {
-                "email": data["email"],
-                "message": "请查收邮箱进行验证"
-            }
+                return {
+                    "email": data["email"],
+                    "message": "请查收邮箱进行验证"
+                }
+        except IntegrityError as exc:
+            raise APIException(status_code=400, message="该邮箱已在等待列表中") from exc
 
     @staticmethod
     async def verify_email(db: AsyncSession, token: str) -> Dict:
@@ -163,13 +181,17 @@ class WaitingListService:
             redis_key = f"waiting_list:token:{email}"
             await redis_client.delete(redis_key)
 
-            send_waiting_list_admin_notification_task.delay({
-                "first_name": record.first_name,
-                "last_name": record.last_name,
-                "email": record.email,
-                "university": record.university,
-                "verified_at": record.verified_at.isoformat()
-            })
+            _dispatch_waiting_list_email(
+                send_waiting_list_admin_notification_task,
+                {
+                    "first_name": record.first_name,
+                    "last_name": record.last_name,
+                    "email": record.email,
+                    "university": record.university,
+                    "verified_at": record.verified_at.isoformat()
+                },
+                required=False,
+            )
 
             return {
                 "message": "邮箱验证成功",
@@ -193,7 +215,8 @@ class WaitingListService:
 
         token = await WaitingListService.generate_verification_token(email, record.id)
 
-        send_waiting_list_verification_task.delay(
+        _dispatch_waiting_list_email(
+            send_waiting_list_verification_task,
             email,
             token,
             record.first_name

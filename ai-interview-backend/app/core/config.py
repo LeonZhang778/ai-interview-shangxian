@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # OpenAI 配置
     OPENAI_API_KEY: str = "your-openai-api-key"
 
+# 图片生成服务配置
+    POLLINATIONS_API_KEY: str = ""
+
 # AI 配置（通义千问 Qwen）
     AI_API_KEY: str = ""
     AI_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"

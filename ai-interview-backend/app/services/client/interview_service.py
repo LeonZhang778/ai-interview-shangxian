@@ -206,6 +206,8 @@ class InterviewService:
     ) -> Dict | None:
         """兼容无幂等键的旧前端：相同答案重试上一题时返回已有结果。"""
         questions = interview.questions_data or []
+        if not isinstance(questions, list):
+            return None
         current_index = interview.current_question_index or 0
         previous_index = current_index - 1
         if previous_index < 0:
@@ -226,12 +228,16 @@ class InterviewService:
             return None
 
         is_finished = interview.status == "completed" or current_index >= len(questions)
+        next_question = None
+        if not is_finished:
+            question = questions[current_index]
+            next_question = question.get("question") if isinstance(question, dict) else str(question)
         duplicate = {
             "score": float(message.score) if message.score is not None else 0.0,
             "feedback": message.feedback or "",
             "question_index": previous_index,
             "is_finished": is_finished,
-            "next_question": None if is_finished else questions[current_index]["question"],
+            "next_question": next_question,
             "idempotent": True,
         }
         if is_finished:

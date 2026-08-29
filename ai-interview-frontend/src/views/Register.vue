@@ -25,7 +25,9 @@
         <div class="card-mouse-glow" ref="cardMouseGlow"></div>
         <div class="card-body">
           <div class="card-content">
-            <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">&#x1F680;</div>
+            <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">
+              <img src="/site-logo.png" alt="智面 AI" />
+            </div>
             <h2>创建账号</h2>
             <p class="subtitle">注册智面 AI，开始模拟面试</p>
 
@@ -569,6 +571,12 @@ onUnmounted(() => {
   cursor: pointer;
   position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
+}
+.logo-icon img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 .logo-icon:hover {
   transform: scale(1.1) rotate(5deg);

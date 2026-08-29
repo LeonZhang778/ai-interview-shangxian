@@ -292,6 +292,16 @@ async def _process_convert_task(task_id: int):
             options = task.options_json
             tool_code = task.tool_name
             target_format = options.get("target_format", "mp4")
+            if task.status != "pending":
+                _log_structured(
+                    event="task_skip_non_pending",
+                    task_id=task_id,
+                    trace_id=trace_id,
+                    span_id="span_skip_non_pending",
+                    user_id=user_id,
+                    extra={"status": task.status, "tool_code": tool_code},
+                )
+                return
 
             # 更新为 processing
             span_id = "span_processing"

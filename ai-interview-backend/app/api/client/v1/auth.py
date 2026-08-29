@@ -13,7 +13,7 @@ from app.services.client.auth import client_auth_service
 from app.services.common.setting_service import get_setting_bool
 from app.schemas.response import ApiResponse
 from app.models.user import User
-from app.utils.file_names import safe_uuid_filename
+from app.utils.file_names import matches_image_signature, safe_uuid_filename
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -214,6 +214,8 @@ async def upload_avatar(
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
         return ApiResponse.failed(message="文件大小不能超过5MB", body_code=1001)
+    if not matches_image_signature(content, file.content_type):
+        return ApiResponse.failed(message="图片文件内容无效", body_code=1001)
 
     _, storage_name = safe_uuid_filename(
         file.filename or "",

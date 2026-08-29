@@ -19,6 +19,7 @@ from app.services.client.document_export_service import DOCX_MEDIA_TYPE, documen
 from app.services.client.learning_note_service import learning_note_service
 from app.services.client.note_interaction_service import note_interaction_service
 from app.services.client.note_recommend_service import note_recommend_service
+from app.utils.file_names import matches_image_signature
 from sqlalchemy import select
 
 router = APIRouter()
@@ -94,6 +95,8 @@ async def upload_note_image(
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:  # 5MB
         return ApiResponse.failed(message="图片大小不能超过 5MB", body_code=400)
+    if not matches_image_signature(content, content_type):
+        return ApiResponse.failed(message="图片文件内容无效", body_code=400)
 
     ext = mimetypes.guess_extension(content_type) or ".png"
     filename = f"{current_user.id}/{uuid.uuid4().hex}{ext}"

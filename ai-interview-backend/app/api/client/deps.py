@@ -69,5 +69,5 @@ async def get_current_user_optional(
         if user is None or not user.is_active:
             return None
         return user
-    except HTTPException:
+    except (HTTPException, ValueError, TypeError):
         return None

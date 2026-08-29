@@ -243,8 +243,10 @@ def create_app():
     import os
     os.makedirs("uploads/avatars", exist_ok=True)
     os.makedirs("uploads/notes", exist_ok=True)
+    os.makedirs("uploads/generated-images", exist_ok=True)
     app.mount("/uploads/avatars", StaticFiles(directory="uploads/avatars"), name="uploads_avatars")
     app.mount("/uploads/notes", StaticFiles(directory="uploads/notes"), name="uploads_notes")
+    app.mount("/uploads/generated-images", StaticFiles(directory="uploads/generated-images"), name="uploads_generated_images")
 
     @app.exception_handler(APIException)
     async def api_exception_handler(request: Request, exc: APIException):
