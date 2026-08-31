@@ -27,7 +27,7 @@ from app.prompts.interview import (
 
 logger = logging.getLogger(__name__)
 
-# 通义千问 Qwen 使用 OpenAI 兼容 API
+# 使用 OpenAI 兼容 API
 client = AsyncOpenAI(
     api_key=settings.AI_API_KEY,
     base_url=settings.AI_BASE_URL
@@ -35,7 +35,7 @@ client = AsyncOpenAI(
 
 
 class AIService:
-    """通义千问 Qwen AI 服务 - 面试模拟核心"""
+    """OpenAI 兼容 AI 服务 - 面试模拟核心"""
 
     # 诚实跳过的关键词（坦诚说不会，应该给机会）
     HONEST_SKIP_KEYWORDS = ["不知道", "不会", "不清楚", "不太了解", "不太清楚", "没学过", "没接触过", "不记得", "跳过"]

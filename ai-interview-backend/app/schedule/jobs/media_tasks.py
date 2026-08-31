@@ -121,28 +121,33 @@ def _status_event_name(status: str, progress: Optional[int]) -> str:
 # 避免重复创建引擎，用模块级缓存
 _engine = None
 _session_factory = None
+_engine_loop_id = None
 
 
 def _get_session_factory():
-    """获取或创建异步数据库会话工厂"""
-    global _engine, _session_factory
-    if _session_factory is None:
+    """获取或创建当前事件循环的异步数据库会话工厂"""
+    global _engine, _session_factory, _engine_loop_id
+    current_loop_id = id(asyncio.get_running_loop())
+    if _session_factory is None or _engine_loop_id != current_loop_id:
         db_url = (
             f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
             f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
         )
         _engine = create_async_engine(db_url, pool_pre_ping=True, pool_size=5)
         _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
+        _engine_loop_id = current_loop_id
     return _session_factory
 
 
 async def _dispose_engine():
     """清理引擎连接池"""
-    global _engine, _session_factory
-    if _engine:
-        await _engine.dispose()
-        _engine = None
-        _session_factory = None
+    global _engine, _session_factory, _engine_loop_id
+    engine = _engine
+    _engine = None
+    _session_factory = None
+    _engine_loop_id = None
+    if engine:
+        await engine.dispose()
 
 
 async def _is_task_cancelled(db, task_id: int) -> bool:
@@ -735,7 +740,12 @@ def media_health_check(self):
     except Exception as e:
         logger.error(f"Media health check failed: {e}", exc_info=True)
     finally:
-        loop.close()
+        try:
+            loop.run_until_complete(_dispose_engine())
+        except Exception:
+            logger.warning("媒体健康检查数据库引擎清理失败", exc_info=True)
+        finally:
+            loop.close()
 
 
 async def _check_stuck_tasks():

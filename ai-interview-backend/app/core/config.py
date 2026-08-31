@@ -73,13 +73,16 @@ class Settings(BaseSettings):
     # OpenAI 配置
     OPENAI_API_KEY: str = "your-openai-api-key"
 
-# 图片生成服务配置
+    # 图片生成服务配置
     POLLINATIONS_API_KEY: str = ""
 
-# AI 配置（通义千问 Qwen）
+    # AI 配置（OpenAI 兼容接口，默认使用 Grok 中转站）
     AI_API_KEY: str = ""
-    AI_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    AI_MODEL: str = "qwen-plus"
+    AI_BASE_URL: str = "https://sub.anzhiyu.com/v1"
+    AI_MODEL: str = "grok-4"
+    XAI_API_KEY: str = ""
+    GROK_MODELS_BASE_URL: str = ""
+    GROK_MODEL: str = "grok-4"
     AI_TIMEOUT: int = 30
     AI_MAX_RETRIES: int = 3
     AI_RETRY_MIN_WAIT: int = 1
@@ -91,7 +94,7 @@ class Settings(BaseSettings):
     LLM_CACHE_TTL_QUESTIONS: int = 3600
     LLM_CACHE_TTL_REPORT: int = 3600
 
-# 搜索与重排序配置
+    # 搜索与重排序配置
     SEARCH_BACKEND: str = "postgres"
     OPENSEARCH_URL: str = ""
     OPENSEARCH_INDEX: str = "learning_notes"
@@ -100,7 +103,7 @@ class Settings(BaseSettings):
     RERANKER_URL: str = ""
     RERANKER_TIMEOUT: int = 5
 
-# 面试会话缓存
+    # 面试会话缓存
     INTERVIEW_SESSION_TTL: int = 7200
 
     # API 限流
@@ -121,6 +124,12 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        if self.XAI_API_KEY:
+            self.AI_API_KEY = self.XAI_API_KEY
+        if self.GROK_MODELS_BASE_URL:
+            self.AI_BASE_URL = self.GROK_MODELS_BASE_URL
+        if (self.XAI_API_KEY or self.GROK_MODELS_BASE_URL) and self.AI_MODEL == "qwen-plus":
+            self.AI_MODEL = self.GROK_MODEL
         # 在所有属性从 env 加载后设置 Celery URL
         if self.REDIS_PASSWORD:
             redis_url = (
