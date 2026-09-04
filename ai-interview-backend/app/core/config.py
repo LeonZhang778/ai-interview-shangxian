@@ -79,10 +79,10 @@ class Settings(BaseSettings):
     # AI 配置（OpenAI 兼容接口，默认使用 Grok 中转站）
     AI_API_KEY: str = ""
     AI_BASE_URL: str = "https://sub.anzhiyu.com/v1"
-    AI_MODEL: str = "grok-4"
+    AI_MODEL: str = "grok-4.3"
     XAI_API_KEY: str = ""
     GROK_MODELS_BASE_URL: str = ""
-    GROK_MODEL: str = "grok-4"
+    GROK_MODEL: str = "grok-4.3"
     AI_TIMEOUT: int = 30
     AI_MAX_RETRIES: int = 3
     AI_RETRY_MIN_WAIT: int = 1

@@ -151,10 +151,10 @@ jobs:
                 'REDIS_PASSWORD': os.environ['REDIS_PASSWORD'],
                 'XAI_API_KEY': os.environ['AI_API_KEY'],
                 'GROK_MODELS_BASE_URL': 'https://sub.anzhiyu.com/v1',
-                'GROK_MODEL': 'grok-4',
+                'GROK_MODEL': 'grok-4.3',
                 'AI_API_KEY': os.environ['AI_API_KEY'],
                 'AI_BASE_URL': 'https://sub.anzhiyu.com/v1',
-                'AI_MODEL': 'grok-4',
+                'AI_MODEL': 'grok-4.3',
                 'POLLINATIONS_API_KEY': os.environ['POLLINATIONS_API_KEY'],
             }
 
