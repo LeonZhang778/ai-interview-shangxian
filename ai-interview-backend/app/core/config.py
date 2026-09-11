@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     AI_RETRY_MIN_WAIT: int = 1
     AI_RETRY_MAX_WAIT: int = 10
 
+    # 千问 DashScope 通道（供简历解析 / 模拟面试使用）
+    # 申请：https://help.aliyun.com/zh/model-studio/first-api-call-to-qwen
+    AI_QWEN_API_KEY: str = ""
+    AI_QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    AI_QWEN_MODEL: str = "qwen-plus"
+
     # LLM 缓存 TTL（秒）
     LLM_CACHE_TTL_PARSE: int = 3600
     LLM_CACHE_TTL_EVALUATE: int = 1800

@@ -28,10 +28,36 @@ from app.prompts.interview import (
 logger = logging.getLogger(__name__)
 
 # 使用 OpenAI 兼容 API
+# - client：默认通道（中转站 Grok），供学习笔记摘要 / 标签 / 闪卡使用
+# - qwen_client：千问 DashScope 通道，供简历解析 / 模拟面试使用
 client = AsyncOpenAI(
     api_key=settings.AI_API_KEY,
     base_url=settings.AI_BASE_URL
 )
+
+qwen_client = AsyncOpenAI(
+    api_key=settings.AI_QWEN_API_KEY,
+    base_url=settings.AI_QWEN_BASE_URL
+)
+
+
+def _resolve_provider(provider: str):
+    """
+    按通道名解析出 (client, model)。
+
+    千问通道未配置 key 时降级到默认通道，避免整块功能不可用。
+
+    Args:
+        provider: "qwen" 走千问通道，其它值走默认通道
+
+    Returns:
+        (AsyncOpenAI 客户端, 模型名称)
+    """
+    if provider == "qwen":
+        if settings.AI_QWEN_API_KEY:
+            return qwen_client, settings.AI_QWEN_MODEL
+        logger.warning("AI_QWEN_API_KEY 未配置，千问通道降级到默认通道")
+    return client, settings.AI_MODEL
 
 
 class AIService:
@@ -121,12 +147,17 @@ class AIService:
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    async def _chat(messages: list, temperature: float = 0.7) -> str:
-        """基础对话补全调用，带 tenacity 重试 + 超时保护"""
+    async def _chat(messages: list, temperature: float = 0.7, provider: str = "default") -> str:
+        """基础对话补全调用，带 tenacity 重试 + 超时保护
+
+        Args:
+            provider: "qwen" 走千问通道，其它值走默认通道
+        """
+        active_client, active_model = _resolve_provider(provider)
         try:
             response = await asyncio.wait_for(
-                client.chat.completions.create(
-                    model=settings.AI_MODEL,
+                active_client.chat.completions.create(
+                    model=active_model,
                     messages=messages,
                     temperature=temperature,
                     max_tokens=4096
@@ -154,12 +185,17 @@ class AIService:
             raise
 
     @staticmethod
-    async def _chat_stream(messages: list, temperature: float = 0.7):
-        """流式对话补全调用，逐块返回文本，带超时保护"""
+    async def _chat_stream(messages: list, temperature: float = 0.7, provider: str = "default"):
+        """流式对话补全调用，逐块返回文本，带超时保护
+
+        Args:
+            provider: "qwen" 走千问通道，其它值走默认通道
+        """
+        active_client, active_model = _resolve_provider(provider)
         try:
             stream = await asyncio.wait_for(
-                client.chat.completions.create(
-                    model=settings.AI_MODEL,
+                active_client.chat.completions.create(
+                    model=active_model,
                     messages=messages,
                     temperature=temperature,
                     max_tokens=4096,
@@ -235,7 +271,7 @@ class AIService:
             {"role": "system", "content": RESUME_PARSE_PROMPT["system"]},
             {"role": "user", "content": RESUME_PARSE_PROMPT["user"].format(resume_text=resume_text)},
         ]
-        result = await AIService._chat(messages, temperature=0.3)
+        result = await AIService._chat(messages, temperature=0.3, provider="qwen")
         parsed = AIService._extract_json(result)
 
         # 写入缓存（TTL 1 小时）
@@ -264,7 +300,7 @@ class AIService:
                 ),
             },
         ]
-        result = await AIService._chat(messages, temperature=0.4)
+        result = await AIService._chat(messages, temperature=0.4, provider="qwen")
         return AIService._extract_json(result)
 
     @staticmethod
@@ -311,7 +347,7 @@ class AIService:
                 ),
             },
         ]
-        result = await AIService._chat(messages, temperature=0.7)
+        result = await AIService._chat(messages, temperature=0.7, provider="qwen")
         questions = AIService._extract_json(result)
 
         # 写入缓存（TTL 1 小时）
@@ -353,7 +389,7 @@ class AIService:
                 ),
             },
         ]
-        result = await AIService._chat(messages, temperature=0.7)
+        result = await AIService._chat(messages, temperature=0.7, provider="qwen")
         questions = AIService._extract_json(result)
 
         # 写入缓存（TTL 1 小时）
@@ -390,7 +426,7 @@ class AIService:
                 ),
             },
         ]
-        result = await AIService._chat(messages, temperature=0.1)
+        result = await AIService._chat(messages, temperature=0.1, provider="qwen")
         evaluation = AIService._extract_json(result)
 
         # 写入缓存（TTL 30 分钟）
@@ -465,7 +501,7 @@ class AIService:
                 ),
             },
         ]
-        async for chunk in AIService._chat_stream(messages, temperature=0.1):
+        async for chunk in AIService._chat_stream(messages, temperature=0.1, provider="qwen"):
             yield chunk
 
     @staticmethod
@@ -501,7 +537,7 @@ class AIService:
                 ),
             },
         ]
-        result = await AIService._chat(messages, temperature=0.5)
+        result = await AIService._chat(messages, temperature=0.5, provider="qwen")
         report = AIService._extract_json(result)
 
         # 写入缓存（TTL 1 小时）

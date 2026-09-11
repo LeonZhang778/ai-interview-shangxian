@@ -27,10 +27,11 @@ jobs:
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          AI_QWEN_API_KEY: ${{ secrets.AI_QWEN_API_KEY }}
         run: |
           set -Eeuo pipefail
 
-          required_secrets="ACR_REGISTRY ACR_USERNAME ACR_PASSWORD SERVER_HOST SERVER_USER SERVER_PASSWORD POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD"
+          required_secrets="ACR_REGISTRY ACR_USERNAME ACR_PASSWORD SERVER_HOST SERVER_USER SERVER_PASSWORD POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD AI_QWEN_API_KEY"
           for secret_name in $required_secrets; do
             if [ -z "${!secret_name:-}" ]; then
               echo "Missing required GitHub Actions secret: $secret_name"
@@ -67,6 +68,7 @@ jobs:
           BACKEND_IMAGE: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
           DEPLOY_COMMIT: ${{ github.sha }}
           AI_API_KEY: sk-d8047626716f9bf17ae747d4204f1b21f826d4abbc3fbfbfce525a3e059dbf2c
+          AI_QWEN_API_KEY: ${{ secrets.AI_QWEN_API_KEY }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
@@ -75,11 +77,11 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           command_timeout: 20m
-          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY,POLLINATIONS_API_KEY,POSTGRES_PASSWORD,REDIS_PASSWORD
+          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY,AI_QWEN_API_KEY,POLLINATIONS_API_KEY,POSTGRES_PASSWORD,REDIS_PASSWORD
           script: |
             set -Eeuo pipefail
 
-            required_secrets="AI_API_KEY POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD"
+            required_secrets="AI_API_KEY AI_QWEN_API_KEY POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD"
             for secret_name in $required_secrets; do
               if [ -z "${!secret_name:-}" ]; then
                 echo "Missing required GitHub Actions secret: $secret_name"
@@ -155,6 +157,9 @@ jobs:
                 'AI_API_KEY': os.environ['AI_API_KEY'],
                 'AI_BASE_URL': 'https://sub.anzhiyu.com/v1',
                 'AI_MODEL': 'grok-4.3',
+                'AI_QWEN_API_KEY': os.environ['AI_QWEN_API_KEY'],
+                'AI_QWEN_BASE_URL': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                'AI_QWEN_MODEL': 'qwen-plus',
                 'POLLINATIONS_API_KEY': os.environ['POLLINATIONS_API_KEY'],
             }
 
@@ -185,7 +190,7 @@ jobs:
             chmod 600 .env
 
             echo "Validating required .env variables..."
-            required_env="ENV API_V1_STR API_PORT API_WORKERS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT POSTGRES_DB REDIS_HOST REDIS_PORT REDIS_PASSWORD XAI_API_KEY GROK_MODELS_BASE_URL GROK_MODEL AI_API_KEY AI_BASE_URL AI_MODEL POLLINATIONS_API_KEY"
+            required_env="ENV API_V1_STR API_PORT API_WORKERS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT POSTGRES_DB REDIS_HOST REDIS_PORT REDIS_PASSWORD XAI_API_KEY GROK_MODELS_BASE_URL GROK_MODEL AI_API_KEY AI_BASE_URL AI_MODEL AI_QWEN_API_KEY AI_QWEN_BASE_URL AI_QWEN_MODEL POLLINATIONS_API_KEY"
             for env_name in $required_env; do
               if ! grep -q "^${env_name}=" .env; then
                 echo "Missing required .env variable: $env_name"
