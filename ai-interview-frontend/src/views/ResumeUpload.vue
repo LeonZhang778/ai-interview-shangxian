@@ -15,8 +15,9 @@
           </div>
         </div>
         <div class="form-group">
-          <label>目标岗位</label>
-          <input v-model="targetPosition" placeholder="例如：Python后端开发工程师" />
+          <label>目标岗位 <span style="color:var(--red)">*</span></label>
+          <input ref="positionInput" v-model="targetPosition" placeholder="请输入目标岗位，例如：Python后端开发工程师"
+            :class="{ 'input-error': showPositionError }" @input="showPositionError = false" />
         </div>
         <p v-if="error" class="error">{{ error }}</p>
         <button class="btn-primary" style="width:100%" @click="handleUpload" :disabled="!file || uploading">
@@ -150,7 +151,9 @@ import StarryBackground from '../components/StarryBackground.vue'
 const router = useRouter()
 const step = ref(1)
 const file = ref(null)
-const targetPosition = ref('Python后端开发工程师')
+const targetPosition = ref('')
+const positionInput = ref(null)
+const showPositionError = ref(false)
 const difficulty = ref('medium')
 const totalQuestions = ref(5)
 const uploading = ref(false)
@@ -238,6 +241,14 @@ function onDrop(e) {
 
 async function handleUpload() {
   error.value = ''
+  // 目标岗位必填：未填写时不发起请求，页内提示并聚焦输入框
+  if (!targetPosition.value.trim()) {
+    showPositionError.value = true
+    error.value = '请先填写目标岗位，AI 会围绕该岗位生成面试题（例如：Python后端开发工程师）'
+    positionInput.value?.focus()
+    return
+  }
+  targetPosition.value = targetPosition.value.trim()
   uploading.value = true
   try {
     // 切换到解析动画
@@ -377,6 +388,8 @@ async function handleStart() {
 }
 .upload-area:hover { border-color: var(--border-hover); background: rgba(139,92,246,0.05); }
 .error { color: var(--red); font-size: 13px; margin-bottom: 12px; }
+.form-group input.input-error { border-color: var(--red); }
+.form-group input.input-error:focus { border-color: var(--red); box-shadow: 0 0 16px var(--red-bg); }
 .parsed-info p { font-size: 14px; margin-bottom: 6px; line-height: 1.6; color: var(--text-secondary); }
 
 .parsing-stage { text-align: center; padding: 30px 0; }
