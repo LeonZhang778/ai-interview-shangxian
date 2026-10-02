@@ -6,7 +6,13 @@ ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources \
+# APT 镜像源：默认使用 Debian 官方源。CI 构建运行在 GitHub 托管 runner（海外节点），
+# 官方源最快；此前硬编码切换为 mirrors.aliyun.com 导致海外 runner 拉包极慢、构建超时。
+# 如需在国内本地构建，可显式传参：docker build --build-arg APT_MIRROR=mirrors.aliyun.com
+ARG APT_MIRROR=""
+RUN if [ -n "$APT_MIRROR" ]; then \
+        sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi \
     && apt-get update && apt-get install -y \
     gcc \
     g++ \
