@@ -22,8 +22,11 @@ RUN if [ -n "$APT_MIRROR" ]; then \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+# pip 源：默认走官方 PyPI。服务器侧（国内）构建时可传
+# --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ 走国内镜像加速。
+ARG PIP_INDEX_URL=""
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir ${PIP_INDEX_URL:+-i $PIP_INDEX_URL} -r requirements.txt
 
 COPY . .
 RUN mkdir -p logs
