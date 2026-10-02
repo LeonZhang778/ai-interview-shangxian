@@ -24,6 +24,7 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
@@ -31,7 +32,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          required_secrets="ACR_REGISTRY ACR_USERNAME ACR_PASSWORD SERVER_HOST SERVER_USER SERVER_PASSWORD POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD AI_QWEN_API_KEY"
+          required_secrets="ACR_REGISTRY ACR_USERNAME ACR_PASSWORD SERVER_HOST SERVER_USER SERVER_PASSWORD AI_API_KEY POLLINATIONS_API_KEY POSTGRES_PASSWORD REDIS_PASSWORD AI_QWEN_API_KEY"
           for secret_name in $required_secrets; do
             if [ -z "${!secret_name:-}" ]; then
               echo "Missing required GitHub Actions secret: $secret_name"
@@ -67,7 +68,7 @@ jobs:
         env:
           BACKEND_IMAGE: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
           DEPLOY_COMMIT: ${{ github.sha }}
-          AI_API_KEY: sk-d8047626716f9bf17ae747d4204f1b21f826d4abbc3fbfbfce525a3e059dbf2c
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_QWEN_API_KEY: ${{ secrets.AI_QWEN_API_KEY }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
