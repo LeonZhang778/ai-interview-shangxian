@@ -142,76 +142,123 @@ class AIService:
     @staticmethod
     @retry(
         retry=retry_if_exception_type((ConnectionError, TimeoutError, Exception)),
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(min=1, max=10),
+        stop=stop_after_attempt(settings.AI_MAX_RETRIES),
+        wait=wait_exponential(min=settings.AI_RETRY_MIN_WAIT, max=settings.AI_RETRY_MAX_WAIT),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    async def _chat(messages: list, temperature: float = 0.7, provider: str = "default") -> str:
-        """基础对话补全调用，带 tenacity 重试 + 超时保护
+    async def _call_model(
+        messages: list, temperature: float, model: str, provider: str = "default"
+    ) -> str:
+        """底层单次模型调用（含超时与空响应处理），供主/备模型复用。
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
         """
-        active_client, active_model = _resolve_provider(provider)
+        active_client, _ = _resolve_provider(provider)
         try:
             response = await asyncio.wait_for(
                 active_client.chat.completions.create(
-                    model=active_model,
+                    model=model,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=4096
+                    max_tokens=4096,
                 ),
-                timeout=30.0,
+                timeout=settings.AI_TIMEOUT,
             )
             msg = response.choices[0].message
             content = msg.content
             # GLM 推理模型可能把内容放在 reasoning_content 里
             if not content or not content.strip():
-                reasoning = getattr(msg, 'reasoning_content', None)
+                reasoning = getattr(msg, "reasoning_content", None)
                 if reasoning and reasoning.strip():
                     logger.warning("content 为空，使用 reasoning_content")
                     return reasoning.strip()
-                logger.error(f"AI API 返回空响应: {response}")
+                logger.error(f"AI API 返回空响应 model={model}: {response}")
                 raise ValueError("AI API 返回了空响应，请稍后重试")
             result = content.strip()
             logger.info(f"AI 响应前 200 字: {result[:200]}")
             return result
         except asyncio.TimeoutError:
-            logger.error("AI API 调用超时 (30s)")
+            logger.error(f"AI API 调用超时 ({settings.AI_TIMEOUT}s) model={model}")
             raise TimeoutError("AI API 调用超时")
         except Exception as e:
-            logger.error(f"AI API 调用失败: {e}")
+            logger.error(f"AI API 调用失败 model={model}: {e}")
             raise
 
     @staticmethod
-    async def _chat_stream(messages: list, temperature: float = 0.7, provider: str = "default"):
-        """流式对话补全调用，逐块返回文本，带超时保护
+    async def _call_model_stream(
+        messages: list, temperature: float, model: str, provider: str = "default"
+    ):
+        """底层流式模型调用，供主/备模型复用。
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
         """
-        active_client, active_model = _resolve_provider(provider)
+        active_client, _ = _resolve_provider(provider)
         try:
             stream = await asyncio.wait_for(
                 active_client.chat.completions.create(
-                    model=active_model,
+                    model=model,
                     messages=messages,
                     temperature=temperature,
                     max_tokens=4096,
-                    stream=True
+                    stream=True,
                 ),
-                timeout=30.0,
+                timeout=settings.AI_TIMEOUT,
             )
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         except asyncio.TimeoutError:
-            logger.error("AI 流式 API 调用超时 (30s)")
+            logger.error(f"AI 流式 API 调用超时 ({settings.AI_TIMEOUT}s) model={model}")
             raise TimeoutError("AI 流式 API 调用超时")
         except Exception as e:
-            logger.error(f"AI 流式 API 调用失败: {e}")
+            logger.error(f"AI 流式 API 调用失败 model={model}: {e}")
             raise
+
+    @staticmethod
+    async def _chat(messages: list, temperature: float = 0.7, provider: str = "default") -> str:
+        """基础对话补全调用：按 provider 选通道，主模型失败自动降级到备用模型
+        （动态路由 / 模型降级，与三级容错呼应）。
+
+        Args:
+            provider: "qwen" 走千问通道，其它值走默认通道
+        """
+        _, active_model = _resolve_provider(provider)
+        try:
+            return await AIService._call_model(messages, temperature, active_model, provider)
+        except Exception as e:
+            fallback = getattr(settings, "AI_MODEL_FALLBACK", "")
+            if fallback and fallback != active_model:
+                logger.warning(
+                    f"[模型降级] 主模型 {active_model} 失败，切换备用模型 {fallback}: {e}"
+                )
+                return await AIService._call_model(messages, temperature, fallback, provider)
+            raise
+
+    @staticmethod
+    async def _chat_stream(messages: list, temperature: float = 0.7, provider: str = "default"):
+        """流式对话补全调用：按 provider 选通道，主模型失败自动降级到备用模型（动态路由 / 模型降级）。
+
+        Args:
+            provider: "qwen" 走千问通道，其它值走默认通道
+        """
+        _, active_model = _resolve_provider(provider)
+        fallback = getattr(settings, "AI_MODEL_FALLBACK", "")
+        use_fallback = bool(fallback) and fallback != active_model
+        try:
+            async for chunk in AIService._call_model_stream(messages, temperature, active_model, provider):
+                yield chunk
+        except Exception as e:
+            if use_fallback:
+                logger.warning(
+                    f"[模型降级-stream] 主模型 {active_model} 失败，切换备用模型 {fallback}: {e}"
+                )
+                async for chunk in AIService._call_model_stream(messages, temperature, fallback, provider):
+                    yield chunk
+            else:
+                raise
 
     @staticmethod
     def _extract_json(text: str) -> dict:
@@ -257,6 +304,35 @@ class AIService:
         return history_text
 
     @staticmethod
+    async def summarize_history(history: list) -> str:
+        """对较早的面试对话历史做 LLM 摘要压缩（记忆压缩），控制注入 prompt 的 token 量。
+
+        Args:
+            history: 待压缩的历史消息列表（已剔除近期保留部分）
+        Returns:
+            压缩后的中文摘要；失败时返回空串（由调用方退回完整历史）。
+        """
+        if not history:
+            return ""
+        text = "\n".join(
+            f"{'面试官' if m.get('role') == 'interviewer' else '候选人'}: {m.get('content', '')}"
+            for m in history
+        )
+        messages = [
+            {
+                "role": "system",
+                "content": "你是面试对话摘要助手。请压缩下面的面试对话历史，保留关键问答要点、"
+                "已确认的能力与已暴露的薄弱点，用简洁中文列出，不超过 200 字。",
+            },
+            {"role": "user", "content": text},
+        ]
+        try:
+            return (await AIService._chat(messages, temperature=0.2)).strip()
+        except Exception as e:
+            logger.warning(f"summarize_history 失败: {e}")
+            return ""
+
+    @staticmethod
     async def parse_resume(resume_text: str) -> dict:
         """解析简历文本，提取结构化信息（姓名、学历、技能、经历等），带 LLM 缓存"""
         from app.services.common.redis import redis_client
@@ -277,6 +353,39 @@ class AIService:
         # 写入缓存（TTL 1 小时）
         await redis_client.set_llm_cache("parse", cache_key, parsed, ttl=3600)
         return parsed
+
+    @staticmethod
+    async def ocr_image(image_bytes: bytes, model: str, provider: str = "qwen") -> str:
+        """多模态 OCR：把图片字节（PNG）交给视觉模型识别，返回文本。
+        用于扫描件简历的兜底解析（见 document_parser.ocr_pdf_with_vlm）。
+
+        Args:
+            model: 支持视觉的模型名（如 qwen-vl-plus）
+            provider: 视觉模型所在通道，默认走千问 DashScope 通道
+        """
+        import base64
+
+        b64 = base64.b64encode(image_bytes).decode("utf-8")
+        data_url = f"data:image/png;base64,{b64}"
+        messages = [
+            {
+                "role": "system",
+                "content": "你是文档 OCR 引擎。请准确识别图片中的文字、表格与排版，按阅读顺序输出；"
+                           "表格用 Markdown 表示，无明显内容时返回空字符串。",
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "请识别这张简历/文档图片的全部内容。"},
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                ],
+            },
+        ]
+        try:
+            return await AIService._call_model(messages, 0.2, model, provider)
+        except Exception as e:
+            logger.error(f"多模态 OCR 失败 model={model}: {e}")
+            raise
 
     @staticmethod
     async def analyze_resume(parsed_resume: dict, target_position: str) -> dict:
@@ -402,7 +511,8 @@ class AIService:
         answer: str,
         resume_context: dict,
         chat_history: list,
-        next_question: Optional[str] = None
+        next_question: Optional[str] = None,
+        history_summary: Optional[str] = None,
     ) -> dict:
         """评估候选人的回答，返回评分和反馈，带 LLM 缓存"""
         from app.services.common.redis import redis_client
@@ -414,6 +524,8 @@ class AIService:
             return cached
 
         history_text = AIService._format_history(chat_history)
+        if history_summary:
+            history_text = f"[历史摘要]\n{history_summary}\n\n[近期对话]\n{history_text}"
         messages = [
             {"role": "system", "content": EVALUATE_PROMPT["system"]},
             {
@@ -485,10 +597,13 @@ class AIService:
         question: str,
         answer: str,
         resume_context: dict,
-        chat_history: list
+        chat_history: list,
+        history_summary: Optional[str] = None,
     ):
         """流式版本：评估回答并逐块输出评语，最后输出 JSON 评分"""
         history_text = AIService._format_history(chat_history)
+        if history_summary:
+            history_text = f"[历史摘要]\n{history_summary}\n\n[近期对话]\n{history_text}"
         messages = [
             {"role": "system", "content": EVALUATE_STREAM_PROMPT["system"]},
             {

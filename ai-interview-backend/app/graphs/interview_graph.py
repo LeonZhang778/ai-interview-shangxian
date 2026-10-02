@@ -6,15 +6,22 @@ LangGraph 面试流程状态机
 
 流式模式通过 asyncio.Queue 实现：evaluate 节点内部的 LLM token
 实时推入队列，外层 generator 读取队列并 yield SSE 事件。
+
+本次增强（补齐 LangGraph 不足）：
+- Checkpointer：编译时挂载检查点，以 thread_id 持久化每步状态，支撑断点续传/幂等。
+- 可观测性：trace_node 包装四个节点，记录进入/完成/耗时/异常；条件路由打印分支走向。
+- 会话记忆分离：聊天历史由 load_context 从 DB 加载（长期记忆外部化），State 仅承载本轮工作记忆。
 """
 
 import asyncio
-import json
+import functools
 import logging
+import time
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from app.graphs.checkpoint import get_checkpointer
 from app.graphs.nodes.interview_nodes import (
     evaluate_node,
     generate_next_node,
@@ -25,6 +32,37 @@ from app.graphs.nodes.interview_nodes import (
 logger = logging.getLogger(__name__)
 
 _SENTINEL = object()  # 队列终止信号
+
+
+# ---------------------------------------------------------------------------
+# 可观测性：节点耗时 / 分支日志
+# ---------------------------------------------------------------------------
+
+def trace_node(name: str):
+    """节点装饰器：记录进入、完成、耗时与异常，便于按节点埋点。
+
+    说明：LangSmith / OpenTelemetry 接入为可选增强（需外部服务与密钥），
+    此处用项目既有 logging 实现轻量、零依赖的可观测性。
+    """
+
+    def decorator(fn):
+        @functools.wraps(fn)
+        async def wrapper(state):
+            start = time.perf_counter()
+            logger.info(f"[graph][node={name}] ▶ 进入")
+            try:
+                result = await fn(state)
+                dur_ms = (time.perf_counter() - start) * 1000
+                logger.info(f"[graph][node={name}] ✔ 完成 耗时={dur_ms:.1f}ms")
+                return result
+            except Exception as e:
+                dur_ms = (time.perf_counter() - start) * 1000
+                logger.error(f"[graph][node={name}] ✘ 异常 耗时={dur_ms:.1f}ms err={e}")
+                raise
+
+        return wrapper
+
+    return decorator
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +83,7 @@ class InterviewState(TypedDict):
     current_question: str
     parsed_resume: dict
     chat_history: list
+    history_summary: str | None  # 记忆压缩后的较早历史摘要
     questions: list
     current_index: int
     target_position: str
@@ -76,18 +115,21 @@ class InterviewState(TypedDict):
 def _route_after_evaluate(state: dict) -> str:
     """评估后的路由：成功走 success，降级/失败走 fallback"""
     if state.get("error"):
+        logger.warning("[graph] 路由分支=fallback（上游 error，启用容错降级）")
         return "fallback"
+    logger.info("[graph] 路由分支=success")
     return "success"
 
 
-def build_interview_graph() -> StateGraph:
-    """构建面试流程图（带条件边路由）"""
+def build_interview_graph():
+    """构建面试流程图（带条件边路由 + 检查点）"""
     graph = StateGraph(InterviewState)
 
-    graph.add_node("load_context", load_context_node)
-    graph.add_node("evaluate", evaluate_node)
-    graph.add_node("generate_next", generate_next_node)
-    graph.add_node("save_results", save_results_node)
+    # 用 trace_node 包装，注入节点级可观测性
+    graph.add_node("load_context", trace_node("load_context")(load_context_node))
+    graph.add_node("evaluate", trace_node("evaluate")(evaluate_node))
+    graph.add_node("generate_next", trace_node("generate_next")(generate_next_node))
+    graph.add_node("save_results", trace_node("save_results")(save_results_node))
 
     graph.add_edge(START, "load_context")
     graph.add_edge("load_context", "evaluate")
@@ -102,29 +144,39 @@ def build_interview_graph() -> StateGraph:
     graph.add_edge("generate_next", "save_results")
     graph.add_edge("save_results", END)
 
-    return graph.compile()
+    # 挂载检查点：以 thread_id 持久化状态，支撑断点续传与幂等
+    return graph.compile(checkpointer=get_checkpointer())
+
+
+# 模块级单例：submit 与 stream 共用同一编译图（检查点状态按 thread_id 隔离）
+interview_graph = build_interview_graph()
 
 
 # ---------------------------------------------------------------------------
 # 流式执行器（SSE 用）
 # ---------------------------------------------------------------------------
 
-async def interview_graph_stream(input_data: dict):
+async def interview_graph_stream(input_data: dict, thread_id: str = "default"):
     """
     流式执行面试图，实时 yield LLM token + 最终结果。
+
+    Args:
+        input_data: 图输入状态
+        thread_id:  断点续传/幂等用的会话标识（默认 iv:{interview_id}:{question_index}）
 
     事件格式：
       {"type": "chunk", "content": "..."}     ← LLM token（逐字）
       {"type": "done", "score": 7.5, ...}     ← 最终结果
     """
-    graph = build_interview_graph()
     queue = asyncio.Queue()
 
     # 把队列注入 state，evaluate 节点会把 token 推入队列
     input_data["chunk_queue"] = queue
 
-    # 后台任务执行图，完成后往队列放终止信号
-    graph_task = asyncio.create_task(graph.ainvoke(input_data))
+    # 后台任务执行图（带 checkpointer + thread_id），完成后往队列放终止信号
+    graph_task = asyncio.create_task(
+        interview_graph.ainvoke(input_data, config={"configurable": {"thread_id": thread_id}})
+    )
     graph_task.add_done_callback(lambda _: queue.put_nowait(_SENTINEL))
 
     # 实时读取队列中的 token 并 yield

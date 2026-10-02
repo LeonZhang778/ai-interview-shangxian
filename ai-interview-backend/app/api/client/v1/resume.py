@@ -17,11 +17,11 @@ async def upload_resume(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """上传简历并触发异步 AI 解析"""
-    # 验证文件类型
+    """上传简历（PDF / DOCX / TXT / MD）并触发 AI 解析"""
+    # 验证文件类型（与 document_parser 对齐）
     filename = file.filename or ""
-    if not filename.lower().endswith((".pdf", ".docx")):
-        raise ValidationError(message="仅支持 PDF 或 DOCX 格式文件")
+    if not filename.lower().endswith((".pdf", ".docx", ".txt", ".md", ".text")):
+        raise ValidationError(message="仅支持 PDF / DOCX / TXT / MD 格式文件")
 
     # 验证文件大小（最大 30MB），分块读取避免一次性大文件读入
     max_size = 30 * 1024 * 1024

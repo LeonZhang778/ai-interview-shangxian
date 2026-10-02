@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     AI_API_KEY: str = ""
     AI_BASE_URL: str = "https://sub.anzhiyu.com/v1"
     AI_MODEL: str = "grok-4.3"
+    # 备用模型：主模型不可用时的降级模型，留空则不降级（与 LangGraph 三级容错呼应）
+    AI_MODEL_FALLBACK: str = ""
     XAI_API_KEY: str = ""
     GROK_MODELS_BASE_URL: str = ""
     GROK_MODEL: str = "grok-4.3"
@@ -93,6 +95,16 @@ class Settings(BaseSettings):
     AI_QWEN_API_KEY: str = ""
     AI_QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     AI_QWEN_MODEL: str = "qwen-plus"
+
+    # 会话记忆压缩阈值：对话历史超过该条数时，对较早部分做 LLM 摘要压缩以控制 token
+    AI_MEMORY_SUMMARY_THRESHOLD: int = 8
+
+    # 多模态 OCR（扫描件兜底）：留空则禁用；需同时 AI_OCR_ENABLED=True 且环境安装
+    # PyMuPDF(fitz) 或 pdf2image + poppler，并配置一个支持视觉的模型（如 qwen-vl-plus）
+    AI_VISION_MODEL: str = ""
+    AI_OCR_ENABLED: bool = False
+    # 扫描件判定阈值：抽取文本低于该字符数且含图片，视为扫描件
+    DOC_PARSER_MIN_TEXT_CHARS: int = 30
 
     # LLM 缓存 TTL（秒）
     LLM_CACHE_TTL_PARSE: int = 3600

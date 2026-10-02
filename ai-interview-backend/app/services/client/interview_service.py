@@ -13,9 +13,8 @@ from app.utils.utils import safe_parse_json
 
 logger = logging.getLogger(__name__)
 
-# LangGraph 面试状态机（编译一次，全局复用）
-from app.graphs.interview_graph import build_interview_graph, interview_graph_stream
-interview_graph = build_interview_graph()
+# LangGraph 面试状态机（模块级单例，已挂载检查点与可观测性）
+from app.graphs.interview_graph import interview_graph, interview_graph_stream
 
 
 class InterviewService:
@@ -110,6 +109,9 @@ class InterviewService:
         if interview.status == "completed":
             raise ValidationError(message="面试已结束")
 
+        # 断点续传/幂等：以 面试ID + 当前题号 作为 thread_id，确保同题重试可复用检查点
+        thread_id = f"iv:{interview_id}:{interview.current_question_index}"
+
         # 执行图
         graph_result = await interview_graph.ainvoke({
             "interview_id": interview_id,
@@ -120,6 +122,7 @@ class InterviewService:
             "current_question": "",
             "parsed_resume": {},
             "chat_history": [],
+            "history_summary": None,
             "questions": [],
             "current_index": 0,
             "target_position": "",
@@ -135,7 +138,7 @@ class InterviewService:
             "overall_score": 0.0,
             "error": None,
             "result": {},
-        })
+        }, config={"configurable": {"thread_id": thread_id}})
 
         result = graph_result["result"]
         if result.get("error"):
@@ -171,6 +174,9 @@ class InterviewService:
             yield f"data: {json.dumps({'type': 'error', 'content': '面试已结束'})}\n\n"
             return
 
+        # 断点续传/幂等：以 面试ID + 当前题号 作为 thread_id
+        thread_id = f"iv:{interview_id}:{interview.current_question_index}"
+
         # 流式执行图（evaluate 节点内部 LLM token 通过 queue 实时输出）
         async for event in interview_graph_stream({
             "interview_id": interview_id,
@@ -181,6 +187,7 @@ class InterviewService:
             "current_question": "",
             "parsed_resume": {},
             "chat_history": [],
+            "history_summary": None,
             "questions": [],
             "current_index": 0,
             "target_position": "",
@@ -195,7 +202,7 @@ class InterviewService:
             "overall_score": 0.0,
             "error": None,
             "result": {},
-        }):
+        }, thread_id=thread_id):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     @staticmethod

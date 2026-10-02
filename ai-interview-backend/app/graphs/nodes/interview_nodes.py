@@ -12,6 +12,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
@@ -65,13 +66,27 @@ async def load_context_node(state: dict) -> dict:
             parsed_resume = {"summary": f"面经：{exp.title}", "skills": [exp.company, exp.position]}
             experience_id = interview.experience_id
 
-    # 获取对话历史
+    # 获取对话历史（长期记忆：外部化于 DB，按面试归属查询防越权）
     msg_query = select(InterviewMessage).where(
         InterviewMessage.interview_id == interview_id
     ).order_by(InterviewMessage.id)
     msg_result = await db.execute(msg_query)
     messages = msg_result.scalars().all()
     chat_history = [{"role": m.role, "content": m.content} for m in messages]
+
+    # 会话记忆压缩（记忆压缩）：历史过长时，对较早部分做 LLM 摘要，
+    # 仅保留近期若干轮原文，控制注入 prompt 的 token 量。
+    history_summary = None
+    RECENT_KEEP = 4
+    if len(chat_history) > settings.AI_MEMORY_SUMMARY_THRESHOLD:
+        older = chat_history[:-RECENT_KEEP]
+        recent = chat_history[-RECENT_KEEP:]
+        try:
+            history_summary = await AIService.summarize_history(older)
+        except Exception as e:
+            logger.warning(f"[load_context] 历史摘要失败，退回完整历史: {e}")
+            recent = chat_history
+        chat_history = recent
 
     # 当前题目
     current_index = interview.current_question_index or 0
@@ -86,6 +101,7 @@ async def load_context_node(state: dict) -> dict:
         "current_question": current_question,
         "parsed_resume": parsed_resume,
         "chat_history": chat_history,
+        "history_summary": history_summary,
         "questions": questions,
         "current_index": current_index,
         "target_position": interview.target_position,
@@ -136,6 +152,7 @@ async def evaluate_node(state: dict) -> dict:
             answer=answer,
             resume_context=parsed_resume,
             chat_history=chat_history,
+            history_summary=state.get("history_summary"),
         ):
             full_text += chunk
             # 实时把 LLM token 推到队列，供外层 SSE 流式输出
@@ -229,6 +246,33 @@ async def save_results_node(state: dict) -> dict:
     feedback = state["feedback"]
     questions = state["questions"]
     answer = state["answer"]
+
+    # 幂等守卫：同一题（interview_id + question_index）已存在评分则跳过写入，
+    # 避免网络重试导致的重复存分、重复生成报告。
+    # 依赖 thread_id + 检查点确保断点续传只续跑未完成节点；此处兜底防止重复提交。
+    idem_query = select(InterviewMessage).where(
+        InterviewMessage.interview_id == interview_id,
+        InterviewMessage.role == "candidate",
+        InterviewMessage.question_index == current_index,
+    )
+    idem_result = await db.execute(idem_query)
+    existing = idem_result.scalar_one_or_none()
+    if existing:
+        logger.warning(
+            f"[save_results] 幂等跳过：第 {current_index} 题已存在评分，"
+            f"避免重复写入（score={existing.score}）"
+        )
+        return {
+            "result": {
+                "score": float(existing.score) if existing.score is not None else 0.0,
+                "feedback": existing.feedback or "",
+                "question_index": current_index,
+                "is_finished": is_finished,
+                "next_question": state.get("next_question"),
+                "idempotent": True,
+            },
+            "overall_score": 0.0,
+        }
 
     interview = await db.get(Interview, interview_id)
     if not interview:
