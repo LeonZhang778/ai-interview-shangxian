@@ -17,12 +17,13 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    # 架构说明：镜像改为【在服务器侧构建】，GitHub runner 不再执行 docker build/push。
-    # 根因：海外 runner 向广州 ACR 推送镜像属跨境传输，高延迟+丢包下单层镜像即耗时
-    # 14 分钟以上（实测 a6dc765193a5 层 14 分钟、其后一层 15 分钟未完成），30 分钟护栏
-    # 反复被撞满导致 build 成功但部署从未执行。服务器在国内，构建与推送 ACR 均为同城/内网。
-    # 护栏：正常全流程（服务器构建+部署）约 8-15 分钟；超过 40 分钟视为异常。
-    timeout-minutes: 40
+    # 说明：镜像在 GitHub runner 侧构建并推送到 ACR，再由服务器拉取部署。
+    # 服务器公网带宽实测仅 ~2.4Mbps（300KB/s），无法承担 apt+pip 约 1.4GB 下载，
+    # 故不在服务器侧构建；runner 为海外节点，构建本身很快（约 1 分钟）。
+    # 瓶颈仅在于"把新增的大层跨境推送到广州 ACR"：apt 层 966MB + pip 层 455MB。
+    # 护栏：常态部署约 10-15 分钟（大层命中 ACR 缓存，仅推 app 小层）；
+    # 首次推送新增大层约需数十分钟，故超时放宽到 120 分钟。
+    timeout-minutes: 120
 
     steps:
       - name: Checkout repository
@@ -55,19 +56,30 @@ jobs:
       - name: Run evaluation gate
         run: python3 ai-interview-backend/scripts/eval_gate.py
 
-      # 注意：此处【不再】执行 docker build / docker push。
-      # 镜像构建与推送已下移到「Deploy to server」步骤，在服务器（国内）完成，
-      # 以规避海外 runner → 广州 ACR 的跨境推送瓶颈。详见 job 顶部架构说明。
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -t "$IMAGE_REPOSITORY:$IMAGE_TAG" \
+            -t "$IMAGE_REPOSITORY:latest" \
+            ./ai-interview-backend
+
+      - name: Push backend image
+        run: |
+          docker push "$IMAGE_REPOSITORY:$IMAGE_TAG"
+          docker push "$IMAGE_REPOSITORY:latest"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         env:
           BACKEND_IMAGE: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          IMAGE_REPOSITORY: ${{ env.IMAGE_REPOSITORY }}
           DEPLOY_COMMIT: ${{ github.sha }}
-          ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
-          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_QWEN_API_KEY: ${{ secrets.AI_QWEN_API_KEY }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
@@ -77,8 +89,8 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 30m
-          envs: BACKEND_IMAGE,IMAGE_REPOSITORY,DEPLOY_COMMIT,ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,AI_API_KEY,AI_QWEN_API_KEY,POLLINATIONS_API_KEY,POSTGRES_PASSWORD,REDIS_PASSWORD
+          command_timeout: 20m
+          envs: BACKEND_IMAGE,DEPLOY_COMMIT,AI_API_KEY,AI_QWEN_API_KEY,POLLINATIONS_API_KEY,POSTGRES_PASSWORD,REDIS_PASSWORD
           script: |
             set -Eeuo pipefail
 
@@ -206,20 +218,9 @@ jobs:
             grep -q 'POSTGRES_DB: postgres' "$compose_config"
             grep -q 'container_name: ai-interview-app' "$compose_config"
 
-            echo "Building backend image on server (规避海外 runner 跨境 push 瓶颈)..."
-            echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
-            # 服务器在国内，apt 走阿里云源最快（与 Dockerfile 的 ARG APT_MIRROR 对应）
-            docker build \
-              --build-arg APT_MIRROR=mirrors.aliyun.com \
-              --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
-              -t "$BACKEND_IMAGE" \
-              -t "$IMAGE_REPOSITORY:latest" \
-              .
-            docker image inspect "$BACKEND_IMAGE" --format 'Built image={{.Id}}'
-
-            echo "Pushing image to ACR (国内同城，快速)..."
-            docker push "$BACKEND_IMAGE"
-            docker push "$IMAGE_REPOSITORY:latest"
+            echo "Pulling backend image..."
+            docker pull "$BACKEND_IMAGE"
+            docker image inspect "$BACKEND_IMAGE" --format 'Pulled image={{.Id}}'
 
             echo "Starting PostgreSQL and Redis..."
             docker compose up -d --force-recreate postgres redis
