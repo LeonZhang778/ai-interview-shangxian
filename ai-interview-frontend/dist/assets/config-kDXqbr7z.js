@@ -1,1 +1,0 @@
-import{C as t}from"./index-Do30dYos.js";function o(){return t.get("/config/site-info")}export{o as g};
