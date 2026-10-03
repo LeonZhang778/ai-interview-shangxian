@@ -16,9 +16,17 @@ export async function submitAnswerStream(interviewId, answer, onChunk, onDone) {
     body: JSON.stringify({ answer })
   })
 
+  if (!response.ok || !response.body) {
+    throw new Error(`请求失败（HTTP ${response.status}）`)
+  }
+
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  // 标记是否已收到终态事件（done / error）。
+  // 若流自然结束却没收到终态，说明连接被中途掐断，调用方需要自愈（重新拉取消息）。
+  let settled = false
+  let streamError = null
 
   while (true) {
     const { done, value } = await reader.read()
@@ -30,21 +38,29 @@ export async function submitAnswerStream(interviewId, answer, onChunk, onDone) {
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
+        let data
         try {
-          const data = JSON.parse(line.slice(6))
-          if (data.type === 'chunk') {
-            onChunk(data.content)
-          } else if (data.type === 'done') {
-            await onDone(data)
-          } else if (data.type === 'error') {
-            throw new Error(data.content)
-          }
+          data = JSON.parse(line.slice(6))
         } catch (e) {
-          if (e.message !== 'Unexpected end of JSON input') throw e
+          // 不完整的 JSON 分片，跳过等待后续数据
+          continue
+        }
+        if (data.type === 'chunk') {
+          onChunk(data.content)
+        } else if (data.type === 'done') {
+          settled = true
+          await onDone(data)
+        } else if (data.type === 'error') {
+          // 后端已明确报错：记录后跳出，交由调用方展示并自愈，
+          // 不再 throw（throw 会直接炸断调用方的收尾逻辑，导致光标永久闪烁）。
+          settled = true
+          streamError = new Error(data.content || '评估服务异常')
         }
       }
     }
   }
+
+  return { settled, error: streamError }
 }
 
 export function getReport(interviewId) {

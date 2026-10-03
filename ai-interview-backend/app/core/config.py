@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     GROK_MODELS_BASE_URL: str = ""
     GROK_MODEL: str = "grok-4.3"
     AI_TIMEOUT: int = 30
+    # 流式调用的“建连超时”：仅覆盖建立连接/拿到首个响应对象，通常几百毫秒内完成。
+    AI_STREAM_CONNECT_TIMEOUT: int = 20
+    # 流式调用的“空闲超时”：已建连后，若超过该秒数没有新的 token 到达则判定流已死。
+    # 用于避免上游中转断连后僵死（此前只保护建连、token 循环无限等待）。
+    AI_STREAM_IDLE_TIMEOUT: int = 30
     AI_MAX_RETRIES: int = 3
     AI_RETRY_MIN_WAIT: int = 1
     AI_RETRY_MAX_WAIT: int = 10

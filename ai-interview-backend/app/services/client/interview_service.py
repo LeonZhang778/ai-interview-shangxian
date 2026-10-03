@@ -178,32 +178,38 @@ class InterviewService:
         thread_id = f"iv:{interview_id}:{interview.current_question_index}"
 
         # 流式执行图（evaluate 节点内部 LLM token 通过 queue 实时输出）
-        async for event in interview_graph_stream({
-            "interview_id": interview_id,
-            "user_id": user_id,
-            "answer": answer,
-            "db": db,
-            "chunk_queue": None,  # 由 interview_graph_stream 注入
-            "current_question": "",
-            "parsed_resume": {},
-            "chat_history": [],
-            "history_summary": None,
-            "questions": [],
-            "current_index": 0,
-            "target_position": "",
-            "resume_id": None,
-            "experience_id": None,
-            "evaluation": {},
-            "score": 0.0,
-            "feedback": "",
-            "skip_type": None,
-            "next_question": None,
-            "is_finished": False,
-            "overall_score": 0.0,
-            "error": None,
-            "result": {},
-        }, thread_id=thread_id):
-            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        # 兜底：任何未预期异常都必须转换成 error 事件发给前端，
+        # 绝不能让生成器直接抛异常中断，否则前端收不到终态、永久卡在思考态。
+        try:
+            async for event in interview_graph_stream({
+                "interview_id": interview_id,
+                "user_id": user_id,
+                "answer": answer,
+                "db": db,
+                "chunk_queue": None,  # 由 interview_graph_stream 注入
+                "current_question": "",
+                "parsed_resume": {},
+                "chat_history": [],
+                "history_summary": None,
+                "questions": [],
+                "current_index": 0,
+                "target_position": "",
+                "resume_id": None,
+                "experience_id": None,
+                "evaluation": {},
+                "score": 0.0,
+                "feedback": "",
+                "skip_type": None,
+                "next_question": None,
+                "is_finished": False,
+                "overall_score": 0.0,
+                "error": None,
+                "result": {},
+            }, thread_id=thread_id):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.error(f"[submit_answer_stream] 流式执行异常: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'content': f'评估服务异常，请重试：{e}'}, ensure_ascii=False)}\n\n"
 
     @staticmethod
     async def _get_duplicate_submission_result(

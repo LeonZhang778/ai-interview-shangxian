@@ -186,7 +186,21 @@ async def interview_graph_stream(input_data: dict, thread_id: str = "default"):
             break
         yield {"type": "chunk", "content": chunk}
 
-    # 等图执行完成，取最终结果
-    graph_result = await graph_task
-    result = graph_result.get("result", {})
+    # 等图执行完成，取最终结果。
+    # 关键兜底：图执行过程中任何异常（上游 LLM 断连/超时/节点报错）都不能让 SSE 静默中断，
+    # 否则前端收不到 done 事件，会永久停留在“光标闪烁”的 think 态。
+    # 此处把异常转换为显式 error 事件，保证流一定有终态。
+    try:
+        graph_result = await graph_task
+    except Exception as e:
+        logger.error(f"[graph] 图执行异常，转为 error 事件返回: {e}", exc_info=True)
+        yield {"type": "error", "content": f"评估中断，请重试：{e}"}
+        return
+
+    result = graph_result.get("result", {}) or {}
+    if result.get("error"):
+        logger.error(f"[graph] 图返回错误结果: {result['error']}")
+        yield {"type": "error", "content": result["error"]}
+        return
+
     yield {"type": "done", **result}

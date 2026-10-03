@@ -196,7 +196,10 @@ class AIService:
             provider: "qwen" 走千问通道，其它值走默认通道
         """
         active_client, _ = _resolve_provider(provider)
+        connect_timeout = getattr(settings, "AI_STREAM_CONNECT_TIMEOUT", 20)
+        idle_timeout = getattr(settings, "AI_STREAM_IDLE_TIMEOUT", 30)
         try:
+            # 建连超时：只覆盖“拿到响应对象”这一步
             stream = await asyncio.wait_for(
                 active_client.chat.completions.create(
                     model=model,
@@ -205,13 +208,27 @@ class AIService:
                     max_tokens=4096,
                     stream=True,
                 ),
-                timeout=settings.AI_TIMEOUT,
+                timeout=connect_timeout,
             )
-            async for chunk in stream:
+            # 空闲超时：等待每个后续 chunk，若超过 idle_timeout 没有新 token 则判定流已死。
+            # 之前这里完全无保护，上游中转断连会导致永久挂起（表现为前端光标一直闪烁）。
+            stream_iter = stream.__aiter__()
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(
+                        stream_iter.__anext__(), timeout=idle_timeout
+                    )
+                except StopAsyncIteration:
+                    break
+                except asyncio.TimeoutError:
+                    logger.error(
+                        f"AI 流式 API 空闲超时（{idle_timeout}s 无新 token）model={model}"
+                    )
+                    raise TimeoutError(f"AI 流式 API 空闲超时（{idle_timeout}s 无新 token）")
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         except asyncio.TimeoutError:
-            logger.error(f"AI 流式 API 调用超时 ({settings.AI_TIMEOUT}s) model={model}")
+            logger.error(f"AI 流式 API 建连超时 ({connect_timeout}s) model={model}")
             raise TimeoutError("AI 流式 API 调用超时")
         except Exception as e:
             logger.error(f"AI 流式 API 调用失败 model={model}: {e}")

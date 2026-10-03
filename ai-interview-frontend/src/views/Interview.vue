@@ -41,7 +41,7 @@
 
     <!-- 聊天区域 -->
     <div class="chat-area" ref="chatArea" v-if="!preparing">
-      <div v-for="(msg, i) in messages" :key="i" :class="['message', msg.role]">
+      <div v-for="(msg, i) in messages" :key="msg.key ?? i" :class="['message', msg.role]">
         <!-- AI 头像 -->
         <div v-if="msg.role === 'interviewer'" class="avatar-col">
           <svg viewBox="0 0 40 40" width="36" height="36" class="ai-avatar">
@@ -175,7 +175,9 @@ function scrollToBottom() {
 async function loadMessages() {
   const data = await getMessages(interviewId)
   const msgList = Array.isArray(data) ? data : (data.items || [])
+  // key 优先用后端消息 id（稳定），本地新推的消息用临时 key，避免重排时内容跳动
   messages.value = msgList.map(m => ({
+    key: m.id != null ? `db-${m.id}` : undefined,
     role: m.role, content: m.content, score: m.score, feedback: m.feedback, question_index: m.question_index
   }))
   const indices = msgList.map(m => m.question_index).filter(i => i != null)
@@ -210,6 +212,52 @@ onMounted(async () => {
   nextTick(scrollToBottom)
 })
 
+// 收尾：把流式文本落成正式消息、刷新列表、推进题号。
+// 抽成独立函数，供 onDone 正常回调与“流被掐断后的自愈”两条路径复用。
+async function applyDone(data, rawStreamText, myAnswer) {
+  if (rawStreamText.trim()) {
+    let displayText = rawStreamText
+      .replace(/```json\s*\{[\s\S]*?\}\s*```/g, '')
+      .replace(/\{[^{}]*"score"\s*:\s*[\d.]+[^{}]*\}/g, '')
+      .trim()
+    if (displayText) {
+      messages.value.push({ role: 'interviewer', content: displayText, score: data.score })
+    }
+  }
+  streamingText.value = ''
+  const lastCandidate = [...messages.value].reverse().find(m => m.role === 'candidate')
+  if (lastCandidate) lastCandidate.score = data.score
+
+  try {
+    await loadMessages()
+  } catch (e) {
+    console.error('刷新消息失败:', e)
+  }
+  const hasSavedAnswer = messages.value.some(m =>
+    m.role === 'candidate' &&
+    m.content === myAnswer &&
+    m.question_index === data.question_index
+  )
+  if (!hasSavedAnswer) {
+    messages.value.push({ role: 'candidate', content: myAnswer, score: data.score, question_index: data.question_index })
+  }
+
+  if (data.is_finished) {
+    finished.value = true
+  } else if (data.next_question) {
+    currentIndex.value = data.question_index + 1
+    const hasNextQuestion = messages.value.some(m =>
+      m.role === 'interviewer' &&
+      m.content === data.next_question &&
+      m.question_index === data.question_index + 1
+    )
+    if (!hasNextQuestion) {
+      messages.value.push({ role: 'interviewer', content: data.next_question, question_index: data.question_index + 1 })
+    }
+  }
+  scrollToBottom()
+}
+
 async function handleSubmit() {
   if (!answer.value.trim() || thinking.value) return
   const myAnswer = answer.value.trim()
@@ -219,9 +267,10 @@ async function handleSubmit() {
   thinking.value = true
   streamingText.value = ''
   let rawStreamText = ''  // 保存原始完整文本用于最终提取
+  let doneHandled = false  // 是否已收到并处理终态事件
 
   try {
-    await submitAnswerStream(interviewId, myAnswer,
+    const result = await submitAnswerStream(interviewId, myAnswer,
       (chunk) => {
         rawStreamText += chunk
         // 实时过滤：去掉已完成的JSON块和正在构建中的JSON片段（以```json或裸{开头的尾部）
@@ -238,54 +287,36 @@ async function handleSubmit() {
         scrollToBottom()
       },
       async (data) => {
-        if (rawStreamText.trim()) {
-          let displayText = rawStreamText
-            .replace(/```json\s*\{[\s\S]*?\}\s*```/g, '')
-            .replace(/\{[^{}]*"score"\s*:\s*[\d.]+[^{}]*\}/g, '')
-            .trim()
-          if (displayText) {
-            messages.value.push({ role: 'interviewer', content: displayText, score: data.score })
-          }
-        }
-        streamingText.value = ''
+        doneHandled = true
+        await applyDone(data, rawStreamText, myAnswer)
         rawStreamText = ''
-        const lastCandidate = [...messages.value].reverse().find(m => m.role === 'candidate')
-        if (lastCandidate) lastCandidate.score = data.score
-
-        try {
-          await loadMessages()
-        } catch (e) {
-          console.error('刷新消息失败:', e)
-        }
-        const hasSavedAnswer = messages.value.some(m =>
-          m.role === 'candidate' &&
-          m.content === myAnswer &&
-          m.question_index === data.question_index
-        )
-        if (!hasSavedAnswer) {
-          messages.value.push({ role: 'candidate', content: myAnswer, score: data.score, question_index: data.question_index })
-        }
-
-        if (data.is_finished) {
-          finished.value = true
-        } else if (data.next_question) {
-          currentIndex.value = data.question_index + 1
-          const hasNextQuestion = messages.value.some(m =>
-            m.role === 'interviewer' &&
-            m.content === data.next_question &&
-            m.question_index === data.question_index + 1
-          )
-          if (!hasNextQuestion) {
-            messages.value.push({ role: 'interviewer', content: data.next_question, question_index: data.question_index + 1 })
-          }
-        }
-        scrollToBottom()
       }
     )
+
+    // 自愈：流已结束但没收到 done（连接被中断 / 后端异常）。
+    // 此时后端大概率已把评语和下一题写库，直接重新拉取消息并恢复输入态，
+    // 避免界面永久停在“光标闪烁”的思考态。
+    if (!doneHandled) {
+      if (result?.error) {
+        messages.value.push({ role: 'interviewer', content: '⚠️ ' + result.error.message })
+      }
+      try {
+        await loadMessages()
+      } catch (e) {
+        console.error('自愈刷新消息失败:', e)
+      }
+      streamingText.value = ''
+    }
   } catch (e) {
     streamingText.value = ''
     messages.value.push({ role: 'interviewer', content: '⚠️ 出错了：' + e.message })
     scrollToBottom()
+    // 出错也尝试拉一次，把后端已落库的内容同步回来
+    try {
+      await loadMessages()
+    } catch (err) {
+      console.error('出错后刷新消息失败:', err)
+    }
   } finally {
     thinking.value = false
   }
