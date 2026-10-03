@@ -7,6 +7,7 @@ from app.schemas.client.image import ImageGenerate
 from app.schemas.response import ApiResponse
 from app.models.user import User
 from app.exceptions.http_exceptions import APIException
+from app.services.common.setting_service import get_setting_bool
 
 router = APIRouter()
 
@@ -18,6 +19,14 @@ async def generate_image(
     db: AsyncSession = Depends(get_db),
 ):
     """提交图片生成任务"""
+    # 功能开关：后台可通过系统设置关闭 AI 生图
+    if not await get_setting_bool("image_generation_enabled", True):
+        # 使用 400 而非 403，避免前端拦截器将 403 判定为登录失效而强制登出
+        raise APIException(
+            code=10501,
+            message="该生图功能已关闭请稍后再试~",
+            status_code=400,
+        )
     result = await image_service.create_task(
         db=db,
         user_id=current_user.id,

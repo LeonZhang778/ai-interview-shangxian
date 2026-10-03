@@ -19,6 +19,7 @@ DEFAULTS = [
     ("maintenance_mode", "false", "维护模式开关"),
     ("register_enabled", "true", "是否开放注册"),
     ("guest_enabled", "true", "是否允许游客模式"),
+    ("image_generation_enabled", "true", "AI 生图功能开关"),
 ]
 
 

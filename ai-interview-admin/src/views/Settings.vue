@@ -74,6 +74,16 @@
               <span class="slider"></span>
             </label>
           </div>
+          <div class="toggle-item">
+            <div>
+              <div class="toggle-label">AI 生图</div>
+              <div class="toggle-desc">开启后用户可使用 AI 画图功能，关闭后用户端提示“该生图功能已关闭请稍后再试~”</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="boolForm.image_generation_enabled" />
+              <span class="slider"></span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -114,6 +124,7 @@ const boolForm = ref({
   maintenance_mode: false,
   register_enabled: true,
   guest_enabled: true,
+  image_generation_enabled: true,
 })
 
 async function loadSettings() {

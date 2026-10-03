@@ -351,7 +351,13 @@ class InterviewService:
                 }
                 for m in messages
             ],
-            "total_questions": interview.total_questions
+            "total_questions": interview.total_questions,
+            # 回传面试状态：前端据此判断面试是否已结束。
+            # 若最后一题的 done 事件因流中断而丢失，或用户刷新/重进页面，
+            # 前端仍能依据 status=completed 恢复到“面试结束→查看报告”态，
+            # 避免永久卡在问答页无法进入报告。
+            "status": interview.status,
+            "current_question_index": interview.current_question_index,
         }
 
     @staticmethod

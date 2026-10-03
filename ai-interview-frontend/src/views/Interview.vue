@@ -199,6 +199,10 @@ async function loadMessages() {
   const indices = msgList.map(m => m.question_index).filter(i => i != null)
   if (indices.length) currentIndex.value = Math.max(...indices)
   if (data.total_questions) totalQuestions.value = data.total_questions
+  // 以后端状态为准恢复“面试已结束”态：
+  // 覆盖三种会丢失 done 事件的场景——① 最后一题的 SSE 流被中途掐断；
+  // ② 用户在结束后刷新页面；③ 结束后从历史记录重新进入。
+  if (data.status === 'completed') finished.value = true
   scrollToBottom()
 }
 

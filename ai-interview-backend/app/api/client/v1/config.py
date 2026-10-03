@@ -79,11 +79,12 @@ async def get_site_info():
         "seo_title", "seo_description",
         "icp_number", "contact_email",
         "register_enabled", "guest_enabled",
+        "image_generation_enabled",
     ]
     site_info = {k: data.get(k, "") for k in public_keys}
 
     # 布尔字段转为实际 bool
-    for bool_key in ("register_enabled", "guest_enabled"):
+    for bool_key in ("register_enabled", "guest_enabled", "image_generation_enabled"):
         val = site_info.get(bool_key, "true")
         site_info[bool_key] = str(val).lower() in ("true", "1", "yes")
 

@@ -12,6 +12,12 @@
         <div class="panel-card">
           <h3>生成图片</h3>
 
+          <!-- 生图功能被后台关闭时的提示 -->
+          <div v-if="!imageEnabled" class="feature-off-notice">
+            <span class="notice-icon">🚫</span>
+            <span>该生图功能已关闭请稍后再试~</span>
+          </div>
+
           <div class="form-group">
             <label>提示词 <span class="required">*</span></label>
             <textarea
@@ -136,6 +142,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { generateImage, getImageTasks, getImageTask, deleteImageTask } from '../api/image'
+import { getSiteInfo } from '../api/config'
 import StarryBackground from '../components/StarryBackground.vue'
 
 const form = reactive({
@@ -150,6 +157,8 @@ const form = reactive({
 const tasks = ref([])
 const loading = ref(false)
 const generating = ref(false)
+// AI 生图功能开关（由后台系统设置控制），默认开启
+const imageEnabled = ref(true)
 const page = ref(1)
 const total = ref(0)
 const pageSize = 20
@@ -172,6 +181,10 @@ async function loadTasks() {
 }
 
 async function handleGenerate() {
+  if (!imageEnabled.value) {
+    alert('该生图功能已关闭请稍后再试~')
+    return
+  }
   if (!form.prompt.trim()) return
   generating.value = true
   try {
@@ -190,7 +203,14 @@ async function handleGenerate() {
     startPolling()
   } catch (e) {
     console.error('提交生成任务失败', e)
-    alert('提交失败：' + (e.response?.data?.message || e.message || '未知错误'))
+    const msg = e.response?.data?.message || e.message || '未知错误'
+    // 后台已关闭生图时，直接展示开关提示，不额外加前缀
+    if (msg.includes('生图功能已关闭')) {
+      imageEnabled.value = false
+      alert(msg)
+    } else {
+      alert('提交失败：' + msg)
+    }
   } finally {
     generating.value = false
   }
@@ -249,8 +269,18 @@ function statusText(status) {
 
 watch(page, () => loadTasks())
 
-onMounted(() => {
+onMounted(async () => {
   loadTasks()
+  // 读取后台系统设置中的生图开关
+  try {
+    const info = await getSiteInfo()
+    if (info && info.image_generation_enabled === false) {
+      imageEnabled.value = false
+    }
+  } catch (e) {
+    // 开关读取失败时不阻断功能，保持默认开启（后端仍有二次校验）
+    console.error('读取生图功能开关失败', e)
+  }
 })
 
 onUnmounted(() => {
@@ -286,6 +316,22 @@ onUnmounted(() => {
   align-items: start;
 }
 @media (max-width: 768px) { .studio-body { grid-template-columns: 1fr; } }
+
+/* 生图功能关闭提示 */
+.feature-off-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.feature-off-notice .notice-icon { flex-shrink: 0; }
 
 .panel-card {
   background: var(--bg-card);
