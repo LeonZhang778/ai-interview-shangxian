@@ -298,13 +298,15 @@ async def save_results_node(state: dict) -> dict:
             return {"result": {"error": "面试题目数据异常，请重新开始面试"}}
 
     # 保存候选人回答
+    # feedback 字段为 Text 无长度限制，保留完整评语（此前截断 200 字会导致
+    # 前端重新拉取历史时评语残缺；评语是面试官对本题的核心反馈，必须完整）。
     candidate_msg = InterviewMessage(
         interview_id=interview_id,
         role="candidate",
         content=answer,
         question_index=current_index,
         score=Decimal(str(score)),
-        feedback=feedback[:200],
+        feedback=feedback,
     )
     db.add(candidate_msg)
 

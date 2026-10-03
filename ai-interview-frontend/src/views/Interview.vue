@@ -41,25 +41,41 @@
 
     <!-- 聊天区域 -->
     <div class="chat-area" ref="chatArea" v-if="!preparing">
-      <div v-for="(msg, i) in messages" :key="msg.key ?? i" :class="['message', msg.role]">
-        <!-- AI 头像 -->
-        <div v-if="msg.role === 'interviewer'" class="avatar-col">
-          <svg viewBox="0 0 40 40" width="36" height="36" class="ai-avatar">
-            <circle cx="20" cy="20" r="19" fill="white" stroke="#e5e7eb" stroke-width="1"/>
-            <ellipse cx="14" cy="17" rx="2.5" ry="3" fill="#1e1e1e"/>
-            <ellipse cx="26" cy="17" rx="2.5" ry="3" fill="#1e1e1e"/>
-          </svg>
+      <template v-for="(msg, i) in messages" :key="msg.key ?? i">
+        <div :class="['message', msg.role]">
+          <!-- AI 头像 -->
+          <div v-if="msg.role === 'interviewer'" class="avatar-col">
+            <svg viewBox="0 0 40 40" width="36" height="36" class="ai-avatar">
+              <circle cx="20" cy="20" r="19" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+              <ellipse cx="14" cy="17" rx="2.5" ry="3" fill="#1e1e1e"/>
+              <ellipse cx="26" cy="17" rx="2.5" ry="3" fill="#1e1e1e"/>
+            </svg>
+          </div>
+          <div class="bubble">
+            <div class="bubble-content" v-html="renderContent(msg.content)"></div>
+          </div>
+          <!-- 用户头像 -->
+          <div v-if="msg.role === 'candidate'" class="avatar-col">
+            <img v-if="userAvatar && !avatarError" :src="userAvatar" class="user-avatar" alt="me" @error="avatarError = true" />
+            <div v-else class="user-avatar-placeholder">{{ userInitial }}</div>
+          </div>
         </div>
-        <div class="bubble">
-          <div class="bubble-content" v-html="renderContent(msg.content)"></div>
-          <div v-if="msg.score" class="bubble-score">⭐ {{ msg.score }}/10</div>
+
+        <!-- 面试官评语：跟随在对应回答之后单独成条（评语存于候选人消息的 feedback 字段） -->
+        <div v-if="msg.role === 'candidate' && msg.feedback" class="message interviewer feedback-message">
+          <div class="avatar-col">
+            <svg viewBox="0 0 40 40" width="36" height="36" class="ai-avatar">
+              <circle cx="20" cy="20" r="19" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+              <ellipse cx="14" cy="17" rx="2.5" ry="3" fill="#1e1e1e"/>
+              <ellipse cx="26" cy="17" rx="2.5" ry="3" fill="#1e1e1e"/>
+            </svg>
+          </div>
+          <div class="bubble feedback-bubble">
+            <div class="bubble-content" v-html="renderContent(msg.feedback)"></div>
+            <div v-if="msg.score" class="bubble-score">⭐ {{ msg.score }}/10</div>
+          </div>
         </div>
-        <!-- 用户头像 -->
-        <div v-if="msg.role === 'candidate'" class="avatar-col">
-          <img v-if="userAvatar && !avatarError" :src="userAvatar" class="user-avatar" alt="me" @error="avatarError = true" />
-          <div v-else class="user-avatar-placeholder">{{ userInitial }}</div>
-        </div>
-      </div>
+      </template>
 
       <!-- 流式输出 -->
       <div v-if="streamingText" class="message interviewer">
@@ -212,34 +228,38 @@ onMounted(async () => {
   nextTick(scrollToBottom)
 })
 
-// 收尾：把流式文本落成正式消息、刷新列表、推进题号。
+// 收尾：以数据库为准刷新会话，并推进题号。
 // 抽成独立函数，供 onDone 正常回调与“流被掐断后的自愈”两条路径复用。
+//
+// 注意：评语（feedback）由后端持久化在候选人消息的 feedback 字段，
+// 模板会将其渲染为独立的“面试官评语”气泡。因此这里不再把流式文本 push 成
+// interviewer 消息——否则 loadMessages() 之后会与 DB 版本重复，且刷新即丢。
+// 流式文本仅用于流式过程中的实时展示，落库以 DB 为唯一事实来源。
 async function applyDone(data, rawStreamText, myAnswer) {
-  if (rawStreamText.trim()) {
-    let displayText = rawStreamText
-      .replace(/```json\s*\{[\s\S]*?\}\s*```/g, '')
-      .replace(/\{[^{}]*"score"\s*:\s*[\d.]+[^{}]*\}/g, '')
-      .trim()
-    if (displayText) {
-      messages.value.push({ role: 'interviewer', content: displayText, score: data.score })
-    }
-  }
   streamingText.value = ''
-  const lastCandidate = [...messages.value].reverse().find(m => m.role === 'candidate')
-  if (lastCandidate) lastCandidate.score = data.score
 
+  // 以 DB 为准刷新（含评语、下一题、分数）
   try {
     await loadMessages()
   } catch (e) {
     console.error('刷新消息失败:', e)
   }
+
+  // 容错：若 DB 尚未返回刚落库的候选人回答（极端时序），本地补一条，
+  // 保证用户能看到自己的回答；评语仍以后续刷新为准。
   const hasSavedAnswer = messages.value.some(m =>
     m.role === 'candidate' &&
     m.content === myAnswer &&
     m.question_index === data.question_index
   )
   if (!hasSavedAnswer) {
-    messages.value.push({ role: 'candidate', content: myAnswer, score: data.score, question_index: data.question_index })
+    messages.value.push({
+      role: 'candidate',
+      content: myAnswer,
+      score: data.score,
+      feedback: data.feedback || '',
+      question_index: data.question_index
+    })
   }
 
   if (data.is_finished) {
@@ -390,6 +410,13 @@ async function handleSubmit() {
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .bubble-score { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); font-size: 13px; }
 .interviewer .bubble-score { border-top-color: rgba(139,92,246,0.12); }
+
+/* 面试官评语气泡：用左侧强调色边框与普通题目气泡区分，且不与下一题混淆 */
+.feedback-message .feedback-bubble {
+  border-left: 3px solid var(--accent-primary, #7c3aed);
+  background: rgba(139, 92, 246, 0.06);
+}
+.feedback-message .ai-avatar { filter: drop-shadow(0 1px 2px rgba(139,92,246,0.35)); }
 
 /* 输入 */
 .input-area { padding: 16px 20px; background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: blur(20px); }
