@@ -83,9 +83,11 @@ async def get_site_info():
     ]
     site_info = {k: data.get(k, "") for k in public_keys}
 
-    # 布尔字段转为实际 bool
+    # 布尔字段转为实际 bool。
+    # 设置项缺失（如老库尚未 seed 的新开关）时按“开启”处理，与 seed 默认值一致；
+    # 否则空字符串会被判定为 False，导致新增开关在未 seed 的环境被误判为关闭。
     for bool_key in ("register_enabled", "guest_enabled", "image_generation_enabled"):
-        val = site_info.get(bool_key, "true")
-        site_info[bool_key] = str(val).lower() in ("true", "1", "yes")
+        raw = data.get(bool_key)
+        site_info[bool_key] = True if not raw else str(raw).lower() in ("true", "1", "yes")
 
     return ApiResponse.success(data=site_info)
