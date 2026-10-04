@@ -111,6 +111,8 @@ jobs:
             echo "Deploy image: $BACKEND_IMAGE"
             echo "Disk usage:"
             df -h / /home
+            echo "Memory usage:"
+            free -h || true
             echo "Container status before deploy:"
             docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
 
@@ -129,6 +131,10 @@ jobs:
               chmod 600 "$backup_dir/env-$timestamp.backup"
             fi
 
+            echo "Pruning backups older than 14 days..."
+            find "$backup_dir" -maxdepth 1 -type f -mtime +14 -delete 2>/dev/null || true
+            ls -lh "$backup_dir" | tail -5 || true
+
             echo "Synchronizing PostgreSQL password after backup..."
             postgres_password_sql=${POSTGRES_PASSWORD//\'/\'\'}
             printf "ALTER ROLE postgres PASSWORD '%s';\n" "$postgres_password_sql" \
@@ -145,6 +151,7 @@ jobs:
             python3 - <<'PY'
             import os
             import re
+            import secrets
             from pathlib import Path
 
             env_path = Path('.env')
@@ -155,6 +162,7 @@ jobs:
                 'API_V1_STR': '/api/v1',
                 'API_PORT': '8006',
                 'API_WORKERS': '2',
+                'ALGORITHM': 'HS256',
 
                 'POSTGRES_USER': 'postgres',
                 'POSTGRES_PASSWORD': os.environ['POSTGRES_PASSWORD'],
@@ -198,12 +206,49 @@ jobs:
                 if key not in seen:
                     output.append(f'{key}={value}')
 
+            # --- SECRET_KEY：生产环境必须持有独立的强随机密钥 ---
+            # 策略：已存在强密钥时原样保留（每次部署都重新生成会让全体用户登录态失效）；
+            #       缺失、为空或仍是弱占位值时，生成新的强随机密钥并落盘。
+            # 与之配套：app/core/config.py 在 ENV=production 且密钥弱/缺失时会拒绝启动。
+            weak_secret_keys = {
+                '', 'your-secret-key-change-in-production', 'change-me',
+                'changeme', 'secret', 'secret-key', 'dev', 'development',
+            }
+            existing_secret = None
+            for line in existing.splitlines():
+                match = assignment.match(line)
+                if match and match.group(1) == 'SECRET_KEY':
+                    existing_secret = match.group(2).strip()
+                    break
+
+            key_is_strong = (
+                existing_secret is not None
+                and existing_secret.lower() not in weak_secret_keys
+                and len(existing_secret) >= 32
+            )
+
+            resolved = []
+            had_secret_line = False
+            for line in output:
+                match = assignment.match(line)
+                if match and match.group(1) == 'SECRET_KEY':
+                    resolved.append(line if key_is_strong else f'SECRET_KEY={secrets.token_urlsafe(64)}')
+                    had_secret_line = True
+                else:
+                    resolved.append(line)
+            if not had_secret_line:
+                resolved.append(f'SECRET_KEY={secrets.token_urlsafe(64)}')
+            output = resolved
+
+            print('SECRET_KEY: ' + ('preserved (已有强密钥)' if key_is_strong
+                                    else 'generated (缺失或弱值，已生成新密钥；旧 token 将全部失效)'))
+
             env_path.write_text('\n'.join(output).rstrip() + '\n', encoding='utf-8')
             PY
             chmod 600 .env
 
             echo "Validating required .env variables..."
-            required_env="ENV API_V1_STR API_PORT API_WORKERS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT POSTGRES_DB REDIS_HOST REDIS_PORT REDIS_PASSWORD XAI_API_KEY GROK_MODELS_BASE_URL GROK_MODEL AI_API_KEY AI_BASE_URL AI_MODEL AI_QWEN_API_KEY AI_QWEN_BASE_URL AI_QWEN_MODEL POLLINATIONS_API_KEY"
+            required_env="ENV SECRET_KEY ALGORITHM API_V1_STR API_PORT API_WORKERS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT POSTGRES_DB REDIS_HOST REDIS_PORT REDIS_PASSWORD XAI_API_KEY GROK_MODELS_BASE_URL GROK_MODEL AI_API_KEY AI_BASE_URL AI_MODEL AI_QWEN_API_KEY AI_QWEN_BASE_URL AI_QWEN_MODEL POLLINATIONS_API_KEY"
             for env_name in $required_env; do
               if ! grep -q "^${env_name}=" .env; then
                 echo "Missing required .env variable: $env_name"
@@ -221,6 +266,46 @@ jobs:
             echo "Pulling backend image..."
             docker pull "$BACKEND_IMAGE"
             docker image inspect "$BACKEND_IMAGE" --format 'Pulled image={{.Id}}'
+
+            # --- 回滚目标：记录当前正在运行的、已验证健康的镜像 ---
+            # 注意：后面的镜像清理步骤必须保留这个镜像，否则回滚将无从下手
+            #（历史行为是把非当前镜像全部删除，等于永远没有回滚目标）。
+            echo "Recording rollback target..."
+            previous_image=$(docker inspect --format='{{.Config.Image}}' ai-interview-app 2>/dev/null || true)
+            if [ -n "$previous_image" ] && docker image inspect "$previous_image" >/dev/null 2>&1; then
+              echo "$previous_image" > .last_good_image
+              echo "  rollback target: $previous_image"
+            else
+              echo "  no healthy previous image found; rollback will not be available this run"
+              rm -f .last_good_image
+            fi
+
+            # 仅在「应用镜像起不来」时自动回滚；数据库迁移失败不自动回滚，
+            # 因为回退代码无法撤销已执行的迁移，会造成 schema 与代码不一致。
+            rollback_to_last_good() {
+              set +e
+              if [ ! -s .last_good_image ]; then
+                echo "  [rollback] no recorded target; skipping"
+                return 1
+              fi
+              target=$(cat .last_good_image)
+              if ! docker image inspect "$target" >/dev/null 2>&1; then
+                echo "  [rollback] target image $target not present locally; skipping"
+                return 1
+              fi
+              echo "  [rollback] reverting app container to $target"
+              BACKEND_IMAGE="$target" docker compose up -d --force-recreate --no-deps app || return 1
+              for i in $(seq 1 24); do
+                code=$(docker exec ai-interview-app python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8006/api/v1/config/health', timeout=5).status)" 2>/dev/null || true)
+                if [ "$code" = "200" ]; then
+                  echo "  [rollback] app healthy again on $target"
+                  return 0
+                fi
+                sleep 5
+              done
+              echo "  [rollback] app did not become healthy after rollback; manual intervention required"
+              return 1
+            }
 
             echo "Starting PostgreSQL and Redis..."
             docker compose up -d --force-recreate postgres redis
@@ -261,11 +346,18 @@ jobs:
               echo "App failed to become ready; collecting diagnostics..."
               docker inspect --format='status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} exit={{.State.ExitCode}}' ai-interview-app || true
               docker logs ai-interview-app --tail 200 || true
+              echo "New image $BACKEND_IMAGE did not start; rolling back to previous image..."
+              rollback_to_last_good || true
               exit 1
             fi
 
             echo "Running database migrations..."
-            docker exec ai-interview-app alembic upgrade head
+            if ! docker exec ai-interview-app alembic upgrade head; then
+              echo "❌ 数据库迁移失败：不执行自动回滚。"
+              echo "   回退应用镜像无法撤销已执行/半执行的迁移，强行回滚会造成 schema 与代码不一致。"
+              echo "   请人工确认迁移脚本后处理；本次部署的应用镜像为 $BACKEND_IMAGE"
+              exit 1
+            fi
 
             echo "Checking direct app health after migrations..."
             direct_health_status=$(docker exec ai-interview-app python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8006/api/v1/config/health', timeout=5).status)")
@@ -303,17 +395,23 @@ jobs:
             echo "Final container status:"
             docker compose ps
 
-            echo "Cleaning old backend images..."
+            echo "Cleaning old backend images (keeping current + rollback target)..."
             backend_repo="${BACKEND_IMAGE%:*}"
             current_backend_image_id=$(docker image inspect "$BACKEND_IMAGE" --format '{{.Id}}')
+            rollback_ref=$(cat .last_good_image 2>/dev/null || true)
+            rollback_image_id=""
+            if [ -n "$rollback_ref" ] && docker image inspect "$rollback_ref" >/dev/null 2>&1; then
+              rollback_image_id=$(docker image inspect "$rollback_ref" --format '{{.Id}}')
+              echo "Preserving rollback image: $rollback_ref"
+            fi
             docker image ls "$backend_repo" --format '{{.Repository}}:{{.Tag}}' \
               | while read -r image_ref; do
-                  if [ -z "$image_ref" ] || [ "$image_ref" = "$BACKEND_IMAGE" ]; then
+                  if [ -z "$image_ref" ] || [ "$image_ref" = "$BACKEND_IMAGE" ] || [ "$image_ref" = "$rollback_ref" ]; then
                     continue
                   fi
 
                   image_id=$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)
-                  if [ -n "$image_id" ] && [ "$image_id" != "$current_backend_image_id" ]; then
+                  if [ -n "$image_id" ] && [ "$image_id" != "$current_backend_image_id" ] && [ "$image_id" != "$rollback_image_id" ]; then
                     echo "Removing old backend image: $image_ref"
                     docker image rm -f "$image_ref" || true
                   fi
@@ -321,6 +419,41 @@ jobs:
             docker image prune -f || true
             docker builder prune -f || true
             docker system df || true
+
+            echo "Installing daily backup timer..."
+            BACKUP_SCRIPT="/home/deploy/ai-interview/ai-interview-backend/scripts/backup.sh"
+            if [ -f "$BACKUP_SCRIPT" ]; then
+              chmod 755 "$BACKUP_SCRIPT"
+              cat > /etc/systemd/system/ai-interview-backup.service <<'UNIT'
+            [Unit]
+            Description=AI-Interview daily backup (postgres + redis + uploads + env)
+            [Service]
+            Type=oneshot
+            WorkingDirectory=/home/deploy/ai-interview/ai-interview-backend
+            Environment=BACKEND_DIR=/home/deploy/ai-interview/ai-interview-backend
+            ExecStart=/bin/bash /home/deploy/ai-interview/ai-interview-backend/scripts/backup.sh
+            UNIT
+              cat > /etc/systemd/system/ai-interview-backup.timer <<'UNIT'
+            [Unit]
+            Description=Run AI-Interview backup daily
+            [Timer]
+            OnCalendar=*-*-* 03:30:00
+            Persistent=true
+            RandomizedDelaySec=600
+            [Install]
+            WantedBy=timers.target
+            UNIT
+              systemctl daemon-reload
+              if systemctl enable --now ai-interview-backup.timer; then
+                echo "Backup timer enabled:"
+                systemctl list-timers 'ai-interview-backup*' --no-pager || true
+              else
+                echo "ERROR: 备份定时器启用失败 —— 部署本身已成功，但定时备份未生效，请人工检查！"
+                systemctl status ai-interview-backup.timer --no-pager || true
+              fi
+            else
+              echo "ERROR: 未找到 scripts/backup.sh，跳过定时备份安装"
+            fi
 
             echo "Deployment completed successfully."
 

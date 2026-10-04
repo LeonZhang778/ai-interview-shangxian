@@ -1,12 +1,29 @@
 # AI-Interview 一键部署
 # 启动: docker compose up -d
 # 停止: docker compose down
+#
+# ⚠️ 重要：CI（.github/workflows/main.yml）只使用本文件，**不会**叠加
+#    docker-compose.prod.yml。因此所有「必须生效」的加固项都写在下面：
+#      - 端口收敛（PG 不对公网暴露）
+#      - 容器日志轮转（避免日志无限增长填满磁盘）
+#      - 容器内存上限（避免单个容器耗尽宿主机内存）
+#    历史上这些只写在 overlay 里，而 overlay 从未被 CI 加载，等于加固没生效。
+#
+# 内存上限均可由部署机 .env 覆盖，例如 APP_MEM_LIMIT=1g。
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   app:
     image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
     container_name: ai-interview-app
     restart: unless-stopped
+    mem_limit: ${APP_MEM_LIMIT:-768m}
+    logging: *default-logging
     env_file:
       - .env
     environment:
@@ -32,6 +49,9 @@ services:
     image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
     container_name: ai-interview-celery-worker
     restart: unless-stopped
+    # 媒体转换（ffmpeg）较吃内存，但仍需设上限：宁可任务失败，也不要拖垮宿主机。
+    mem_limit: ${CELERY_WORKER_MEM_LIMIT:-768m}
+    logging: *default-logging
     command: celery -A app.core.celery_app worker --loglevel=info -Q media_tasks,celery
     env_file:
       - .env
@@ -58,6 +78,8 @@ services:
     image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
     container_name: ai-interview-celery-beat
     restart: unless-stopped
+    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-128m}
+    logging: *default-logging
     command: celery -A app.core.celery_app beat --loglevel=info
     env_file:
       - .env
@@ -83,8 +105,13 @@ services:
     image: postgres:16-alpine
     container_name: ai-interview-postgres
     restart: unless-stopped
+    mem_limit: ${POSTGRES_MEM_LIMIT:-768m}
+    stop_grace_period: 60s
+    logging: *default-logging
+    # 只绑定回环地址：此前为 "5434:5432"，等于把数据库暴露在所有网卡上。
+    # 生产环境无任何外部访问需求（应用通过 compose 内网访问）。
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -101,7 +128,14 @@ services:
     image: redis:7-alpine
     container_name: ai-interview-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    mem_limit: ${REDIS_MEM_LIMIT:-256m}
+    stop_grace_period: 30s
+    logging: *default-logging
+    # appendonly yes：Redis 同时承载 Celery broker / 结果后端 / 面试会话，
+    # 仅靠默认 RDB 快照在容器重启时会丢失最近一段时间的任务与状态。
+    # 不设 maxmemory-policy：Redis 一旦做 LRU 淘汰会静默丢弃任务消息，
+    # 因此这里只用容器内存上限兜底，而不启用淘汰策略。
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
     volumes:
       - redis-data:/data
     healthcheck:
@@ -115,6 +149,9 @@ services:
     image: ai-interview-backend-nginx:latest
     container_name: ai-interview-nginx
     restart: unless-stopped
+    mem_limit: ${NGINX_MEM_LIMIT:-128m}
+    logging: *default-logging
+    # 仅监听回环：对外的 80/443 由宿主机 nginx 接管 TLS 后反代到本端口。
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
