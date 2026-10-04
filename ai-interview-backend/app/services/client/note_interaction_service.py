@@ -220,7 +220,8 @@ class NoteInteractionService:
             content=content,
         )
         db.add(comment)
-        note.comment_count = (note.comment_count or 0) + 1
+        # 评论数在数据库端原子自增，并发评论不会互相覆盖
+        await bump_counter(db, LearningNote, note_id, LearningNote.comment_count, 1)
 
         if note.user_id != user_id:
             await notification_service.create_notification(
@@ -258,9 +259,9 @@ class NoteInteractionService:
         if comment.user_id != user_id:
             raise AuthorizationError(message="只能删除自己的评论")
 
-        note = await db.get(LearningNote, comment.note_id)
-        if note:
-            note.comment_count = max(0, (note.comment_count or 0) - 1)
+        # 评论数原子递减（GREATEST 夹到 0，删到负数不会发生）
+        # 顺带省掉一次 LearningNote 的读取：原先只为拿它做减一
+        await bump_counter(db, LearningNote, comment.note_id, LearningNote.comment_count, -1)
         await db.delete(comment)
         await db.commit()
 
