@@ -680,6 +680,7 @@ class LearningNoteService:
         """
         from app.services.client.ai_service import AIService
         from app.services.common.redis import redis_client
+        from app.utils.utils import normalize_tag
 
         note = await db.get(LearningNote, note_id)
         if not note or note.user_id != user_id:

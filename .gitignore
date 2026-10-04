@@ -71,6 +71,8 @@ Thumbs.db
 # ---------- 调试/临时脚本 ----------
 debug_*.py
 check_*.py
+# 例外：scripts/ 下的检查脚本是正式门禁，必须入库（CI 依赖）
+!ai-interview-backend/scripts/check_*.py
 run_debug.py
 deploy_fix.py
 rebuild_deploy.py
@@ -105,3 +107,6 @@ ai-interview-backend/media_test_*
 ai-interview-backend/backups/
 *.dump
 *.rdb
+
+# CI/本地的前端构建校验产物（不改动被 Git 跟踪的 dist/）
+.ci-build-check/

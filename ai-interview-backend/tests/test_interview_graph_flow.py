@@ -26,18 +26,54 @@ except ModuleNotFoundError:
     sys.modules.setdefault("passlib", passlib_module)
     sys.modules.setdefault("passlib.context", context_module)
 
+from sqlalchemy.exc import MultipleResultsFound
+from sqlalchemy.sql.elements import BindParameter
+
 from app.graphs.nodes.interview_nodes import evaluate_node, save_results_node
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.services.client.ai_service import AIService
 
 
+def _iter_leaf_criteria(clause):
+    """把 WHERE 子句拍平成叶子条件（兼容 and_ 组合与单个条件）。"""
+    if clause is None:
+        return []
+    clauses = getattr(clause, "clauses", None)
+    if clauses is None:
+        return [clause]
+    leaves = []
+    for child in clauses:
+        leaves.extend(_iter_leaf_criteria(child))
+    return leaves
+
+
+def _extract_row_filters(query):
+    """从 select() 的 WHERE 子句提取等值与非空条件。
+
+    假库必须像真实数据库一样按条件过滤：此前它无条件返回全部已评分消息，
+    导致幂等守卫（question_index 精确匹配）在测试里从未被真正执行过。
+    """
+    equals, not_null = {}, set()
+    for leaf in _iter_leaf_criteria(getattr(query, "whereclause", None)):
+        column = getattr(getattr(leaf, "left", None), "key", None)
+        if not column:
+            continue
+        operator_name = getattr(getattr(leaf, "operator", None), "__name__", "")
+        right = getattr(leaf, "right", None)
+        if operator_name == "eq" and isinstance(right, BindParameter):
+            equals[column] = right.value
+        elif operator_name == "is_not" and type(right).__name__ == "Null":
+            not_null.add(column)
+    return equals, not_null
+
+
 class _ScalarResult:
     def __init__(self, items):
-        self._items = items
+        self._items = list(items)
 
     def all(self):
-        return self._items
+        return list(self._items)
 
     def first(self):
         return self._items[0] if self._items else None
@@ -45,10 +81,18 @@ class _ScalarResult:
 
 class _ExecuteResult:
     def __init__(self, items):
-        self._items = items
+        self._items = list(items)
 
     def scalars(self):
         return _ScalarResult(self._items)
+
+    def scalar_one_or_none(self):
+        # 与 SQLAlchemy 保持一致：多于一行时如实报错，避免假库把错误静默吞掉。
+        if len(self._items) > 1:
+            raise MultipleResultsFound(
+                f"期望 0 或 1 行，实际 {len(self._items)} 行"
+            )
+        return self._items[0] if self._items else None
 
 
 class _FakeDb:
@@ -62,13 +106,19 @@ class _FakeDb:
         return self.interview
 
     async def execute(self, query):
-        pending_scored = [
-            item for item in self.added
-            if isinstance(item, InterviewMessage)
-            and item.role == "candidate"
-            and item.score is not None
+        equals, not_null = _extract_row_filters(query)
+        rows = list(self.scored_messages) + [
+            item for item in self.added if isinstance(item, InterviewMessage)
         ]
-        return _ExecuteResult(self.scored_messages + pending_scored)
+        if "interview_id" in equals:
+            rows = [r for r in rows if r.interview_id == equals["interview_id"]]
+        if "role" in equals:
+            rows = [r for r in rows if r.role == equals["role"]]
+        if "question_index" in equals:
+            rows = [r for r in rows if r.question_index == equals["question_index"]]
+        for column in not_null:
+            rows = [r for r in rows if getattr(r, column, None) is not None]
+        return _ExecuteResult(rows)
 
     def add(self, item):
         self.added.append(item)

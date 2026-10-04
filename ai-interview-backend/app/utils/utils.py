@@ -19,6 +19,12 @@ import bleach
 import time
 
 
+# 判定走音频转写分支的扩展名集合。
+# 说明：此常量此前缺失，导致 process_multiple_files 在音频分支抛 NameError（该函数当前
+# 无调用方，属未触发状态）。补齐以保证代码正确；集合按 process_audio_file 使用的 whisper
+# 所支持的常见音频格式取值。
+ALLOWED_AUDIO_TYPES = ["mp3", "wav", "m4a", "aac", "flac", "ogg", "webm"]
+
 
 class FileContent(BaseModel):
     filename: str

@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload, joinedload
-from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment, CollectionGroup
+from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment
 from app.models.user import User
 from app.exceptions.http_exceptions import NotFoundError, AuthorizationError
 

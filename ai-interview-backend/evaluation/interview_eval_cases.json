@@ -2,31 +2,40 @@
   {
     "id": "empty-answer",
     "answer": "",
-    "expected_score": 1.0,
-    "tolerance": 0.0
+    "expect_score": 1.0,
+    "expect_skip_type": "empty",
+    "why": "空回答直接判定，不需要调用 AI"
   },
   {
     "id": "empty-talk",
     "answer": "嗯",
-    "expected_score": 1.0,
-    "tolerance": 0.0
+    "expect_score": 1.0,
+    "expect_skip_type": "empty_talk",
+    "why": "仅『嗯』这类空洞回答不应占用 AI 调用"
   },
   {
-    "id": "honest-skip",
+    "id": "honest-skip-short",
     "answer": "不会",
-    "expected_score": 3.0,
-    "tolerance": 0.0
+    "expect_score": 3.0,
+    "expect_skip_type": "honest_skip",
+    "why": "整句就是承认不会，对应提示词里的 2-3 分档"
   },
   {
-    "id": "partial-attempt",
-    "answer": "不太清楚，但我觉得可以先从缓存命中率和过期策略分析",
-    "expected_score": 4.0,
-    "tolerance": 0.0
+    "id": "long-answer-with-buhui-must-not-short-circuit",
+    "answer": "session 不会长期持有连接，执行 SQL 时才租借，必须手动关闭以避免连接泄露。",
+    "expect_none": true,
+    "why": "回归：线上 interviews/54 第 1 题的正常技术回答因含『不会』被判 4 分且完全不调用 AI"
   },
   {
-    "id": "fallback-normal-answer",
-    "answer": "Redis 可以作为缓存、分布式锁和消息队列使用，需要关注淘汰策略和一致性。",
-    "expected_score": 5.0,
-    "tolerance": 0.0
+    "id": "long-answer-with-tiaoguo-must-not-short-circuit",
+    "answer": "遍历 timestamp_map，对已过期的 key 直接跳过，避免无谓的重新计算。",
+    "expect_none": true,
+    "why": "回归：『跳过已过期的 key』是正常技术表述，不能当作『坦诚说不会』"
+  },
+  {
+    "id": "normal-answer-must-not-short-circuit",
+    "answer": "Redis 可以作为缓存、分布式锁和消息队列，需要关注淘汰策略与一致性。",
+    "expect_none": true,
+    "why": "不含任何关键词的正常回答必须交给 AI 评估"
   }
 ]
