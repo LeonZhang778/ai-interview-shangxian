@@ -77,31 +77,62 @@ class _FakeDb:
         self.commits += 1
 
 
-def test_evaluate_node_pre_scores_honest_skip_without_ai(monkeypatch):
+def test_evaluate_node_long_answer_with_skip_keyword_still_calls_ai(monkeypatch):
+    """正常技术回答里出现「不会」不得被关键词短路，必须交给 AI 评估。
+
+    回归：pre_score 曾对「不会」做任意位置子串匹配，导致 100+ 字的正常回答被
+    直接判 4 分且完全不调用 AI（线上 admin/interviews/54 第 1、5 题）。
+    """
     called = False
 
-    async def fail_if_called(*args, **kwargs):
+    async def fake_stream(*args, **kwargs):
         nonlocal called
         called = True
-        raise AssertionError("honest skip should not call AI")
-        if False:
-            yield ""
+        yield "回答准确，覆盖了连接池与事务边界。\n```json\n{\"score\": 8.5}\n```"
 
-    monkeypatch.setattr(AIService, "evaluate_answer_stream", fail_if_called)
+    monkeypatch.setattr(AIService, "evaluate_answer_stream", fake_stream)
 
+    answer = (
+        "Django ORM 事务基于线程本地，async with session.begin() 开启事务；"
+        "session 不会长期持有连接，执行 SQL 时才租借，必须手动关闭 session。"
+    )
     result = asyncio.run(evaluate_node({
-        "answer": "不会",
-        "current_question": "Redis 的常见用途是什么？",
+        "answer": answer,
+        "current_question": "SQLAlchemy Async 与 Django ORM 的关键差异？",
         "parsed_resume": {},
         "chat_history": [],
         "chunk_queue": None,
     }))
 
-    assert called is False
-    assert result["score"] == 3.0
-    assert result["skip_type"] == "honest_skip"
-    assert result["evaluation"]["pre_scored"] is True
-    assert "error" not in result
+    assert called is True
+    assert result["score"] == 8.5
+
+
+def test_pre_score_keyword_match_only_applies_to_short_answers():
+    long_answer = (
+        "命中缓存时不会打印 time.sleep(3.1)，用 RLock 双层校验保证线程安全，"
+        "并在淘汰元素时同步清理 timestamp_map。"
+    )
+    assert len(long_answer) > AIService.MAX_SKIP_KEYWORD_LEN
+    assert AIService.pre_score(long_answer) is None
+
+    assert AIService.pre_score("不会") == (3.0, "honest_skip")
+    assert AIService.pre_score("") == (1.0, "empty")
+
+
+def test_fallback_evaluate_does_not_misjudge_long_answers():
+    long_answer = (
+        "session 不会长期持有连接，执行 SQL 时才租借，必须手动关闭以避免连接泄露，"
+        "否则会耗尽数据库连接池。"
+    )
+    assert len(long_answer) > AIService.MAX_SKIP_KEYWORD_LEN
+    long_result = AIService._fallback_evaluate(long_answer)
+    assert long_result["score"] == 5.0
+    assert long_result["skip_type"] is None
+
+    short_result = AIService._fallback_evaluate("不会")
+    assert short_result["score"] == 3.0
+    assert short_result["skip_type"] == "honest_skip"
 
 
 def test_evaluate_node_ai_failure_falls_back_without_fatal_error(monkeypatch):

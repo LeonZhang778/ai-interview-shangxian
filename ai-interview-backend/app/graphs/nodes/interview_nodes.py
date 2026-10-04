@@ -129,19 +129,9 @@ async def evaluate_node(state: dict) -> dict:
     chat_history = state["chat_history"]
     chunk_queue = state.get("chunk_queue")  # 可选：用于流式输出
 
-    # Level 0: 低质量/坦诚跳过回答直接基础评分，避免浪费 AI 调用
-    pre_result = AIService.pre_score(answer)
-    if pre_result is not None:
-        score, skip_type = pre_result
-        feedback = AIService.pre_score_feedback(skip_type)
-        if chunk_queue:
-            await chunk_queue.put(feedback)
-        return {
-            "evaluation": {"score": score, "feedback": feedback, "follow_up": False, "pre_scored": True},
-            "score": score,
-            "feedback": feedback,
-            "skip_type": skip_type,
-        }
+    # 评分语义统一交给 AI 按提示词判断：坦诚跳过给 4-5 / 2-3 分等分档规则
+    # 已写入 EVALUATE_STREAM_SYSTEM。此处刻意不做关键词预判——正常技术回答里的
+    # “不会 / 跳过 / 不清楚”会被子串匹配误判成坦诚跳过，直接给 4 分且完全不调用 AI。
 
     # Level 1: 尝试流式 AI 评估
     last_error = None

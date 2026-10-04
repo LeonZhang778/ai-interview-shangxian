@@ -67,14 +67,22 @@ class AIService:
     HONEST_SKIP_KEYWORDS = ["不知道", "不会", "不清楚", "不太了解", "不太清楚", "没学过", "没接触过", "不记得", "跳过"]
     # 胡说八道的关键词（空洞回答）
     EMPTY_TALK_KEYWORDS = ["嗯", "对", "是的", "好的", "知道了"]
+    # 关键词预判只对短回答生效。超过此长度一律视为「正常作答」，不再做关键词判定。
+    # 因为「不会 / 跳过 / 不清楚」在正常技术表述里极其常见
+    #（如"session 不会长期持有连接""跳过已过期的 key"），对长回答做子串匹配会误判。
+    MAX_SKIP_KEYWORD_LEN = 40
 
     @staticmethod
     def pre_score(answer: str) -> Optional[tuple]:
         """
-        预判断：分级评分，区分诚实跳过和胡说八道
+        预判断：分级评分，区分诚实跳过和胡说八道。
+
+        仅用于 AI 不可用时的降级路径（_fallback_evaluate）；
+        主评估路径不做关键词短路，评分语义统一交给 AI 按提示词判断
+        （坦诚跳过的 4-5 / 2-3 分分档规则已写入 EVALUATE_STREAM_SYSTEM）。
 
         Returns:
-            None: 继续 AI 评估
+            None: 继续 AI 评估 / 走兜底
             (score, skip_type): 直接返回分数和类型
         """
         text = answer.strip()
@@ -82,6 +90,10 @@ class AIService:
         # 空回答 → 1 分
         if not text:
             return (1.0, "empty")
+
+        # 长回答不做关键词判定，避免误伤正常技术表述
+        if len(text) > AIService.MAX_SKIP_KEYWORD_LEN:
+            return None
 
         # 空洞回答（只有"嗯"、"对"等）→ 1 分
         if text in AIService.EMPTY_TALK_KEYWORDS:
