@@ -362,6 +362,7 @@ async function handleShowQRCode() {
 function closeQRCode() {
   qrCodeDataUrl.value = null
 }
+
 async function handleShareLink() {
   if (shareLinkStatus.value === 'loading') return
   shareLinkStatus.value = 'loading'
