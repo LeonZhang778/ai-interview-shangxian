@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
-from app.models.admin import Admin
+from sqlalchemy import select, update, delete, func
+from app.models.admin import Admin, UserRole
 from app.schemas.backoffice.admin import AdminCreate, AdminResponse
 from app.exceptions.http_exceptions import APIException
 from typing import List, Optional
@@ -29,7 +29,8 @@ class AdminService:
             last_name=admin_data.last_name,
             password=hashed_password,
             is_active=admin_data.is_active,
-            role="superadmin"
+            # 角色由入参决定（此前硬编码 superadmin，导致永远创建不出低权限管理员）
+            role=admin_data.role,
         )
         
         db.add(admin)
@@ -138,7 +139,15 @@ class AdminService:
         # 更新活跃状态
         if "is_active" in admin_data:
             update_data["is_active"] = admin_data["is_active"]
-        
+
+        # 角色变更。降级最后一个超管会让后台彻底失去管理入口（没人能再创建/删除
+        # 管理员），只能直连数据库才能恢复 —— 因此拦住。
+        if admin_data.get("role"):
+            new_role = admin_data["role"]
+            if admin.role == UserRole.SUPERADMIN and new_role != UserRole.SUPERADMIN:
+                await AdminService._assert_not_last_superadmin(db, action="降级")
+            update_data["role"] = new_role
+
         # 执行更新
         if update_data:
             stmt = update(Admin).where(Admin.id == admin_id).values(**update_data)
@@ -161,7 +170,11 @@ class AdminService:
         
         if not admin:
             return False
-        
+
+        # 同 update_admin：不允许删掉最后一个超管，否则后台无人能再管理管理员
+        if admin.role == UserRole.SUPERADMIN:
+            await AdminService._assert_not_last_superadmin(db, action="删除")
+
         # 先删除关联的 admin_tokens
         from app.models.token import AdminToken
         delete_tokens_stmt = delete(AdminToken).where(AdminToken.admin_id == admin_id)
@@ -215,6 +228,26 @@ class AdminService:
         await db.execute(stmt)
         
         return True
+
+    @staticmethod
+    async def _count_superadmins(db: AsyncSession) -> int:
+        """当前超管数量，用于「不能失去最后一个超管」的保护。"""
+        result = await db.execute(
+            select(func.count())
+            .select_from(Admin)
+            .where(Admin.role == UserRole.SUPERADMIN)
+        )
+        return int(result.scalar() or 0)
+
+    @staticmethod
+    async def _assert_not_last_superadmin(db: AsyncSession, action: str) -> None:
+        """最后一个超管不允许被降级或删除 —— 否则后台将无人能再管理管理员。"""
+        if await AdminService._count_superadmins(db) <= 1:
+            raise APIException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=f"系统必须保留至少一个超级管理员，无法{action}最后一个超管"
+            )
+
 
 # 创建服务实例
 admin_service = AdminService()

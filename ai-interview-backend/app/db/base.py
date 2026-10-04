@@ -8,6 +8,18 @@ SQLALCHEMY_DATABASE_URL = (
     f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
 )
 
+
+def _should_echo_sql() -> bool:
+    """是否让 SQLAlchemy 回显每一条 SQL。
+
+    此前两个引擎工厂都硬编码 echo=True：生产会把每条 SQL 连同绑定参数值逐条写进
+    容器日志 —— 既拖慢查询，又迅速刷掉真正的错误日志（容器日志还有 10m×3 轮转上限），
+    且参数值里可能含密码哈希、token 等敏感内容。
+    现按环境推导：本地开发照旧回显便于调试，生产/预发默认关闭。
+    """
+    return (settings.ENV or "").strip().lower() not in {"production", "prod"}
+
+
 # 延迟创建引擎，避免 Alembic 迁移时的导入问题
 engine = None
 AsyncSessionLocal = None
@@ -18,7 +30,7 @@ def get_engine():
     if engine is None:
         engine = create_async_engine(
             SQLALCHEMY_DATABASE_URL,
-            echo=True,
+            echo=_should_echo_sql(),
             future=True,
             pool_pre_ping=True,
             # 增强连接池配置以提高稳定性
@@ -42,7 +54,7 @@ def create_scheduler_engine():
     """为调度任务创建独立的数据库引擎，确保不会与主应用程序共享事件循环"""
     return create_async_engine(
         SQLALCHEMY_DATABASE_URL,
-        echo=True,
+        echo=_should_echo_sql(),
         future=True,
         pool_pre_ping=True,
         pool_recycle=1800,

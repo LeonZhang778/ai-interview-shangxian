@@ -8,9 +8,10 @@ LangGraph 面试流程状态机
 实时推入队列，外层 generator 读取队列并 yield SSE 事件。
 
 本次增强（补齐 LangGraph 不足）：
-- Checkpointer：编译时挂载检查点，以 thread_id 持久化每步状态，支撑断点续传/幂等。
 - 可观测性：trace_node 包装四个节点，记录进入/完成/耗时/异常；条件路由打印分支走向。
 - 会话记忆分离：聊天历史由 load_context 从 DB 加载（长期记忆外部化），State 仅承载本轮工作记忆。
+
+注：曾挂载进程内 MemorySaver 作为 checkpointer，现已移除，原因见 build_interview_graph。
 """
 
 import asyncio
@@ -21,7 +22,6 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from app.graphs.checkpoint import get_checkpointer
 from app.graphs.nodes.interview_nodes import (
     evaluate_node,
     generate_next_node,
@@ -144,8 +144,17 @@ def build_interview_graph():
     graph.add_edge("generate_next", "save_results")
     graph.add_edge("save_results", END)
 
-    # 挂载检查点：以 thread_id 持久化状态，支撑断点续传与幂等
-    return graph.compile(checkpointer=get_checkpointer())
+    # 刻意不挂 checkpointer（原来是进程内 MemorySaver）。三个原因：
+    #   1) 生产是 2 个 uvicorn worker，MemorySaver 是进程内的，thread_id 不跨进程共享，
+    #      所谓「断点续传」名不副实 —— 同一题重试落到另一个 worker 就从头跑；
+    #   2) 它没有 TTL / 容量上限，每个 iv:{interview_id}:{index} 的完整 state（含简历
+    #      解析结果、聊天历史）会永久驻留内存 —— 在 1.6Gi 内存的机器上是持续增长；
+    #   3) 换成 Redis/Postgres 持久化同样不成立：state 里带着 db(AsyncSession) 与
+    #      chunk_queue(asyncio.Queue)，二者都无法序列化。
+    # 幂等不受影响：它由 DB 层的 _get_duplicate_submission_result 独立保证，
+    # submit_answer 与 submit_answer_stream 两条路径都在入口先查一次。
+    # 因此调用方传的 configurable.thread_id 现在是惰性的（已验证：无 checkpointer 时无害）。
+    return graph.compile()
 
 
 # 模块级单例：submit 与 stream 共用同一编译图（检查点状态按 thread_id 隔离）
@@ -173,7 +182,7 @@ async def interview_graph_stream(input_data: dict, thread_id: str = "default"):
     # 把队列注入 state，evaluate 节点会把 token 推入队列
     input_data["chunk_queue"] = queue
 
-    # 后台任务执行图（带 checkpointer + thread_id），完成后往队列放终止信号
+    # 后台任务执行图，完成后往队列放终止信号
     graph_task = asyncio.create_task(
         interview_graph.ainvoke(input_data, config={"configurable": {"thread_id": thread_id}})
     )
