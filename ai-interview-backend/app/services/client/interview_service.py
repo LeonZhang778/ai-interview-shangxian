@@ -3,7 +3,8 @@ import logging
 from decimal import Decimal
 from typing import Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
+from app.core.config import settings
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
@@ -18,6 +19,27 @@ from app.graphs.interview_graph import interview_graph, interview_graph_stream
 
 
 class InterviewService:
+
+    @staticmethod
+    async def _assert_concurrent_limit(db: AsyncSession, user_id: int) -> None:
+        """限制单个用户「同时进行中」的面试数量。
+
+        必须在调用 AI 生成题目之前检查：否则每次超限请求都会先白花一次 LLM 调用，
+        然后才把请求拒掉。用户放弃的面试会一直停在 in_progress，所以提示里要给出去路
+        （完成它，或从列表里删掉）。
+        """
+        count = await db.scalar(
+            select(func.count())
+            .select_from(Interview)
+            .where(Interview.user_id == user_id, Interview.status == "in_progress")
+        )
+        if (count or 0) >= settings.MAX_CONCURRENT_INTERVIEWS:
+            raise ValidationError(
+                message=(
+                    f"同时进行的面试最多 {settings.MAX_CONCURRENT_INTERVIEWS} 场，"
+                    "请先完成或删除已有的面试"
+                )
+            )
 
     @staticmethod
     async def start_interview(
@@ -43,6 +65,9 @@ class InterviewService:
             raise ValidationError(message="简历尚未解析完成")
 
         parsed_resume = safe_parse_json(resume.parsed_content, {})
+
+        # 并发上限：放在 AI 出题之前，避免超限请求白花一次 LLM 调用
+        await InterviewService._assert_concurrent_limit(db, user_id)
 
         # 通过 AI 生成面试题目
         questions = await AIService.generate_questions(
@@ -517,6 +542,9 @@ class InterviewService:
         experience = await db.get(Experience, experience_id)
         if not experience or experience.status != "published":
             raise NotFoundError(message="面经不存在")
+
+        # 并发上限：同样放在 AI 出题之前
+        await InterviewService._assert_concurrent_limit(db, user_id)
 
         # 通过 AI 生成面试题
         questions = await AIService.generate_questions_from_experience(
