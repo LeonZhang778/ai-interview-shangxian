@@ -17,7 +17,6 @@
     "bytemd": "^1.22.0",
     "echarts": "^6.1.0",
     "highlight.js": "^11.11.1",
-    "html2canvas": "^1.4.1",
     "marked": "^18.0.5",
     "pinia": "^2.1.0",
     "qrcode": "^1.5.4",

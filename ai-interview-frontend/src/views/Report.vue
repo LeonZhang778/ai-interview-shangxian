@@ -94,68 +94,6 @@
         </div>
       </div>
 
-      <!-- 分享卡片（隐藏，用于截图） -->
-      <div ref="shareCard" class="share-card" v-if="report">
-        <!-- 背景装饰 -->
-        <div class="share-bg-circle share-bg-1"></div>
-        <div class="share-bg-circle share-bg-2"></div>
-
-        <!-- 头部品牌 -->
-        <div class="share-brand">
-          <div class="share-logo">
-            <img src="/site-logo.png" class="share-logo-icon" alt="智面 AI" />
-            <span class="share-logo-text">智面 AI</span>
-          </div>
-          <div class="share-tag">面试评估报告</div>
-        </div>
-
-        <!-- 分数区域 -->
-        <div class="share-score-section">
-          <div class="share-score-ring">
-            <svg viewBox="0 0 120 120" class="share-score-svg">
-              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
-              <circle cx="60" cy="60" r="52" fill="none" stroke="url(#scoreGrad)" stroke-width="8"
-                stroke-linecap="round" stroke-dasharray="326.7"
-                :stroke-dashoffset="326.7 - (326.7 * (data.overall_score || 0) / 10)"
-                transform="rotate(-90 60 60)"/>
-              <defs>
-                <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#fbbf24"/>
-                  <stop offset="100%" stop-color="#f59e0b"/>
-                </linearGradient>
-              </defs>
-            </svg>
-            <div class="share-score-inner">
-              <span class="share-score-num">{{ data.overall_score }}</span>
-              <span class="share-score-unit">/10</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 信息区 -->
-        <div class="share-info">
-          <div class="share-position">{{ data.target_position || '模拟面试' }}</div>
-          <div class="share-rec" v-if="report.hire_recommendation">{{ report.hire_recommendation }}</div>
-        </div>
-
-        <!-- 亮点摘要 -->
-        <div class="share-highlights" v-if="report.strengths?.length">
-          <div class="share-highlight-item" v-for="(s, i) in report.strengths.slice(0, 2)" :key="i">
-            <span class="share-highlight-dot"></span>
-            <span>{{ s }}</span>
-          </div>
-        </div>
-
-        <!-- 底部二维码 + 品牌 -->
-        <div class="share-bottom">
-          <div class="share-qr" ref="qrCanvas"></div>
-          <div class="share-bottom-info">
-            <div class="share-bottom-title">扫码查看完整报告</div>
-            <div class="share-bottom-sub">免费体验 AI 模拟面试</div>
-          </div>
-        </div>
-      </div>
-
       <!-- 分享链接面板 -->
       <div class="card share-link-panel" style="margin-top:16px">
         <h3 style="margin-bottom:12px;color:var(--accent-light)">🔗 分享报告</h3>
@@ -213,8 +151,8 @@
         <button @click.stop="handleExportDocx" class="btn-export-docx" style="padding:10px 24px;border-radius:8px;margin-right:12px" :disabled="exportStatus === 'loading'">
           {{ exportStatus === 'loading' ? '导出中...' : '导出 Word' }}
         </button>
-        <button @click.stop="handleShareImage" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px" :disabled="shareStatus === 'generating'">
-          {{ shareStatus === 'generating' ? '生成图片中...' : '截图分享' }}
+        <button @click.stop="handleShowQRCode" class="btn-share" style="padding:10px 24px;border-radius:8px;margin-right:12px" :disabled="shareStatus === 'generating'">
+          {{ shareStatus === 'generating' ? '生成中...' : '生成二维码分享' }}
         </button>
         <router-link to="/resume/upload" class="btn-primary" style="display:inline-block;padding:10px 24px;color:white;border-radius:8px;margin-right:12px">
           再来一次
@@ -225,20 +163,19 @@
         <p v-if="exportMessage" :class="['note-msg', exportMessageType]">{{ exportMessage }}</p>
       </div>
 
-      <!-- 截图预览弹窗 -->
+      <!-- 二维码分享弹窗 -->
       <Teleport to="body">
-        <div v-if="previewImage" class="preview-overlay" @click.self="closePreview">
-          <div class="preview-modal">
+        <div v-if="qrCodeDataUrl" class="preview-overlay" @click.self="closeQRCode">
+          <div class="preview-modal qrcode-modal">
             <div class="preview-header">
-              <span>截图预览</span>
-              <button class="preview-close" @click="closePreview">&times;</button>
+              <span>扫码查看报告</span>
+              <button class="preview-close" @click="closeQRCode">&times;</button>
             </div>
             <div class="preview-body">
-              <img :src="previewImage" class="preview-img" alt="截图预览" />
+              <img :src="qrCodeDataUrl" class="qrcode-img" alt="报告分享二维码" />
             </div>
             <div class="preview-footer">
-              <button class="btn-copy" @click="copyPreviewImage">复制到剪贴板</button>
-              <a :href="previewImage" download="interview-report.png" class="btn-primary" style="display:inline-block;padding:10px 20px;color:white;border-radius:8px;text-decoration:none;font-size:14px">下载图片</a>
+              <a :href="qrCodeDataUrl" download="interview-report-qrcode.png" class="btn-primary" style="display:block;padding:10px 20px;color:white;border-radius:8px;text-decoration:none;font-size:14px;text-align:center">下载二维码</a>
             </div>
           </div>
         </div>
@@ -266,14 +203,12 @@ const interviewId = route.params.id
 const data = ref(null)
 const report = ref(null)
 const loading = ref(true)
-const shareCard = ref(null)
-const qrCanvas = ref(null)
+const qrCodeDataUrl = ref(null)
 const shareStatus = ref('idle')
 const shareLinkStatus = ref('idle')
 const shareToken = ref(null)
 const isShared = ref(false)
 const copyStatus = ref('idle')
-const previewImage = ref(null)
 const noteStatus = ref('idle')
 const noteMessage = ref('')
 const noteMessageType = ref('')
@@ -398,27 +333,25 @@ async function loadRecommendNotes() {
   }
 }
 
-async function handleShareImage() {
+async function handleShowQRCode() {
   if (shareStatus.value === 'generating') return
   shareStatus.value = 'generating'
   try {
     let token = shareToken.value
-    // 截图分享只获取二维码所需的公开 token，不改变“分享链接”面板状态。
+    // 二维码分享需要公开 token 才能让对方扫码访问；没有就先创建。
+    // 注意：这里不写回 shareToken/isShared —— 「分享链接」面板有独立的显式开关，
+    // 用户没点那边就不该被这边的操作隐式改成「已分享」。
     if (!token) {
       const res = await shareInterview(interviewId)
       token = res.share_token
     }
 
-    await generateQRCode(`${window.location.origin}/shared/${token}`)
-
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(shareCard.value, {
-      backgroundColor: '#4f46e5',
-      scale: 2
+    qrCodeDataUrl.value = await QRCode.toDataURL(`${window.location.origin}/shared/${token}`, {
+      width: 480,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: { dark: '#111827', light: '#ffffff' }
     })
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-    const url = URL.createObjectURL(blob)
-    previewImage.value = url
     shareStatus.value = 'idle'
   } catch (e) {
     console.error(e)
@@ -426,43 +359,8 @@ async function handleShareImage() {
   }
 }
 
-function closePreview() {
-  if (previewImage.value) {
-    URL.revokeObjectURL(previewImage.value)
-    previewImage.value = null
-  }
-}
-
-async function copyPreviewImage() {
-  if (!previewImage.value) return
-  try {
-    const resp = await fetch(previewImage.value)
-    const blob = await resp.blob()
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-    copyStatus.value = 'done'
-    setTimeout(() => { copyStatus.value = 'idle' }, 2000)
-  } catch {
-    const a = document.createElement('a')
-    a.href = previewImage.value
-    a.download = 'interview-report.png'
-    a.click()
-  }
-}
-
-async function generateQRCode(text) {
-  const container = qrCanvas.value
-  if (!container || !text) return
-  container.innerHTML = ''
-
-  const canvas = document.createElement('canvas')
-  await QRCode.toCanvas(canvas, text, {
-    width: 160,
-    margin: 2,
-    errorCorrectionLevel: 'H',
-    color: { dark: '#111827', light: '#ffffff' }
-  })
-  canvas.setAttribute('aria-label', '分享报告二维码')
-  container.appendChild(canvas)
+function closeQRCode() {
+  qrCodeDataUrl.value = null
 }
 async function handleShareLink() {
   if (shareLinkStatus.value === 'loading') return
@@ -695,191 +593,6 @@ ul li::before {
   transition: width 0.5s ease;
 }
 
-/* Share card */
-.share-card {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  width: 420px;
-  padding: 34px 30px 28px;
-  background: linear-gradient(145deg, #111827 0%, #172554 48%, #312e81 100%);
-  color: white;
-  text-align: center;
-  border-radius: 24px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  overflow: hidden;
-}
-.share-bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-}
-.share-bg-1 {
-  width: 200px; height: 200px;
-  top: -60px; right: -40px;
-  background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);
-}
-.share-bg-2 {
-  width: 150px; height: 150px;
-  bottom: 20px; left: -30px;
-  background: radial-gradient(circle, rgba(236,72,153,0.2) 0%, transparent 70%);
-}
-.share-brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  position: relative;
-}
-.share-logo {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.share-logo-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-.share-logo-text {
-  font-size: 16px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #a78bfa, #60a5fa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.share-tag {
-  font-size: 11px;
-  padding: 4px 10px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 20px;
-  color: rgba(255,255,255,0.7);
-}
-.share-score-section {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-  position: relative;
-}
-.share-score-ring {
-  position: relative;
-  width: 120px;
-  height: 120px;
-}
-.share-score-svg {
-  width: 100%;
-  height: 100%;
-}
-.share-score-inner {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-.share-score-num {
-  font-size: 36px;
-  font-weight: 800;
-  line-height: 1;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.share-score-unit {
-  font-size: 13px;
-  color: rgba(255,255,255,0.5);
-  margin-top: 2px;
-}
-.share-info {
-  margin-bottom: 16px;
-  position: relative;
-}
-.share-position {
-  font-size: 18px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.95);
-  margin-bottom: 8px;
-}
-.share-rec {
-  font-size: 13px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(236,72,153,0.2));
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 20px;
-  padding: 5px 16px;
-  display: inline-block;
-  color: rgba(255,255,255,0.85);
-}
-.share-highlights {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  text-align: left;
-  position: relative;
-}
-.share-highlight-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.75);
-  line-height: 1.5;
-  margin-bottom: 4px;
-}
-.share-highlight-item:last-child { margin-bottom: 0; }
-.share-highlight-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #a78bfa;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-.share-bottom {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  position: relative;
-}
-.share-qr {
-  width: 112px;
-  height: 112px;
-  background: white;
-  border-radius: 14px;
-  padding: 8px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 10px 24px rgba(0,0,0,.24);
-}
-.share-qr canvas {
-  display: block;
-  width: 96px !important;
-  height: 96px !important;
-}
-.share-bottom-info {
-  text-align: left;
-}
-.share-bottom-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.9);
-  margin-bottom: 3px;
-}
-.share-bottom-sub {
-  font-size: 11px;
-  color: rgba(255,255,255,0.5);
-}
-
 .btn-share {
   background: linear-gradient(135deg, #f59e0b, #f97316);
   color: white;
@@ -1088,7 +801,16 @@ ul li::before {
 }
 .preview-close:hover { color: var(--text-primary); background: var(--border-default); }
 .preview-body { padding: 22px; display: flex; justify-content: center; background: var(--bg-input); }
-.preview-img { max-width: 100%; max-height: 62vh; border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,.35); }
+/* 二维码弹窗：只展示一个二维码，不做整页卡片截图（原先是 html2canvas 渲染 420px 卡片）。 */
+.qrcode-modal { max-width: 400px; width: min(400px, 100%); }
+.qrcode-img {
+  width: 260px;
+  height: 260px;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.35);
+}
 .preview-footer { display: flex; gap: 12px; padding: 18px 22px; border-top: 1px solid var(--border-default); justify-content: stretch; }
 .preview-footer > * { flex: 1; text-align: center; }
 @media (max-width: 520px) {
