@@ -10,6 +10,7 @@ import logging
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -239,7 +240,8 @@ async def save_results_node(state: dict) -> dict:
 
     # 幂等守卫：同一题（interview_id + question_index）已存在评分则跳过写入，
     # 避免网络重试导致的重复存分、重复生成报告。
-    # 依赖 thread_id + 检查点确保断点续传只续跑未完成节点；此处兜底防止重复提交。
+    # 注意这是「先查后写」，并发下本身不是原子操作（两个请求可能同时查不到），
+    # 真正的兜底是 interview_messages 上的唯一索引 uq_interview_message_question。
     idem_query = select(InterviewMessage).where(
         InterviewMessage.interview_id == interview_id,
         InterviewMessage.role == "candidate",
@@ -378,7 +380,32 @@ async def save_results_node(state: dict) -> dict:
         )
         db.add(interviewer_msg)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # 并发重复提交：唯一约束 uq_interview_message_question 拦下了后到的那个请求。
+        # 回滚后按「本题已存在」返回，让前端拿到与首次提交一致的结果，而不是 500。
+        # 注意：回滚会过期 ORM 对象，异步下再读它的属性会触发隐式 IO 报错，
+        # 所以下面重新查一次，不复用上面的 interview / candidate_msg。
+        await db.rollback()
+        existing = await _load_answered_message(db, interview_id, current_index)
+        if existing is None:
+            raise
+        logger.warning(
+            "[save_results] 并发重复提交被唯一约束拦下，按幂等返回："
+            f"interview_id={interview_id} index={current_index}"
+        )
+        return {
+            "result": {
+                "score": float(existing.score) if existing.score is not None else 0.0,
+                "feedback": existing.feedback or "",
+                "question_index": current_index,
+                "is_finished": is_finished,
+                "next_question": state.get("next_question"),
+                "idempotent": True,
+            },
+            "overall_score": 0.0,
+        }
 
     # 面试完成通知
     if is_finished:
@@ -434,6 +461,25 @@ async def save_results_node(state: dict) -> dict:
         result["overall_score"] = overall_score
 
     return {"result": result, "overall_score": overall_score}
+
+
+async def _load_answered_message(
+    db: AsyncSession,
+    interview_id: int,
+    question_index: int,
+) -> InterviewMessage | None:
+    """读取某题已存在的候选人回答（唯一约束拦下并发重复提交后用它组装幂等结果）。"""
+    result = await db.execute(
+        select(InterviewMessage)
+        .where(
+            InterviewMessage.interview_id == interview_id,
+            InterviewMessage.role == "candidate",
+            InterviewMessage.question_index == question_index,
+        )
+        .order_by(InterviewMessage.id.desc())
+        .limit(1)
+    )
+    return result.scalars().first()
 
 
 async def _get_existing_answer_result(

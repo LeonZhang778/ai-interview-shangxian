@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     sys.modules.setdefault("passlib", passlib_module)
     sys.modules.setdefault("passlib.context", context_module)
 
-from sqlalchemy.exc import MultipleResultsFound
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from sqlalchemy.sql.elements import BindParameter
 
 from app.graphs.nodes.interview_nodes import evaluate_node, save_results_node
@@ -355,3 +355,122 @@ def test_save_results_duplicate_answer_does_not_advance_again():
     assert result["result"]["idempotent"] is True
     assert result["result"]["question_index"] == 0
     assert result["result"]["next_question"] == "Q2"
+
+
+def _stub_report_generation(monkeypatch):
+    """替换真实的报告生成调用。
+
+    不 stub 的话会真的去请求 LLM：测试环境连不上，框架会重试并把整条用例拖到 20 秒以上，
+    让「唯一约束冲突」这条纯逻辑用例变成一个依赖网络的慢用例。
+    """
+    async def _fake_generate_report(parsed_resume, target_position, questions_and_scores):
+        return {"summary": "ok", "strengths": [], "weaknesses": [], "suggestions": []}
+
+    monkeypatch.setattr(AIService, "generate_report", _fake_generate_report)
+
+
+class _ConflictDb(_FakeDb):
+    """模拟「并发重复提交被唯一约束拦下」。
+
+    真实时序：两个请求先各自跑完幂等守卫（都没查到记录），其中一个先提交成功，
+    另一个提交时撞上 uq_interview_message_question 约束。因此 fake 需要在**冲突发生时**
+    才让抢先生成的那条记录变得可见 —— 提前可见会让守卫提前返回，根本走不到 commit。
+    """
+
+    def __init__(self, interview, existing_rows, late_row=None):
+        super().__init__(interview, existing_rows)
+        self._late_row = late_row
+        self.rollbacks = 0
+
+    async def commit(self):
+        self.commits += 1
+        if self.commits == 1:
+            if self._late_row is not None:
+                self.scored_messages.append(self._late_row)
+            raise IntegrityError(
+                "INSERT INTO interview_messages ...", {},
+                Exception("duplicate key value violates unique constraint"),
+            )
+
+    async def rollback(self):
+        self.rollbacks += 1
+        # 真实会话回滚会丢弃未提交的新增对象，这里同样清掉，
+        # 避免「插入失败的那条」留在结果里干扰后续查询
+        self.added.clear()
+
+
+def _finished_state(db, interview):
+    return {
+        "db": db,
+        "interview_id": interview.id,
+        "user_id": interview.user_id,
+        "current_index": 2,
+        "is_finished": True,
+        "score": 8.0,
+        "feedback": "F3",
+        "questions": interview.questions_data,
+        "answer": "A3",
+        "parsed_resume": {},
+        "target_position": "后端开发",
+        "chat_history": [],
+        "next_question": None,
+    }
+
+
+def _conflict_interview_and_rows():
+    interview = Interview(
+        id=1,
+        user_id=10,
+        target_position="后端开发",
+        status="in_progress",
+        current_question_index=2,
+        questions_data=[{"question": "Q1"}, {"question": "Q2"}, {"question": "Q3"}],
+    )
+    prior = [
+        InterviewMessage(
+            interview_id=1, role="candidate", content="A1",
+            question_index=0, score=Decimal("6.0"), feedback="F1",
+        ),
+        InterviewMessage(
+            interview_id=1, role="candidate", content="A2",
+            question_index=1, score=Decimal("7.0"), feedback="F2",
+        ),
+    ]
+    late = InterviewMessage(
+        interview_id=1, role="candidate", content="A3",
+        question_index=2, score=Decimal("9.0"), feedback="对方先写入的评语",
+    )
+    return interview, prior, late
+
+
+def test_save_results_unique_violation_returns_idempotent_result(monkeypatch):
+    """唯一约束拦下并发重复提交时，必须回滚并按幂等返回，而不是把 500 抛给前端。"""
+    _stub_post_commit_side_effects(monkeypatch)
+    _stub_report_generation(monkeypatch)
+    interview, prior, late = _conflict_interview_and_rows()
+    db = _ConflictDb(interview, prior, late_row=late)
+
+    result = asyncio.run(save_results_node(_finished_state(db, interview)))
+
+    assert db.rollbacks == 1
+    assert result["result"]["idempotent"] is True
+    assert result["result"]["score"] == 9.0
+    assert result["result"]["feedback"] == "对方先写入的评语"
+    assert result["result"]["question_index"] == 2
+    # 本次请求算出的综合分（22/3）不得外泄：它对应的写入已经被回滚了
+    assert result["overall_score"] == 0.0
+
+
+def test_save_results_unique_violation_without_existing_row_reraises(monkeypatch):
+    """冲突后却查不到记录（例如约束来自别处）时，必须把异常抛出去，不能伪造成功。"""
+    _stub_post_commit_side_effects(monkeypatch)
+    _stub_report_generation(monkeypatch)
+    interview, prior, _ = _conflict_interview_and_rows()
+    db = _ConflictDb(interview, prior, late_row=None)
+
+    try:
+        asyncio.run(save_results_node(_finished_state(db, interview)))
+    except IntegrityError:
+        pass
+    else:
+        raise AssertionError("期望抛出 IntegrityError，实际静默返回")

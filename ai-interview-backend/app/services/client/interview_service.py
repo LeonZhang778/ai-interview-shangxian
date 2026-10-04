@@ -9,16 +9,58 @@ from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
+from app.db.session import transaction
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
 from app.utils.utils import safe_parse_json
 
 logger = logging.getLogger(__name__)
 
-# LangGraph 面试状态机（模块级单例，已挂载检查点与可观测性）
+# LangGraph 面试状态机（模块级单例，已挂载节点级可观测性）
 from app.graphs.interview_graph import interview_graph, interview_graph_stream
 
 
 class InterviewService:
+
+    @staticmethod
+    def _first_question_text(questions: Any) -> str:
+        """校验 AI 出题结果并取出首题文本。
+
+        AI 偶尔会返回空数组、纯字符串或 {"questions": [...]} 这类非预期形状。
+        以前是建完面试记录（已 commit）之后才取 questions[0]["question"]，
+        异常发生在落库之后 —— 于是留下一条没有问题、永远无法继续的 in_progress 面试，
+        它占着并发额度，用户只能自己去列表里删掉。现在改成在建记录之前就失败。
+        """
+        if not isinstance(questions, list) or not questions:
+            raise ValidationError(message="题目生成失败，请重试")
+        first = questions[0]
+        text = first.get("question") if isinstance(first, dict) else first
+        if not isinstance(text, str) or not text.strip():
+            raise ValidationError(message="题目生成失败，请重试")
+        return text
+
+    @staticmethod
+    async def _persist_new_interview(
+        db: AsyncSession,
+        interview: Interview,
+        first_question: str,
+    ) -> None:
+        """面试记录与首题消息在同一个事务里落库。
+
+        此前是两次 commit（先建面试记录刷新出主键，再写首题消息）。两次之间进程若中断
+        —— 部署重启、内存不足被 kill（服务器只有 1.6Gi 内存）—— 就会留下上面那种孤儿面试。
+        """
+        async with transaction(db):
+            db.add(interview)
+            # flush 而非 commit：先拿到自增主键给首题消息用，但事务不结束
+            await db.flush()
+            db.add(
+                InterviewMessage(
+                    interview_id=interview.id,
+                    role="interviewer",
+                    content=first_question,
+                    question_index=0,
+                )
+            )
 
     @staticmethod
     async def _assert_concurrent_limit(db: AsyncSession, user_id: int) -> None:
@@ -77,7 +119,10 @@ class InterviewService:
             count=total_questions
         )
 
-        # 创建面试记录
+        # 先校验题目形状，再建记录：顺序反了会产生孤儿面试
+        first_question = InterviewService._first_question_text(questions)
+
+        # 创建面试记录（与首题消息同事务落库）
         interview = Interview(
             user_id=user_id,
             resume_id=resume_id,
@@ -88,20 +133,7 @@ class InterviewService:
             questions_data=questions,
             status="in_progress"
         )
-        db.add(interview)
-        await db.commit()
-        await db.refresh(interview)
-
-        # 保存第一道题作为面试官消息
-        first_question = questions[0]["question"]
-        msg = InterviewMessage(
-            interview_id=interview.id,
-            role="interviewer",
-            content=first_question,
-            question_index=0
-        )
-        db.add(msg)
-        await db.commit()
+        await InterviewService._persist_new_interview(db, interview, first_question)
 
         return {
             "interview_id": interview.id,
@@ -134,7 +166,8 @@ class InterviewService:
         if interview.status == "completed":
             raise ValidationError(message="面试已结束")
 
-        # 断点续传/幂等：以 面试ID + 当前题号 作为 thread_id，确保同题重试可复用检查点
+        # thread_id 沿用「面试ID:题号」。当前编译图未挂 checkpointer，该配置是惰性的；
+        # 幂等由入口的 _get_duplicate_submission_result 与 save_results_node 的守卫保证。
         thread_id = f"iv:{interview_id}:{interview.current_question_index}"
 
         # 执行图
@@ -199,7 +232,7 @@ class InterviewService:
             yield f"data: {json.dumps({'type': 'error', 'content': '面试已结束'})}\n\n"
             return
 
-        # 断点续传/幂等：以 面试ID + 当前题号 作为 thread_id
+        # thread_id 同上（惰性配置，见 submit_answer）
         thread_id = f"iv:{interview_id}:{interview.current_question_index}"
 
         # 流式执行图（evaluate 节点内部 LLM token 通过 queue 实时输出）
@@ -555,7 +588,10 @@ class InterviewService:
             count=question_count
         )
 
-        # 创建面试记录
+        # 先校验题目形状，再建记录（total_questions 也依赖它是非空列表）
+        first_question = InterviewService._first_question_text(questions)
+
+        # 创建面试记录（与首题消息同事务落库）
         interview = Interview(
             user_id=user_id,
             resume_id=None,
@@ -567,20 +603,7 @@ class InterviewService:
             questions_data=questions,
             status="in_progress"
         )
-        db.add(interview)
-        await db.commit()
-        await db.refresh(interview)
-
-        # 保存第一道题
-        first_question = questions[0]["question"]
-        msg = InterviewMessage(
-            interview_id=interview.id,
-            role="interviewer",
-            content=first_question,
-            question_index=0
-        )
-        db.add(msg)
-        await db.commit()
+        await InterviewService._persist_new_interview(db, interview, first_question)
 
         return {
             "interview_id": interview.id,

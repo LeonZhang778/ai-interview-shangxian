@@ -122,7 +122,7 @@ def _route_after_evaluate(state: dict) -> str:
 
 
 def build_interview_graph():
-    """构建面试流程图（带条件边路由 + 检查点）"""
+    """构建面试流程图（带条件边路由）"""
     graph = StateGraph(InterviewState)
 
     # 用 trace_node 包装，注入节点级可观测性
@@ -157,7 +157,7 @@ def build_interview_graph():
     return graph.compile()
 
 
-# 模块级单例：submit 与 stream 共用同一编译图（检查点状态按 thread_id 隔离）
+# 模块级单例：submit 与 stream 共用同一编译图（无状态，各次调用互不影响）
 interview_graph = build_interview_graph()
 
 
@@ -171,7 +171,8 @@ async def interview_graph_stream(input_data: dict, thread_id: str = "default"):
 
     Args:
         input_data: 图输入状态
-        thread_id:  断点续传/幂等用的会话标识（默认 iv:{interview_id}:{question_index}）
+        thread_id:  会话标识（iv:{interview_id}:{question_index}）。当前编译图未挂
+                    checkpointer，该配置是惰性的，仅保留给将来可能引入的持久化检查点用。
 
     事件格式：
       {"type": "chunk", "content": "..."}     ← LLM token（逐字）

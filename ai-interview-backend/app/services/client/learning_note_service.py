@@ -14,6 +14,7 @@ from app.models.notebook import Notebook
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
 from app.prompts.learning_note import NOTE_SUMMARIZE_PROMPT, NOTE_TAG_SUGGEST_PROMPT
 from app.services.client.search_backend_service import search_backend_service
+from app.utils.counters import bump_counter
 
 logger = logging.getLogger(__name__)
 
@@ -326,12 +327,11 @@ class LearningNoteService:
         if not is_owner and not is_public:
             raise NotFoundError(message="笔记不存在")
 
-        # 非作者访问时增加浏览量
+        # 非作者访问时增加浏览量（数据库端原子自增，并发浏览不会互相覆盖）
         if not is_owner:
-            note.view_count = (note.view_count or 0) + 1
+            await bump_counter(db, LearningNote, note_id, LearningNote.view_count, 1)
             await db.commit()
-            # commit 会过期所有属性，async session 下再次访问会触发
-            # lazy reload 并抛 MissingGreenlet，因此必须显式 refresh
+            # 显式 refresh，保证下面的返回值读到的是刚写入的浏览量
             await db.refresh(note)
 
         return {

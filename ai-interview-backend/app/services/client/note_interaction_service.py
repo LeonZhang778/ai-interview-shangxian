@@ -14,6 +14,7 @@ from app.models.note_interaction import (
     PublicNoteLike,
 )
 from app.services.client.notification_service import notification_service
+from app.utils.counters import bump_counter
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +53,11 @@ class NoteInteractionService:
 
         if existing:
             await db.delete(existing)
-            note.like_count = max(0, (note.like_count or 0) - 1)
+            delta = -1
             liked = False
         else:
             db.add(PublicNoteLike(note_id=note_id, user_id=user_id))
-            note.like_count = (note.like_count or 0) + 1
+            delta = 1
             liked = True
             if note.user_id != user_id:
                 await notification_service.create_notification(
@@ -70,8 +71,10 @@ class NoteInteractionService:
                     commit=False,
                 )
 
+        # 计数在数据库端原子增减：并发点赞不会互相覆盖
+        like_count = await bump_counter(db, LearningNote, note_id, LearningNote.like_count, delta)
         await db.commit()
-        return {"liked": liked, "like_count": note.like_count or 0}
+        return {"liked": liked, "like_count": like_count}
 
     @staticmethod
     async def toggle_collect(db: AsyncSession, note_id: int, user_id: int) -> Dict:
@@ -86,11 +89,11 @@ class NoteInteractionService:
 
         if existing:
             await db.delete(existing)
-            note.collect_count = max(0, (note.collect_count or 0) - 1)
+            delta = -1
             collected = False
         else:
             db.add(PublicNoteCollection(note_id=note_id, user_id=user_id))
-            note.collect_count = (note.collect_count or 0) + 1
+            delta = 1
             collected = True
             if note.user_id != user_id:
                 await notification_service.create_notification(
@@ -104,8 +107,9 @@ class NoteInteractionService:
                     commit=False,
                 )
 
+        collect_count = await bump_counter(db, LearningNote, note_id, LearningNote.collect_count, delta)
         await db.commit()
-        return {"collected": collected, "collect_count": note.collect_count or 0}
+        return {"collected": collected, "collect_count": collect_count}
 
     @staticmethod
     async def get_interaction_status(db: AsyncSession, note_id: int, user_id: int) -> Dict:

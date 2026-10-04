@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload, joinedload
 from app.models.experience import Experience, ExperienceTag, UserCollection, UserLike, ExperienceComment
 from app.models.user import User
 from app.exceptions.http_exceptions import NotFoundError, AuthorizationError
+from app.utils.counters import bump_counter
 
 logger = logging.getLogger(__name__)
 
@@ -106,8 +107,8 @@ class ExperienceService:
         if not experience:
             raise NotFoundError(message="面经不存在")
 
-        # 增加阅读量
-        experience.view_count += 1
+        # 增加阅读量：数据库端原子自增，并发浏览不会互相覆盖
+        view_count = await bump_counter(db, Experience, experience_id, Experience.view_count, 1)
         await db.commit()
 
         # 获取作者信息
@@ -172,7 +173,7 @@ class ExperienceService:
             "round": experience.round,
             "content": experience.content,
             "summary": experience.summary,
-            "view_count": experience.view_count,
+            "view_count": view_count,
             "like_count": experience.like_count,
             "collect_count": experience.collect_count,
             "is_anonymous": experience.is_anonymous,
@@ -203,15 +204,17 @@ class ExperienceService:
 
         if existing:
             await db.delete(existing)
-            experience.like_count = max(0, experience.like_count - 1)
+            delta = -1
             liked = False
         else:
             db.add(UserLike(user_id=user_id, experience_id=experience_id))
-            experience.like_count += 1
+            delta = 1
             liked = True
 
+        # 计数在数据库端原子增减：并发点赞不会互相覆盖，列值为 NULL 也不会抛 TypeError
+        like_count = await bump_counter(db, Experience, experience_id, Experience.like_count, delta)
         await db.commit()
-        return {"liked": liked, "like_count": experience.like_count}
+        return {"liked": liked, "like_count": like_count}
 
     @staticmethod
     async def collect_experience(
@@ -235,20 +238,21 @@ class ExperienceService:
         if existing:
             # 取消收藏
             await db.delete(existing)
-            experience.collect_count = max(0, experience.collect_count - 1)
+            delta = -1
             collected = False
         else:
             # 添加收藏
             collection = UserCollection(user_id=user_id, experience_id=experience_id)
             db.add(collection)
-            experience.collect_count += 1
+            delta = 1
             collected = True
 
+        collect_count = await bump_counter(db, Experience, experience_id, Experience.collect_count, delta)
         await db.commit()
 
         return {
             "collected": collected,
-            "collect_count": experience.collect_count
+            "collect_count": collect_count
         }
 
     @staticmethod
