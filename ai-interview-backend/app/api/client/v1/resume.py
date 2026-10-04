@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.api.client.deps import get_current_user
+from app.api.rate_limit import check_heavy_ai_rate_limit
 from app.services.client.resume_service import resume_service
 from app.schemas.response import ApiResponse
 from app.models.user import User
@@ -18,6 +19,9 @@ async def upload_resume(
     db: AsyncSession = Depends(get_db)
 ):
     """上传简历（PDF / DOCX / TXT / MD）并触发 AI 解析"""
+    # 限流放在读取文件之前：既防刷解析，也避免有人反复上传大文件白占带宽与内存
+    await check_heavy_ai_rate_limit(current_user)
+
     # 验证文件类型（与 document_parser 对齐）
     filename = file.filename or ""
     if not filename.lower().endswith((".pdf", ".docx", ".txt", ".md", ".text")):

@@ -150,9 +150,13 @@ class Settings(BaseSettings):
     # 面试会话缓存
     INTERVIEW_SESSION_TTL: int = 7200
 
-    # API 限流
-    RATE_LIMIT_REQUESTS: int = 30
-    RATE_LIMIT_WINDOW: int = 60
+    # API 限流（每个用户的滑动窗口）。按单次调用的成本分档 —— 成本越高、窗口越严。
+    # 成本参考：简历解析要跑长文本、可能还要 OCR 兜底；生图要消耗外部服务配额；
+    # 面试答题 / 笔记摘要 / 标签推荐 / 面经出题各自只跑一次 LLM。
+    RATE_LIMIT_REQUESTS: int = 30        # 常规档
+    RATE_LIMIT_WINDOW: int = 60          # 所有档位共用的窗口长度（秒）
+    RATE_LIMIT_HEAVY_REQUESTS: int = 10  # 高成本档：简历解析
+    RATE_LIMIT_IMAGE_REQUESTS: int = 5   # 生图档：消耗外部 API 配额
 
     # 媒体工具配置
     MEDIA_UPLOAD_DIR: str = "uploads/media"

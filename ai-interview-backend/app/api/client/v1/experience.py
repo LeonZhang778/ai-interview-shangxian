@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.client.deps import get_current_user
+from app.api.rate_limit import check_ai_rate_limit
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.response import ApiResponse
@@ -243,6 +244,8 @@ async def start_practice(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    # 该接口会调用 AI 依据面经现场出题，按常规档限流
+    await check_ai_rate_limit(current_user)
     result = await interview_service.start_practice_from_experience(
         db=db,
         user_id=current_user.id,

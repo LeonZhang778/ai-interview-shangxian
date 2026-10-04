@@ -8,6 +8,7 @@ from app.schemas.response import ApiResponse
 from app.models.user import User
 from app.exceptions.http_exceptions import APIException
 from app.services.common.setting_service import get_setting_bool
+from app.api.rate_limit import check_image_rate_limit
 
 router = APIRouter()
 
@@ -27,6 +28,8 @@ async def generate_image(
             message="该生图功能已关闭请稍后再试~",
             status_code=400,
         )
+    # 限流放在建任务之前：生图会消耗外部服务配额，不能靠「建了 DB 记录再拒」兜底
+    await check_image_rate_limit(current_user)
     result = await image_service.create_task(
         db=db,
         user_id=current_user.id,

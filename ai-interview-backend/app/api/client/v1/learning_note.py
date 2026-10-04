@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.client.deps import get_current_user, get_current_user_optional
+from app.api.rate_limit import check_ai_rate_limit
 from app.db.session import get_db
 from app.models.user import User
 from app.models.learning_note import LearningNote
@@ -231,6 +232,7 @@ async def generate_note_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """生成或获取笔记的 AI 摘要（含三级要点）"""
+    await check_ai_rate_limit(current_user)
     result = await learning_note_service.generate_summary(
         db=db, note_id=note_id, user_id=current_user.id, force=force
     )
@@ -245,6 +247,7 @@ async def suggest_note_tags(
     db: AsyncSession = Depends(get_db),
 ):
     """获取 AI 推荐的标签（不写入笔记，仅返回建议）"""
+    await check_ai_rate_limit(current_user)
     result = await learning_note_service.suggest_tags(
         db=db, note_id=note_id, user_id=current_user.id, force=force
     )
