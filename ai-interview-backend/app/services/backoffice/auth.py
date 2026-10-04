@@ -8,6 +8,7 @@ from app.core.security import AuthBase
 from app.core.config import settings
 from app.db.session import transaction
 from app.exceptions.http_exceptions import APIException
+from app.services.common.login_guard import backoffice_login_guard
 
 
 class BackofficeAuthService(AuthBase):
@@ -23,14 +24,21 @@ class BackofficeAuthService(AuthBase):
         return admin
 
     @staticmethod
-    async def login(db: AsyncSession, email: str, password: str) -> Dict:
+    async def login(db: AsyncSession, email: str, password: str, client_ip: Optional[str] = None) -> Dict:
         """管理员登录"""
+        # 先查失败次数：已锁定就直接拒绝。管理端账号一旦被爆破等于交出整个后台
+        await backoffice_login_guard.assert_allowed(email, client_ip)
+
         async with transaction(db):
             admin = await BackofficeAuthService.authenticate_admin(db, email, password)
             if not admin:
+                await backoffice_login_guard.record_failure(email, client_ip)
                 raise APIException(status_code=400, message="Incorrect email or password")
             if not admin.is_active:
                 raise APIException(status_code=400, message="Admin account is inactive")
+
+            # 凭据正确：清零该账号的失败计数
+            await backoffice_login_guard.clear(email)
 
             # 标记旧token为无效
             stmt = update(AdminToken).where(

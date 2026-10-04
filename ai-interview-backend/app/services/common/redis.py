@@ -38,6 +38,18 @@ class RedisClient:
         """删除键"""
         await self.redis.delete(key)
 
+    async def incr_with_ttl(self, key: str, ttl_seconds: int) -> int:
+        """原子自增，并仅在该 key 首次创建时设置过期时间；返回自增后的值。
+
+        用于登录失败计数：自增必须原子（并发的失败请求不能互相覆盖），
+        且 TTL 只在第一次写入时设置 —— 否则每次失败都会续期，计数永远不释放，
+        账号会被永久锁死。
+        """
+        value = await self.redis.incr(key)
+        if value == 1:
+            await self.redis.expire(key, ttl_seconds)
+        return int(value)
+
     async def set_cooldown(self, key: str, ttl_seconds: int):
         """设置冷却时间"""
         await self.redis.setex(key, ttl_seconds, "1")

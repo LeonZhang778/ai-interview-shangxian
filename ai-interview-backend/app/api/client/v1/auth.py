@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.api.client.deps import get_current_user
@@ -14,6 +14,7 @@ from app.services.common.setting_service import get_setting_bool
 from app.schemas.response import ApiResponse
 from app.models.user import User
 from app.utils.file_names import matches_image_signature, safe_uuid_filename
+from app.utils.request import get_client_ip
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -73,11 +74,13 @@ async def verify_email(
 @router.post("/login", response_model=AuthToken)
 async def login(
     login_data: Login,
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """用户登录"""
     result = await client_auth_service.login(
-        db, login_data.email, login_data.password, login_data.remember_me
+        db, login_data.email, login_data.password, login_data.remember_me,
+        client_ip=get_client_ip(request),
     )
     return ApiResponse.success(data=result)
 

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.models.page_view import PageView
 from app.schemas.response import ApiResponse
+from app.utils.request import get_client_ip
 import logging
 import httpx
 
@@ -22,26 +23,11 @@ async def track_pageview(
     background_tasks: BackgroundTasks,
 ):
     """记录页面浏览（公开接口，支持匿名）"""
-    client_ip = _get_client_ip(request)
+    client_ip = get_client_ip(request)
     background_tasks.add_task(
         _save_pageview, body.page_path, body.session_id, client_ip
     )
     return ApiResponse.success(data=None)
-
-
-def _get_client_ip(request: Request) -> Optional[str]:
-    """从请求头/客户端提取真实 IP（兼容反向代理）"""
-    # 优先取 X-Forwarded-For（nginx/Cloudflare 透传）
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        # 取第一个（最原始客户端）
-        return xff.split(",")[0].strip()
-    x_real_ip = request.headers.get("x-real-ip")
-    if x_real_ip:
-        return x_real_ip.strip()
-    if request.client and request.client.host:
-        return request.client.host
-    return None
 
 
 async def _save_pageview(

@@ -158,6 +158,14 @@ class Settings(BaseSettings):
     RATE_LIMIT_HEAVY_REQUESTS: int = 10  # 高成本档：简历解析
     RATE_LIMIT_IMAGE_REQUESTS: int = 5   # 生图档：消耗外部 API 配额
 
+    # 登录失败锁定：按「邮箱」与「来源 IP」两个维度独立计数，固定窗口。
+    # 此前登录失败没有任何次数限制，可以无限次爆破密码。
+    # 说明：成功登录只清零邮箱维度 —— IP 维度可能承载着别人的失败尝试，
+    # 若成功一次就清空，爆破者只要用自己的账号登录成功即可重置 IP 计数。
+    LOGIN_FAIL_MAX_PER_EMAIL: int = 10   # 同一邮箱累计失败上限
+    LOGIN_FAIL_MAX_PER_IP: int = 30      # 同一来源 IP 累计失败上限（跨邮箱撞库）
+    LOGIN_FAIL_WINDOW: int = 600         # 计数窗口（秒），窗口滑过后自动解锁
+
     # 媒体工具配置
     MEDIA_UPLOAD_DIR: str = "uploads/media"
     MEDIA_MAX_FILE_SIZE_MB: int = 500

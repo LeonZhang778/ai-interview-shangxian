@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.db.session import transaction
 from app.exceptions.http_exceptions import APIException
 from app.services.client.redis_verification import redis_verification_service
+from app.services.common.login_guard import client_login_guard
 from app.schedule.jobs.email_tasks import send_verification_email_task, dispatch_email_task
 import re
 import uuid
@@ -274,15 +275,28 @@ class ClientAuthService(AuthBase):
             }
 
     @staticmethod
-    async def login(db: AsyncSession, email: str, password: str, remember_me: bool = False) -> Dict:
+    async def login(
+        db: AsyncSession,
+        email: str,
+        password: str,
+        remember_me: bool = False,
+        client_ip: Optional[str] = None,
+    ) -> Dict:
         """用户登录"""
+        # 先查失败次数：已锁定就直接拒绝，连密码校验都不必做
+        await client_login_guard.assert_allowed(email, client_ip)
+
         async with transaction(db):
             user = await ClientAuthService.authenticate_user(db, email, password)
             if not user:
+                await client_login_guard.record_failure(email, client_ip)
                 raise APIException(status_code=400, message="邮箱或密码错误")
 
             if not user.is_active:
                 raise APIException(status_code=400, message="账号已被禁用")
+
+            # 凭据正确：清零该邮箱的失败计数，避免零散的历史失败把正常用户逐步逼近锁定
+            await client_login_guard.clear(email)
 
             # 清除该用户的所有旧令牌
             await db.execute(

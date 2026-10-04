@@ -8,6 +8,7 @@ from app.services.backoffice.auth import backoffice_auth_service
 from app.schemas.response import ApiResponse
 from app.models.admin import Admin
 from app.common.audit import log_audit
+from app.utils.request import get_client_ip
 
 router = APIRouter()
 
@@ -19,13 +20,16 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     """管理员登录"""
-    result = await backoffice_auth_service.login(db, login_data.email, login_data.password)
+    client_ip = get_client_ip(request)
+    result = await backoffice_auth_service.login(
+        db, login_data.email, login_data.password, client_ip=client_ip
+    )
     # 记录登录日志
     admin_result = await db.execute(select(Admin).where(Admin.email == login_data.email))
     admin = admin_result.scalar_one_or_none()
     if admin:
         await log_audit(db, admin.id, "login", "admin", admin.id,
-                        f"管理员 {login_data.email} 登录", request.client.host if request.client else None)
+                        f"管理员 {login_data.email} 登录", client_ip)
     return ApiResponse.success(data=result)
 
 
