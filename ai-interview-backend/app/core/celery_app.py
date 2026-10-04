@@ -15,6 +15,7 @@ backend=settings.CELERY_RESULT_BACKEND,
         'app.schedule.jobs.media_tasks',  # 媒体工具任务
         'app.schedule.jobs.resume_tasks',  # 简历异步解析任务
         'app.schedule.jobs.notification_tasks',  # 通知异步创建任务
+        'app.schedule.jobs.report_tasks',  # 面试报告异步生成任务
     ]
 )
 
@@ -53,6 +54,8 @@ celery_app.conf.task_routes = {
     "media.*": {"queue": "media_tasks"},
     "resume.*": {"queue": "celery"},
     "notification.*": {"queue": "celery"},
+    # 报告生成是纯 LLM 长任务，跟通知/简历解析共用默认队列，worker 已在消费
+    "interview.*": {"queue": "celery"},
 }
 
 # Optional: Configure other Celery settings

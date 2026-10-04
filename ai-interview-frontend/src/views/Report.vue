@@ -3,6 +3,35 @@
   <div class="container">
     <div v-if="loading" class="loading">加载报告中...</div>
 
+    <!-- 报告已改为后台生成：未就绪时给出明确状态与重试入口。
+         以前这里是 `v-else-if="report"`，而 report 被赋成 {}（空对象为真值），
+         于是报告还没生成完也会渲染出一个「什么都没有」的空报告页 —— 看起来像丢数据。 -->
+    <div v-else-if="reportStatus !== 'ready'" class="report-pending">
+      <template v-if="reportStatus === 'failed' || pollTimedOut">
+        <p class="status-title">
+          {{ reportStatus === 'failed' ? '报告生成失败' : '报告生成时间较长' }}
+        </p>
+        <p class="status-hint">
+          {{
+            reportStatus === 'failed'
+              ? '多半是生成时服务抖动了一下，重新生成通常就能拿到。'
+              : '可能是任务排队或服务繁忙，可以重新生成一次。'
+          }}
+        </p>
+        <button class="btn-generate" :disabled="regenerating" @click="handleRegenerate">
+          {{ regenerating ? '正在重新生成...' : '重新生成报告' }}
+        </button>
+      </template>
+      <template v-else>
+        <p class="status-title">
+          <span class="poll-spinner"></span>
+          报告生成中<span class="dots"></span>
+        </p>
+        <p class="status-hint">面试刚结束，正在为你撰写评估报告，通常需要几十秒。</p>
+        <p class="status-hint">这个页面会自动刷新，不用一直等着。</p>
+      </template>
+    </div>
+
     <div v-else-if="report" style="max-width:700px;margin:30px auto">
       <!-- 总分 -->
       <div class="card score-card">
@@ -225,9 +254,9 @@
 
 <script setup>
 import QRCode from 'qrcode'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getReport, shareInterview, unshareInterview, exportReportDocx } from '../api/interview'
+import { getReport, shareInterview, unshareInterview, exportReportDocx, regenerateReport } from '../api/interview'
 import { generateFromInterview, recommendForInterview } from '../api/learningNote'
 import StarryBackground from '../components/StarryBackground.vue'
 
@@ -253,15 +282,73 @@ const exportMessage = ref('')
 const exportMessageType = ref('')
 const recommendNotes = ref([])
 
-const shareUrl = computed(() => {
-  if (!shareToken.value) return ''
-  return `${window.location.origin}/shared/${shareToken.value}`
-})
+// 报告就绪状态：报告已改为后台生成，进到本页时可能还在生成中。
+// 未就绪时不再渲染空报告，而是显示状态并轮询，直到 ready 或 failed。
+const reportStatus = ref('ready')
+const regenerating = ref(false)
+const pollTimedOut = ref(false)
 
-onMounted(async () => {
+const REPORT_POLL_INTERVAL_MS = 3000
+// 约 2 分钟。超时后仍留在“生成中”界面但给出人工重试入口 ——
+// 后端对重新生成有节流，重复请求不会造成任务风暴。
+const REPORT_POLL_MAX_TICKS = 40
+let reportPollTimer = null
+let reportPollTicks = 0
+
+function stopReportPolling() {
+  if (reportPollTimer) {
+    clearInterval(reportPollTimer)
+    reportPollTimer = null
+  }
+}
+
+function startReportPolling() {
+  if (reportPollTimer) return
+  reportPollTicks = 0
+  pollTimedOut.value = false
+  reportPollTimer = setInterval(async () => {
+    reportPollTicks += 1
+    if (reportPollTicks > REPORT_POLL_MAX_TICKS) {
+      stopReportPolling()
+      pollTimedOut.value = true
+      return
+    }
+    try {
+      const res = await getReport(interviewId)
+      data.value = res
+      reportStatus.value = res.report_status || 'ready'
+      if (reportStatus.value === 'ready') {
+        report.value = res.report || {}
+        stopReportPolling()
+        await loadRecommendNotes()
+      }
+    } catch (e) {
+      console.error('轮询报告状态失败:', e)
+    }
+  }, REPORT_POLL_INTERVAL_MS)
+}
+
+async function handleRegenerate() {
+  if (regenerating.value) return
+  regenerating.value = true
   try {
-    const res = await getReport(interviewId)
-    data.value = res
+    await regenerateReport(interviewId)
+    reportStatus.value = 'pending'
+    startReportPolling()
+  } catch (e) {
+    console.error('重新生成报告失败:', e)
+    exportMessage.value = '重新生成失败：' + (e.message || '请稍后再试')
+    exportMessageType.value = 'error'
+  } finally {
+    regenerating.value = false
+  }
+}
+
+async function loadReport() {
+  const res = await getReport(interviewId)
+  data.value = res
+  reportStatus.value = res.report_status || 'ready'
+  if (reportStatus.value === 'ready') {
     report.value = res.report || {}
     await loadRecommendNotes()
     // 如果已有分享token
@@ -269,12 +356,28 @@ onMounted(async () => {
       shareToken.value = res.share_token
       isShared.value = true
     }
+  } else {
+    report.value = null
+    startReportPolling()
+  }
+}
+
+const shareUrl = computed(() => {
+  if (!shareToken.value) return ''
+  return `${window.location.origin}/shared/${shareToken.value}`
+})
+
+onMounted(async () => {
+  try {
+    await loadReport()
   } catch (e) {
     console.error(e)
   } finally {
     loading.value = false
   }
 })
+
+onUnmounted(stopReportPolling)
 
 function typeLabel(type) {
   const map = { review: '复盘', mistake: '错题', experience: '面经', material: '资料', note: '笔记' }
@@ -451,6 +554,45 @@ async function handleExportDocx() {
   text-align: center;
   padding: 80px;
   color: var(--text-muted);
+}
+
+/* 报告生成中 / 生成失败：把状态说清楚，并给一个明确的动作 */
+.report-pending {
+  max-width: 480px;
+  margin: 90px auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.status-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+.status-hint { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.7; }
+.poll-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid var(--border-default);
+  border-top-color: #7c3aed;
+  animation: poll-spin .8s linear infinite;
+}
+@keyframes poll-spin { to { transform: rotate(360deg); } }
+.dots::after { content: ''; animation: poll-dots 1.5s steps(4, end) infinite; }
+@keyframes poll-dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
 }
 .score-card {
   display: flex;

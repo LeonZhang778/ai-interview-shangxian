@@ -9,6 +9,7 @@ from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
+from app.services.client.interview_report_service import interview_report_service
 from app.db.session import transaction
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
 from app.utils.utils import safe_parse_json
@@ -321,7 +322,53 @@ class InterviewService:
         user_id: int,
         interview_id: int
     ) -> Dict:
-        """获取面试评估报告"""
+        """获取面试评估报告。报告未就绪时返回生成中状态，而不是把它当成错误。"""
+        query = select(Interview).where(
+            Interview.id == interview_id,
+            Interview.user_id == user_id
+        )
+        result = await db.execute(query)
+        interview = result.scalar_one_or_none()
+
+        if not interview:
+            raise NotFoundError(message="面试记录不存在")
+        # 这里仍以 status 拦「面试没做完」——它是问答是否结束，与报告是否就绪无关
+        if interview.status != "completed":
+            raise ValidationError(message="面试尚未完成")
+
+        # 先把需要的字段取出来，再决定是否投递重试：
+        # request_regeneration 里的 UPDATE 会同步 ORM 对象的属性，提前取值可避免
+        # 依赖已被刷新的对象状态（异步会话下访问过期属性会触发隐式 IO）。
+        report_status = interview.report_status or "ready"
+        overall_score = float(interview.overall_score) if interview.overall_score else 0
+        total_questions = interview.total_questions
+        report = safe_parse_json(interview.report, {}) if report_status == "ready" else None
+
+        if report_status != "ready":
+            # 自愈：报告卡在 pending（任务丢失/worker 重启）或上次生成失败时，
+            # 用户打开报告页就等于触发一次重试（带节流，见 request_regeneration）。
+            # 这样既不用让用户理解「为什么要手动点重试」，也不会因刷新而任务风暴。
+            report_status = await interview_report_service.request_regeneration(db, interview)
+
+        return {
+            "interview_id": interview.id,
+            "overall_score": overall_score,
+            "total_questions": total_questions,
+            "report_status": report_status,
+            "report": report,
+        }
+
+    @staticmethod
+    async def regenerate_report(
+        db: AsyncSession,
+        user_id: int,
+        interview_id: int
+    ) -> Dict:
+        """用户主动请求重新生成报告（报告页「重新生成」按钮）。
+
+        与 get_report 里的自动自愈共用同一套节流逻辑，区别只是间隔更短（30 秒）：
+        这是明确的用户动作，应当即时响应。
+        """
         query = select(Interview).where(
             Interview.id == interview_id,
             Interview.user_id == user_id
@@ -334,14 +381,15 @@ class InterviewService:
         if interview.status != "completed":
             raise ValidationError(message="面试尚未完成")
 
-        report = safe_parse_json(interview.report, {})
+        if (interview.report_status or "ready") == "ready" and interview.report:
+            return {"report_status": "ready", "message": "报告已生成，无需重新生成"}
 
-        return {
-            "interview_id": interview.id,
-            "overall_score": float(interview.overall_score) if interview.overall_score else 0,
-            "total_questions": interview.total_questions,
-            "report": report
-        }
+        status = await interview_report_service.request_regeneration(
+            db,
+            interview,
+            min_interval_seconds=interview_report_service.MANUAL_MIN_INTERVAL_SECONDS,
+        )
+        return {"report_status": status, "message": "报告生成已重新排入队列"}
 
     @staticmethod
     async def get_interviews(
@@ -415,6 +463,9 @@ class InterviewService:
             # 前端仍能依据 status=completed 恢复到“面试结束→查看报告”态，
             # 避免永久卡在问答页无法进入报告。
             "status": interview.status,
+            # 报告就绪标记：status=completed 只说明问答结束，报告可能仍在后台生成。
+            # 前端据此在结束态显示“报告生成中”并轮询，而不是直接跳进一个空白报告页。
+            "report_status": interview.report_status or "ready",
             "current_question_index": interview.current_question_index,
         }
 
@@ -488,6 +539,9 @@ class InterviewService:
             raise NotFoundError(message="面试记录不存在")
         if interview.status != "completed":
             raise ValidationError(message="面试尚未完成，无法分享")
+        # 分享出去的是报告页，报告还没生成完就分享会得到一个空白页
+        if (interview.report_status or "ready") != "ready":
+            raise ValidationError(message="报告仍在生成中，请稍后再试")
 
         # 如果已有分享token，直接返回
         if interview.is_shared and interview.share_token:
@@ -542,7 +596,10 @@ class InterviewService:
         query = select(Interview).where(
             Interview.share_token == share_token,
             Interview.is_shared == True,
-            Interview.status == "completed"
+            Interview.status == "completed",
+            # 报告未就绪（后台仍在生成）时不对外暴露分享页，避免访客看到空报告。
+            # 历史数据的 report_status 由迁移置为 ready，不受影响。
+            Interview.report_status == "ready",
         )
         result = await db.execute(query)
         interview = result.scalar_one_or_none()

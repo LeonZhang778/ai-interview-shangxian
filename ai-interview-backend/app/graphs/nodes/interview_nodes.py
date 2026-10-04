@@ -5,7 +5,6 @@
 错误处理在节点内部完成（降级/兜底），不依赖图的条件路由。
 """
 
-import json
 import logging
 from decimal import Decimal
 
@@ -18,6 +17,7 @@ from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
+from app.services.client.interview_report_service import interview_report_service
 from app.utils.utils import safe_parse_json
 
 logger = logging.getLogger(__name__)
@@ -339,34 +339,12 @@ async def save_results_node(state: dict) -> dict:
         overall_score = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
         interview.overall_score = Decimal(str(overall_score))
 
-        # 生成评估报告
-        qa_data = []
-        for i, q in enumerate(questions):
-            question_text = q.get("question", str(q)) if isinstance(q, dict) else str(q)
-            answer_info = answers_by_index.get(i)
-            qa_data.append({
-                "question": question_text,
-                "answer": answer_info["answer"] if answer_info else "未回答",
-                "score": answer_info["score"] if answer_info else 0,
-                "feedback": answer_info["feedback"] if answer_info else "",
-            })
-
-        try:
-            report = await AIService.generate_report(
-                parsed_resume=state["parsed_resume"],
-                target_position=state["target_position"],
-                questions_and_scores=qa_data,
-            )
-            report["question_scores"] = [
-                {"question": qa["question"], "score": qa["score"], "feedback": qa.get("feedback", "")}
-                for qa in qa_data
-            ]
-            interview.report = json.dumps(report, ensure_ascii=False)
-        except Exception as e:
-            logger.error(f"报告生成失败: {e}")
-            interview.report = json.dumps(
-                {"summary": "报告生成失败", "strengths": [], "weaknesses": [], "suggestions": []}
-            )
+        # 报告改为**后台生成**（见 interview_report_service 的模块说明）：
+        # 这里只落「就绪标记」，与 status / overall_score 在同一个事务里，
+        # 保证前端看到 status=completed 时必定同时看到 pending —— 不存在
+        # 「已完成却没有任何报告标记」的中间态。报告的 LLM 调用搬到 Celery 后，
+        # SSE 的 done 事件不必再等那几十秒静默。
+        interview.report_status = "pending"
     else:
         # 进入下一题
         interview.current_question_index = current_index + 1
@@ -409,6 +387,8 @@ async def save_results_node(state: dict) -> dict:
 
     # 面试完成通知
     if is_finished:
+        # 先发通知：内容只依赖上面算好的 overall_score，与报告无关，
+        # 放在报告投递之前可以避免被「入队失败后的同步降级」拖住几十秒。
         try:
             from app.services.client.notification_service import notification_service
             await notification_service.enqueue_notification(
@@ -423,31 +403,10 @@ async def save_results_node(state: dict) -> dict:
         except Exception as e:
             logger.warning(f"发送面试完成通知失败: {e}")
 
-        # 面试结果回流：自动生成学习笔记草稿（review 复盘类型）
-        # 失败不影响主流程，仅记录警告
-        try:
-            from app.services.client.learning_note_service import learning_note_service
-            await learning_note_service.generate_from_interview(
-                db=db,
-                user_id=user_id,
-                interview_id=interview_id,
-                note_type="review",
-                title=f"{state['target_position']} 面试复盘",
-                visibility="private",
-            )
-        except Exception as e:
-            logger.warning(f"自动生成学习笔记草稿失败: {e}")
-
-        # 错题本仪表盘：记录本次面试报告中的薄弱点。
-        try:
-            from app.services.client.weakness_service import weakness_service
-            await weakness_service.record_from_interview(
-                db=db,
-                user_id=user_id,
-                interview_id=interview_id,
-            )
-        except Exception as e:
-            logger.warning(f"记录薄弱点统计失败: {e}")
+        # 投递报告生成。原先生成学习笔记草稿与薄弱点统计也在这里同步调用，
+        # 现在随报告一起搬进 Celery（两者都以 report 为输入，报告没写完时读到的
+        # 是空报告）—— 顺序上必须晚于报告落库，见 interview_report_service。
+        await interview_report_service.dispatch(db, interview_id)
 
     # 组装最终结果
     result = {

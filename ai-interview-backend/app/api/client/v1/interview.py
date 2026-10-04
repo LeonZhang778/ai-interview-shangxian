@@ -126,6 +126,22 @@ async def submit_answer_stream(
     )
 
 
+@router.post("/{interview_id}/report/regenerate")
+async def regenerate_report(
+    interview_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """重新生成面试报告（报告页在生成失败/长时间未就绪时的兜底入口）。"""
+    await check_ai_rate_limit(current_user)
+    result = await interview_service.regenerate_report(
+        db=db,
+        user_id=current_user.id,
+        interview_id=interview_id
+    )
+    return ApiResponse.success(data=result)
+
+
 @router.get("/{interview_id}/report")
 async def get_report(
     interview_id: int,
@@ -158,6 +174,9 @@ async def export_report_docx(
         return ApiResponse.failed(message="面试记录不存在", body_code=404, http_code=status.HTTP_404_NOT_FOUND)
     if interview.status != "completed":
         return ApiResponse.failed(message="面试尚未完成，无法导出报告", body_code=400, http_code=status.HTTP_400_BAD_REQUEST)
+    # 报告由后台生成：status=completed 不再等于报告可读，未就绪时导出会得到空文档
+    if (interview.report_status or "ready") != "ready":
+        return ApiResponse.failed(message="报告仍在生成中，请稍后再试", body_code=400, http_code=status.HTTP_400_BAD_REQUEST)
 
     report = safe_parse_json(interview.report, {})
     content = document_export_service.build_interview_report_docx(interview, report)

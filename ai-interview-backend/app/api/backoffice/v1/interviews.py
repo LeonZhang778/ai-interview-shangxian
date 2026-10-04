@@ -71,7 +71,8 @@ async def get_interview_detail(
     msg_result = await db.execute(msg_query)
     messages = msg_result.scalars().all()
 
-    report = safe_parse_json(interview.report, {})
+    report_status = interview.report_status or "ready"
+    report = safe_parse_json(interview.report, {}) if report_status == "ready" else {}
 
     return ApiResponse.success(data={
         "id": interview.id,
@@ -80,6 +81,9 @@ async def get_interview_detail(
         "total_questions": interview.total_questions,
         "overall_score": float(interview.overall_score) if interview.overall_score else None,
         "status": interview.status,
+        # 报告已改为后台生成，status=completed 时报告可能还在路上，
+        # 详情页据此提示「生成中」，而不是把空报告当成「该面试没有报告」
+        "report_status": report_status,
         "report": report,
         "messages": [
             {

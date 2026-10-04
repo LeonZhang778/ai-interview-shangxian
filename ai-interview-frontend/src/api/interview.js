@@ -67,6 +67,12 @@ export function getReport(interviewId) {
   return api.get(`/interviews/${interviewId}/report`)
 }
 
+// 报告由后台生成：生成失败或长时间未就绪时，用户可主动要求重新生成。
+// 后端带 30 秒节流，重复点击不会造成任务风暴。
+export function regenerateReport(interviewId) {
+  return api.post(`/interviews/${interviewId}/report/regenerate`)
+}
+
 export function exportReportDocx(interviewId) {
   return downloadBinary(`/api/v1/interviews/${interviewId}/report/export-docx`, `interview_${interviewId}_report.docx`)
 }

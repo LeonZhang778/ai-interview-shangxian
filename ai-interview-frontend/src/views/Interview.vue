@@ -126,18 +126,38 @@
     <!-- 面试结束 -->
     <div class="input-area finished" v-if="!preparing && finished">
       <p>🎉 面试结束！</p>
-      <router-link :to="`/interview/${interviewId}/report`" class="btn-primary" style="display:inline-block;padding:10px 24px;color:white;border-radius:8px">
-        查看评估报告
-      </router-link>
+      <!-- 报告已改为后台生成：status=completed 只代表问答结束，报告可能还在路上。
+           这里等 report_status 就绪再放行，避免用户点进一个空白报告页；
+           等待期间也允许先进报告页（那边同样会轮询并给出重试入口）。 -->
+      <template v-if="reportReady">
+        <router-link :to="`/interview/${interviewId}/report`" class="btn-primary" style="display:inline-block;padding:10px 24px;color:white;border-radius:8px">
+          查看评估报告
+        </router-link>
+      </template>
+      <template v-else>
+        <p class="report-pending">
+          <span class="poll-spinner"></span>
+          {{ reportFailed ? '报告生成遇到问题' : '正在生成评估报告' }}<span v-if="!reportFailed" class="dots"></span>
+        </p>
+        <p class="report-hint">
+          {{ reportFailed ? '可以重新生成，或稍后到报告页重试' : '通常需要几十秒，可以先去报告页等待' }}
+        </p>
+        <div class="report-actions">
+          <button v-if="reportFailed" class="btn-primary" @click="retryReport">重新生成报告</button>
+          <router-link :to="`/interview/${interviewId}/report`" class="btn-ghost">
+            去报告页
+          </router-link>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { submitAnswerStream, getMessages } from '../api/interview'
+import { submitAnswerStream, getMessages, regenerateReport } from '../api/interview'
 import { escapeHtml } from '../utils/html'
 import StarryBackground from '../components/StarryBackground.vue'
 
@@ -153,6 +173,66 @@ const currentIndex = ref(0)
 const totalQuestions = ref(5)
 const chatArea = ref(null)
 const streamingText = ref('')
+
+// 报告就绪状态。后端把报告生成搬到了后台，所以「面试结束」与「报告可读」不再同时发生：
+//   reportReady=false 时展示“生成中”，并轮询 /messages 上的 report_status。
+// 默认 true 是为了让「进行中的面试」不受影响（那些面试根本不会走到结束态）。
+const reportReady = ref(true)
+const reportFailed = ref(false)
+
+const REPORT_POLL_INTERVAL_MS = 3000
+// 最多轮询约 2 分钟。超时不报错也不硬等，直接放行到报告页 —— 那边同样有轮询与重试，
+// 比让用户卡在这个页面干等更合理。
+const REPORT_POLL_MAX_TICKS = 40
+let reportPollTimer = null
+let reportPollTicks = 0
+
+function stopReportPolling() {
+  if (reportPollTimer) {
+    clearInterval(reportPollTimer)
+    reportPollTimer = null
+  }
+}
+
+function applyReportStatus(status) {
+  if (status) {
+    reportFailed.value = status === 'failed'
+    reportReady.value = status === 'ready'
+  }
+  if (reportReady.value) stopReportPolling()
+}
+
+function startReportPolling() {
+  if (reportPollTimer || reportReady.value) return
+  reportPollTicks = 0
+  reportPollTimer = setInterval(async () => {
+    reportPollTicks += 1
+    if (reportPollTicks > REPORT_POLL_MAX_TICKS) {
+      stopReportPolling()
+      reportReady.value = true
+      return
+    }
+    try {
+      const data = await getMessages(interviewId)
+      applyReportStatus(data.report_status)
+      if (reportReady.value) scrollToBottom()
+    } catch (e) {
+      console.error('轮询报告状态失败:', e)
+    }
+  }, REPORT_POLL_INTERVAL_MS)
+}
+
+async function retryReport() {
+  try {
+    await regenerateReport(interviewId)
+    reportFailed.value = false
+    reportReady.value = false
+    startReportPolling()
+  } catch (e) {
+    messages.value.push({ role: 'interviewer', content: '⚠️ 重新生成报告失败：' + e.message })
+    scrollToBottom()
+  }
+}
 
 // 准备动画
 const preparing = ref(true)
@@ -208,6 +288,10 @@ async function loadMessages() {
   // 覆盖三种会丢失 done 事件的场景——① 最后一题的 SSE 流被中途掐断；
   // ② 用户在结束后刷新页面；③ 结束后从历史记录重新进入。
   if (data.status === 'completed') finished.value = true
+  // 报告就绪标记：报告已改为后台生成，「状态已完成」不再等于「报告可读」。
+  // 顺序不能反 —— 启动轮询的前置条件是已经进入结束态。
+  applyReportStatus(data.report_status)
+  if (finished.value && !reportReady.value) startReportPolling()
   scrollToBottom()
 }
 
@@ -236,6 +320,9 @@ onMounted(async () => {
   setTimeout(() => { preparing.value = false }, 600)
   nextTick(scrollToBottom)
 })
+
+// 离开页面必须停掉轮询，否则定时器会在组件销毁后继续发请求
+onUnmounted(stopReportPolling)
 
 // 收尾：以数据库为准刷新会话，并推进题号。
 // 抽成独立函数，供 onDone 正常回调与“流被掐断后的自愈”两条路径复用。
@@ -273,6 +360,9 @@ async function applyDone(data, rawStreamText, myAnswer) {
 
   if (data.is_finished) {
     finished.value = true
+    // 报告可能仍在后台生成：结束态下若尚未就绪，启动轮询等它（正常情况下
+    // 上面的 loadMessages 已经启动了，这里只是兜住极端时序）。
+    if (!reportReady.value) startReportPolling()
   } else if (data.next_question) {
     currentIndex.value = data.question_index + 1
     const hasNextQuestion = messages.value.some(m =>
@@ -430,6 +520,24 @@ async function handleSubmit() {
 /* 输入 */
 .input-area { padding: 16px 20px; background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: blur(20px); }
 .input-area textarea { flex: 1; resize: none; font-family: inherit; }
-.input-area.finished { justify-content: center; align-items: center; padding: 24px; gap: 16px; }
-.input-area.finished p { font-size: 18px; font-weight: 600; }
+.input-area.finished { flex-direction: column; justify-content: center; align-items: center; padding: 24px; gap: 14px; }
+.input-area.finished > p { font-size: 18px; font-weight: 600; }
+
+/* 报告生成中：等就绪标记期间展示，避免把用户直接送进空白报告页 */
+.report-pending { display: flex; align-items: center; gap: 8px; font-size: 15px !important; color: var(--text-secondary); }
+.report-hint { font-size: 13px !important; font-weight: 400 !important; color: var(--text-secondary); opacity: 0.75; }
+.report-actions { display: flex; gap: 12px; align-items: center; }
+.btn-ghost {
+  padding: 10px 20px; border-radius: 8px; font-size: 14px;
+  color: var(--text-secondary); background: transparent;
+  border: 1px solid var(--border-default); text-decoration: none;
+  transition: color .15s, border-color .15s;
+}
+.btn-ghost:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+.poll-spinner {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--border-default); border-top-color: #4f46e5;
+  animation: poll-spin .8s linear infinite;
+}
+@keyframes poll-spin { to { transform: rotate(360deg); } }
 </style>

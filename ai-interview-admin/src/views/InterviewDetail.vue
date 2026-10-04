@@ -19,8 +19,17 @@
         </div>
       </div>
 
-      <!-- 报告 -->
-      <div class="card" style="margin-bottom:16px" v-if="detail.report?.summary">
+      <!-- 报告。报告已改为后台生成：status=completed 时报告可能仍在生成中，
+           此时不该显示成「这场面试没有报告」，而要说明原因。 -->
+      <div class="card" style="margin-bottom:16px" v-if="detail.report_status && detail.report_status !== 'ready'">
+        <h3 style="margin-bottom:12px">📝 评估报告</h3>
+        <p style="font-size:13px;color:#6b7280;line-height:1.8">
+          {{ detail.report_status === 'failed'
+            ? '报告生成失败。用户可在报告页手动重新生成。'
+            : '报告正在后台生成中，稍后刷新即可看到。' }}
+        </p>
+      </div>
+      <div class="card" style="margin-bottom:16px" v-else-if="detail.report?.summary">
         <h3 style="margin-bottom:12px">📝 评估报告</h3>
         <p style="font-size:14px;line-height:1.8;margin-bottom:12px">{{ detail.report.summary }}</p>
         <div class="report-cols" v-if="detail.report.strengths || detail.report.weaknesses">

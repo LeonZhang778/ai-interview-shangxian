@@ -1,5 +1,4 @@
 import asyncio
-import json
 import sys
 import types
 from decimal import Decimal
@@ -33,6 +32,7 @@ from app.graphs.nodes.interview_nodes import evaluate_node, save_results_node
 from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.services.client.ai_service import AIService
+from app.services.client.interview_report_service import interview_report_service
 
 
 def _iter_leaf_criteria(clause):
@@ -207,41 +207,58 @@ def test_evaluate_node_ai_failure_falls_back_without_fatal_error(monkeypatch):
     assert "error" not in result
 
 
-def _stub_post_commit_side_effects(monkeypatch):
-    """把 save_results_node 提交后的三个副作用替换成空操作。
+def _stub_notification(monkeypatch, calls=None):
+    """隔离「面试完成通知」这个 commit 后的旁路。
 
-    它们是「尽力而为」的旁路：通知入队失败时会降级为同步创建并**额外 commit 一次**，
-    笔记草稿与薄弱点统计也各自可能产生读写。若不禁用，断言 db.commits 就变成在测
-    「这台机器有没有 Redis」——本地有 Redis 走 Celery（1 次提交）会通过，CI 没有
-    Redis 走降级路径（2 次提交）就失败。
+    它入队失败时会**降级为同步创建并额外 commit 一次**，因此不禁用的话，
+    断言 db.commits 就变成在测「这台机器有没有 Redis」：本地有 Redis 走 Celery
+    （1 次提交）会通过，CI 没有 Redis 走降级路径（2 次提交）就失败。
+    CI 与本地都要能跑，所以这是必须的隔离，不是可选的优化。
     """
-    from app.services.client import learning_note_service as learning_note_module
     from app.services.client import notification_service as notification_module
-    from app.services.client import weakness_service as weakness_module
+
+    async def _noop(*args, **kwargs):
+        if calls is not None:
+            calls.append("notification")
+
+    monkeypatch.setattr(notification_module.notification_service, "enqueue_notification", _noop)
+
+
+def _stub_post_commit_side_effects(monkeypatch):
+    """把 save_results_node 提交后的两个副作用替换成空操作。
+
+    注：学习笔记草稿与薄弱点统计已随报告一起搬到后台任务（见
+    interview_report_service），因此不再需要在这里 stub；报告投递本身必须 stub，
+    否则会真的去连 broker。
+    """
+    from app.services.client import interview_report_service as report_module
 
     async def _noop(*args, **kwargs):
         return None
 
-    monkeypatch.setattr(notification_module.notification_service, "enqueue_notification", _noop)
-    monkeypatch.setattr(learning_note_module.learning_note_service, "generate_from_interview", _noop)
-    monkeypatch.setattr(weakness_module.weakness_service, "record_from_interview", _noop)
+    _stub_notification(monkeypatch)
+    monkeypatch.setattr(report_module.interview_report_service, "dispatch", _noop)
 
 
-def test_save_results_generates_report_with_matched_answers_and_scores(monkeypatch):
-    captured = {}
+def test_save_results_finishes_without_generating_report_inline(monkeypatch):
+    """最后一题只落「completed + report_status=pending」，报告不在请求内生成。
 
-    _stub_post_commit_side_effects(monkeypatch)
+    回归：报告生成原先与评分写入挤在同一个事务里，于是 SSE 的 done 事件必须等
+    LLM 写完报告（几十秒静默）才能发出；报告生成失败还会连累整个提交。
+    现在请求内只标记就绪状态并把生成投递出去。
+    """
+    dispatched = []
 
-    async def fake_generate_report(parsed_resume, target_position, questions_and_scores):
-        captured["qa"] = questions_and_scores
-        return {
-            "summary": "ok",
-            "strengths": [],
-            "weaknesses": [],
-            "suggestions": [],
-        }
+    async def fake_dispatch(db, interview_id):
+        dispatched.append(interview_id)
+        return True
 
-    monkeypatch.setattr(AIService, "generate_report", fake_generate_report)
+    async def forbidden_generate_report(*args, **kwargs):
+        raise AssertionError("报告不应在请求路径内生成（应交给后台任务）")
+
+    _stub_notification(monkeypatch)
+    monkeypatch.setattr(interview_report_service, "dispatch", fake_dispatch)
+    monkeypatch.setattr(AIService, "generate_report", forbidden_generate_report)
 
     interview = Interview(
         id=1,
@@ -291,24 +308,16 @@ def test_save_results_generates_report_with_matched_answers_and_scores(monkeypat
         "next_question": None,
     }))
 
-    # 核心写入必须只提交一次：回答、面试状态、报告三者在同一事务里落库，
-    # 不能出现「状态已改但报告没写」的中间态。
+    # 核心写入必须只提交一次：回答、面试状态、就绪标记三者在同一事务里落库，
+    # 前端看到 completed 时必定同时看到 pending，不存在「已完成但没有就绪标记」的中间态。
     assert db.commits == 1
     assert interview.status == "completed"
+    assert interview.report_status == "pending"
+    assert interview.report is None  # 报告由后台任务写
     assert float(interview.overall_score) == 7.0
     assert result["result"]["overall_score"] == 7.0
-    assert captured["qa"] == [
-        {"question": "Q1", "answer": "A1", "score": 6.0, "feedback": "F1"},
-        {"question": "Q2", "answer": "A2", "score": 7.0, "feedback": "F2"},
-        {"question": "Q3", "answer": "A3", "score": 8.0, "feedback": "F3"},
-    ]
-
-    report = json.loads(interview.report)
-    assert report["question_scores"] == [
-        {"question": "Q1", "score": 6.0, "feedback": "F1"},
-        {"question": "Q2", "score": 7.0, "feedback": "F2"},
-        {"question": "Q3", "score": 8.0, "feedback": "F3"},
-    ]
+    assert result["result"]["is_finished"] is True
+    assert dispatched == [1]
 
 
 def test_save_results_duplicate_answer_does_not_advance_again():
@@ -358,10 +367,12 @@ def test_save_results_duplicate_answer_does_not_advance_again():
 
 
 def _stub_report_generation(monkeypatch):
-    """替换真实的报告生成调用。
+    """替换真实的报告生成调用（防御性护栏）。
 
-    不 stub 的话会真的去请求 LLM：测试环境连不上，框架会重试并把整条用例拖到 20 秒以上，
-    让「唯一约束冲突」这条纯逻辑用例变成一个依赖网络的慢用例。
+    报告生成已搬到后台任务，save_results_node 本身不再调用它 —— 本用例通过
+    _stub_post_commit_side_effects 把「报告投递」也 stub 了，所以正常情况下压根走不到这里。
+    保留它是为了防止将来有人改坏投递路径后，用例意外发起真实 LLM 请求：
+    测试环境连不上，框架会重试并把整条用例拖到 20 秒以上，让纯逻辑用例变成依赖网络的慢用例。
     """
     async def _fake_generate_report(parsed_resume, target_position, questions_and_scores):
         return {"summary": "ok", "strengths": [], "weaknesses": [], "suggestions": []}
