@@ -3,9 +3,12 @@ import paramiko
 import os
 import time
 
-SERVER = "8.166.120.119"
-USER = "root"
-PASS = "5408854088Ab@"
+SERVER = os.environ.get("DEPLOY_SSH_HOST", "8.166.120.119")
+USER = os.environ.get("DEPLOY_SSH_USER", "root")
+# 服务器凭据从环境变量读取（历史上此文件硬编码 root 口令并已提交，属凭据泄露）
+PASS = os.environ.get("DEPLOY_SSH_PASS")
+if not PASS:
+    raise SystemExit("缺少环境变量 DEPLOY_SSH_PASS（服务器 SSH 口令），请显式设置后再运行。")
 
 LOCAL_BASE = "D:/ai-interview/ai-interview-backend"
 

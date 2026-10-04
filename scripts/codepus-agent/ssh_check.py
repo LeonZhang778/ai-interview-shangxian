@@ -5,7 +5,7 @@
   python scripts/codepus-agent/ssh_check.py "<远程命令>"
 
 环境变量:
-  SSH_HOST / SSH_USER / SSH_PASS  (默认 deploy@8.166.120.119 / 5408854088Ab@)
+  SSH_HOST / SSH_USER / SSH_PASS   （口令不再提供默认值，必须显式设置）
 """
 import os
 import sys
@@ -13,7 +13,11 @@ import paramiko
 
 HOST = os.environ.get("SSH_HOST", "8.166.120.119")
 USER = os.environ.get("SSH_USER", "deploy")
-PASS = os.environ.get("SSH_PASS", "5408854088Ab@")
+# 不再提供硬编码默认口令（历史上这里写了明文 root/deploy 口令并被提交进仓库）
+PASS = os.environ.get("SSH_PASS")
+if not PASS:
+    print("[SSH CONFIG FAIL] 缺少环境变量 SSH_PASS，请显式设置后再运行。", file=sys.stderr)
+    sys.exit(2)
 
 cmd = sys.argv[1] if len(sys.argv) > 1 else "echo SSH_OK && hostname"
 

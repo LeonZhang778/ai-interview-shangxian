@@ -1,4 +1,23 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
+
+# 被视为「未配置」的占位密钥集合。生产环境命中其一即拒绝启动。
+# 背景：config.py 曾长期以 "your-secret-key-change-in-production" 作为默认值，
+# 而部署脚本写入的 .env 不含也不校验 SECRET_KEY —— 一旦服务器 .env 缺这一行，
+# 全站 JWT 就可用这个公开常量伪造（security.py / waiting_list.py 共 4 处共用）。
+WEAK_SECRET_KEYS = {
+    "",
+    "your-secret-key-change-in-production",
+    "change-me",
+    "changeme",
+    "secret",
+    "secret-key",
+    "dev",
+    "development",
+}
+
+# 生产环境 SECRET_KEY 的最小长度（字符）。token_urlsafe(64) 约 86 字符。
+MIN_SECRET_KEY_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -58,6 +77,8 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "dev@zetos.fr"
 
     # JWT 配置
+    # ⚠️ 此默认值仅供本地开发使用。ENV=production 时若仍为该值（或空、或长度不足），
+    #    应用会在启动阶段直接抛错拒绝启动，详见下方 _validate_secret_key。
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
@@ -144,6 +165,31 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"  # 可选，指定编码
+
+    @model_validator(mode="after")
+    def _validate_secret_key(self):
+        """生产环境必须持有独立的强随机 SECRET_KEY，否则拒绝启动。
+
+        设计取舍：宁愿部署失败（可在 CI 日志里立刻看到原因），也不要带着
+        可被公开常量伪造的密钥把服务跑起来——后者是完全静默的。
+        """
+        env = (self.ENV or "").strip().lower()
+        if env not in {"production", "prod"}:
+            return self
+
+        key = (self.SECRET_KEY or "").strip()
+        if key.lower() in WEAK_SECRET_KEYS:
+            raise ValueError(
+                "SECRET_KEY 未配置或仍为占位值，生产环境拒绝启动。"
+                "请在部署机 .env 中设置独立强随机密钥，例如："
+                'python3 -c "import secrets;print(secrets.token_urlsafe(64))"'
+            )
+        if len(key) < MIN_SECRET_KEY_LENGTH:
+            raise ValueError(
+                f"SECRET_KEY 强度不足（当前 {len(key)} 字符，要求 >= "
+                f"{MIN_SECRET_KEY_LENGTH}）。请更换为强随机密钥。"
+            )
+        return self
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

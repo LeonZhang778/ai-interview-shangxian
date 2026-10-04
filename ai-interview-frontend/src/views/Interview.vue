@@ -138,6 +138,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { submitAnswerStream, getMessages } from '../api/interview'
+import { escapeHtml } from '../utils/html'
 import StarryBackground from '../components/StarryBackground.vue'
 
 const route = useRoute()
@@ -172,14 +173,18 @@ const userInitial = computed(() => {
   return name.charAt(0).toUpperCase() || '👤'
 })
 
+// 注意：本函数的返回值会交给 v-html 渲染。AI 输出受用户回答/简历内容影响、
+// 且会落库后再次渲染，因此必须「先转义、再拼 <br>」，否则模型输出里的
+// <script>/<img onerror> 会被当作 HTML 执行（自伤型 XSS，且被 token 存于
+// localStorage 放大）。顺序不可颠倒，否则 <br> 自己也会被转义掉。
 function renderContent(text) {
   if (!text) return ''
-  // 实时过滤AI返回的JSON评分数据，避免流式输出时闪现
-  let cleaned = text
+  // 实时过滤AI返回的JSON评分数据，避免流式输出时闪现（在原始文本上匹配，转义后就匹配不到了）
+  const cleaned = text
     .replace(/```json\s*\{[\s\S]*?\}\s*```/g, '')
     .replace(/\{[^{}]*"score"\s*:\s*[\d.]+[^{}]*\}/g, '')
     .trim()
-  return cleaned.replace(/\n/g, '<br>')
+  return escapeHtml(cleaned).replace(/\n/g, '<br>')
 }
 
 function scrollToBottom() {

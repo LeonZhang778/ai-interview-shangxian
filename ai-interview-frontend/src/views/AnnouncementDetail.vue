@@ -38,6 +38,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAnnouncementDetail } from '../api/announcement'
+import { escapeHtml } from '../utils/html'
 import StarryBackground from '../components/StarryBackground.vue'
 
 const route = useRoute()
@@ -52,10 +53,8 @@ function formatDate(str) {
 
 function renderContent(text) {
   if (!text) return ''
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+  // 先转义再拼标记：顺序不可颠倒，否则 <br>/<strong> 也会被转义
+  return escapeHtml(text)
     .replace(/\n/g, '<br>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
 }

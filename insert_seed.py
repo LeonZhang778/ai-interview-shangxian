@@ -1,16 +1,28 @@
+import os
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 import paramiko
 
+# 服务器与数据库凭据一律从环境变量读取。
+# 历史上此文件硬编码 root 口令与目标库口令并被提交进仓库，属凭据泄露，已移除。
+SSH_HOST = os.environ.get("DEPLOY_SSH_HOST", "8.166.120.119")
+SSH_USER = os.environ.get("DEPLOY_SSH_USER", "root")
+SSH_PASS = os.environ.get("DEPLOY_SSH_PASS")
+SEED_DB_PASSWORD = os.environ.get("SEED_DB_PASSWORD")
+if not SSH_PASS:
+    raise SystemExit("缺少环境变量 DEPLOY_SSH_PASS（服务器 SSH 口令），请显式设置后再运行。")
+if not SEED_DB_PASSWORD:
+    raise SystemExit("缺少环境变量 SEED_DB_PASSWORD（目标库口令），请显式设置后再运行。")
+
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect('8.166.120.119', username='root', password='5408854088Ab@')
+ssh.connect(SSH_HOST, username=SSH_USER, password=SSH_PASS)
 
 # Write a Python script on the server that will insert seed data
 script = '''
 import psycopg2
 
-conn = psycopg2.connect(host='localhost', port=5432, dbname='ai_interview', user='ai_user', password='Xk9mP2vL7qR4wN8')
+conn = psycopg2.connect(host='localhost', port=5432, dbname='ai_interview', user='ai_user', password='__SEED_DB_PASSWORD__')
 cur = conn.cursor()
 
 experiences = [
@@ -104,6 +116,9 @@ conn.close()
 '''
 
 # Write script to server
+# 注入运行时口令（保持上方脚本文本中不出现任何明文凭据）
+script = script.replace("__SEED_DB_PASSWORD__", SEED_DB_PASSWORD)
+
 sftp = ssh.open_sftp()
 with sftp.open('/tmp/insert_seed.py', 'w') as f:
     f.write(script)

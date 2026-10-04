@@ -1,10 +1,18 @@
+import os
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 import paramiko
 
+# 服务器凭据从环境变量读取（历史上此文件硬编码 root 口令并已提交，属凭据泄露）
+SSH_HOST = os.environ.get("DEPLOY_SSH_HOST", "8.166.120.119")
+SSH_USER = os.environ.get("DEPLOY_SSH_USER", "root")
+SSH_PASS = os.environ.get("DEPLOY_SSH_PASS")
+if not SSH_PASS:
+    raise SystemExit("缺少环境变量 DEPLOY_SSH_PASS（服务器 SSH 口令），请显式设置后再运行。")
+
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect('8.166.120.119', username='root', password='5408854088Ab@')
+ssh.connect(SSH_HOST, username=SSH_USER, password=SSH_PASS)
 
 # Write seed SQL file on server
 sql_content = r"""INSERT INTO experiences (title, company, position, level, round, content, summary, view_count, like_count, collect_count, is_anonymous, status, created_at) VALUES

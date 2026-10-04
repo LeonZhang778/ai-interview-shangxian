@@ -1,12 +1,16 @@
 """部署面经广场功能"""
+import os
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 import paramiko
 
-SERVER = "8.166.120.119"
-USER = "root"
-PASSWORD = "5408854088Ab@"
+# 服务器凭据从环境变量读取（历史上此文件硬编码 root 口令并已提交，属凭据泄露）
+SERVER = os.environ.get("DEPLOY_SSH_HOST", "8.166.120.119")
+USER = os.environ.get("DEPLOY_SSH_USER", "root")
+PASSWORD = os.environ.get("DEPLOY_SSH_PASS")
+if not PASSWORD:
+    raise SystemExit("缺少环境变量 DEPLOY_SSH_PASS（服务器 SSH 口令），请显式设置后再运行。")
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
