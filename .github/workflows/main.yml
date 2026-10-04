@@ -160,6 +160,10 @@ jobs:
             ./ai-interview-backend
 
       - name: Push backend image
+        # 单独设超时：ACR 推送曾经两次静默阻塞（一次 1h57m 后被全局超时取消）。
+        # 没有这一步，挂起的 push 会一直占满 job 的 timeout-minutes(120)，
+        # 期间既不报错也无法判断是网络还是认证问题。
+        timeout-minutes: 15
         run: |
           docker push "$IMAGE_REPOSITORY:$IMAGE_TAG"
           docker push "$IMAGE_REPOSITORY:latest"
