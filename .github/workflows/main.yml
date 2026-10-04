@@ -462,6 +462,11 @@ jobs:
             docker compose up -d --force-recreate --no-deps celery-beat
 
             echo "Starting or reloading Nginx..."
+            # 必须先 build：nginx 服务是 build: ./nginx + 固定 tag，
+            # 服务器上已存在同名镜像时，docker 会认为镜像已是最新的而跳过重建，
+            # 只重建容器 → 改过的 default.conf 不会生效（曾因此让 assets 的
+            # 404 修复部署后依然返回 200）。--no-cache 避免复用旧层。
+            docker compose build --no-cache nginx
             docker compose up -d --force-recreate --no-deps nginx
 
             echo "Deploying host Nginx config..."
