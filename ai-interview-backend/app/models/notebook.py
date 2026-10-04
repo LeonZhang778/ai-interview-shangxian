@@ -10,7 +10,7 @@ class Notebook(BaseModel):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(100), nullable=False)
     parent_id = Column(Integer, ForeignKey("notebooks.id", ondelete="CASCADE"), nullable=True, index=True)
-    sort_order = Column(Integer, default=0)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     icon = Column(String(20), nullable=True)
 
     # 自引用关系

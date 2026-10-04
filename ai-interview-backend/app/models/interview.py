@@ -14,8 +14,8 @@ class Interview(BaseModel):
     target_position = Column(String(255), nullable=True)
     difficulty = Column(String(20), default="medium")  # easy/medium/hard 面试难度
     total_questions = Column(Integer, default=5)
-    status = Column(String(20), default="in_progress")  # in_progress/completed 面试状态
-    current_question_index = Column(Integer, default=0)
+    status = Column(String(20), default="in_progress", server_default="in_progress")  # in_progress/completed 面试状态
+    current_question_index = Column(Integer, nullable=False, default=0, server_default="0")
     questions_data = Column(JSONB, nullable=True)  # AI 生成的面试题目
     overall_score = Column(DECIMAL(3, 1), nullable=True)
     report = Column(Text, nullable=True)  # 最终评估报告 JSON

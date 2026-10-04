@@ -9,7 +9,7 @@ class WeaknessStat(BaseModel):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     keyword = Column(String(100), nullable=False)
-    count = Column(Integer, nullable=False, default=0)
+    count = Column(Integer, nullable=False, default=0, server_default="0")
     avg_score = Column(Float, nullable=True)
     last_occurred_at = Column(DateTime, nullable=True)
 

@@ -23,10 +23,10 @@ class LearningNote(BaseModel):
     interview_id = Column(Integer, ForeignKey("interviews.id", ondelete="SET NULL"), nullable=True, index=True)
     source = Column(String(20), nullable=False, default="manual")
     # source: manual(手动创建) / interview(面试回流)
-    view_count = Column(Integer, default=0)
-    like_count = Column(Integer, default=0)
-    collect_count = Column(Integer, default=0)
-    comment_count = Column(Integer, default=0)
+    view_count = Column(Integer, nullable=False, default=0, server_default="0")
+    like_count = Column(Integer, nullable=False, default=0, server_default="0")
+    collect_count = Column(Integer, nullable=False, default=0, server_default="0")
+    comment_count = Column(Integer, nullable=False, default=0, server_default="0")
     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
     summary = Column(String(300), nullable=True)    # AI 一句话摘要，≤300 字
     key_points = Column(Text, nullable=True)         # JSON 格式的三级要点列表

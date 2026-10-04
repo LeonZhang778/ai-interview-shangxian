@@ -9,7 +9,7 @@ class CollectionGroup(BaseModel):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(50), nullable=False)
-    sort_order = Column(Integer, default=0)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
 
     collections = relationship("UserCollection", back_populates="group")
 
@@ -25,9 +25,14 @@ class Experience(BaseModel):
     round = Column(String(20), nullable=True)  # 一面/二面/三面/HR面/综合
     content = Column(Text, nullable=False)
     summary = Column(String(500), nullable=True)
-    view_count = Column(Integer, default=0)
-    like_count = Column(Integer, default=0)
-    collect_count = Column(Integer, default=0)
+    # 计数列统一为 NOT NULL DEFAULT 0：
+    # 此前只写了 Python 层 default（无 server_default、列可空），而线上这张表是手工 SQL
+    # 建的、带 DEFAULT 0 —— 两边形状不一致。于是任何绕过 ORM 的 INSERT 在开发库得到 NULL，
+    # 在线上得到 0；读取路径也就必须靠 COALESCE 兜底。把约束写进模型才是根治，
+    # 见迁移 p8b9c0d1e2f3（把已有库幂等对齐到同一形状）。
+    view_count = Column(Integer, nullable=False, default=0, server_default="0")
+    like_count = Column(Integer, nullable=False, default=0, server_default="0")
+    collect_count = Column(Integer, nullable=False, default=0, server_default="0")
     author_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     is_anonymous = Column(Boolean, default=True)
     status = Column(String(20), default="published")  # draft/published
@@ -77,7 +82,7 @@ class ExperienceComment(BaseModel):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     parent_id = Column(Integer, ForeignKey("experience_comments.id", ondelete="CASCADE"), nullable=True)
     content = Column(Text, nullable=False)
-    like_count = Column(Integer, default=0)
+    like_count = Column(Integer, nullable=False, default=0, server_default="0")
 
     author = relationship("User", lazy="joined")
     replies = relationship("ExperienceComment", backref="parent", remote_side="ExperienceComment.id", lazy="selectin")

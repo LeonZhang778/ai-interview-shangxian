@@ -36,7 +36,7 @@ class PublicNoteComment(BaseModel):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     parent_id = Column(Integer, ForeignKey("public_note_comments.id", ondelete="CASCADE"), nullable=True, index=True)
     content = Column(Text, nullable=False)
-    like_count = Column(Integer, nullable=False, default=0)
+    like_count = Column(Integer, nullable=False, default=0, server_default="0")
 
     author = relationship("User", lazy="joined")
     replies = relationship(
