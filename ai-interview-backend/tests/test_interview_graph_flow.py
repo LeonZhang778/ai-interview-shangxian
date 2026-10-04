@@ -207,8 +207,30 @@ def test_evaluate_node_ai_failure_falls_back_without_fatal_error(monkeypatch):
     assert "error" not in result
 
 
+def _stub_post_commit_side_effects(monkeypatch):
+    """把 save_results_node 提交后的三个副作用替换成空操作。
+
+    它们是「尽力而为」的旁路：通知入队失败时会降级为同步创建并**额外 commit 一次**，
+    笔记草稿与薄弱点统计也各自可能产生读写。若不禁用，断言 db.commits 就变成在测
+    「这台机器有没有 Redis」——本地有 Redis 走 Celery（1 次提交）会通过，CI 没有
+    Redis 走降级路径（2 次提交）就失败。
+    """
+    from app.services.client import learning_note_service as learning_note_module
+    from app.services.client import notification_service as notification_module
+    from app.services.client import weakness_service as weakness_module
+
+    async def _noop(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(notification_module.notification_service, "enqueue_notification", _noop)
+    monkeypatch.setattr(learning_note_module.learning_note_service, "generate_from_interview", _noop)
+    monkeypatch.setattr(weakness_module.weakness_service, "record_from_interview", _noop)
+
+
 def test_save_results_generates_report_with_matched_answers_and_scores(monkeypatch):
     captured = {}
+
+    _stub_post_commit_side_effects(monkeypatch)
 
     async def fake_generate_report(parsed_resume, target_position, questions_and_scores):
         captured["qa"] = questions_and_scores
@@ -269,6 +291,8 @@ def test_save_results_generates_report_with_matched_answers_and_scores(monkeypat
         "next_question": None,
     }))
 
+    # 核心写入必须只提交一次：回答、面试状态、报告三者在同一事务里落库，
+    # 不能出现「状态已改但报告没写」的中间态。
     assert db.commits == 1
     assert interview.status == "completed"
     assert float(interview.overall_score) == 7.0
