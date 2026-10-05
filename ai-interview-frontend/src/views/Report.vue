@@ -766,8 +766,9 @@ ul li::before {
   background: rgba(3, 7, 18, .82);
   backdrop-filter: blur(10px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
   z-index: 9999;
 }
 .preview-modal {
@@ -778,6 +779,8 @@ ul li::before {
   width: min(560px, 100%);
   max-height: calc(100vh - 48px);
   overflow: auto;
+  margin: auto 0;
+  min-width: 0;
   box-shadow: 0 24px 80px rgba(0,0,0,.55);
 }
 .preview-header {
@@ -801,12 +804,17 @@ ul li::before {
   cursor: pointer;
 }
 .preview-close:hover { color: var(--text-primary); background: var(--border-default); }
-.preview-body { padding: 22px; display: flex; justify-content: center; background: var(--bg-input); }
+.preview-body { padding: 22px; display: flex; justify-content: center; background: var(--bg-input); min-width: 0; overflow: auto; }
 /* 二维码弹窗：只展示一个二维码，不做整页卡片截图（原先是 html2canvas 渲染 420px 卡片）。 */
 .qrcode-modal { max-width: 400px; width: min(400px, 100%); }
 .qrcode-img {
-  width: 260px;
-  height: 260px;
+  display: block;
+  width: min(260px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: min(60vh, 320px);
   padding: 12px;
   background: #ffffff;
   border-radius: 14px;
