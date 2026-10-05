@@ -358,6 +358,7 @@ class ExperienceService:
             "content": comment.content,
             "user": {"id": comment.author.id, "first_name": comment.author.first_name or "", "avatar": comment.author.avatar},
             "parent_id": comment.parent_id,
+            "replies": [],
             "like_count": 0,
             "created_at": comment.created_at.isoformat(),
         }

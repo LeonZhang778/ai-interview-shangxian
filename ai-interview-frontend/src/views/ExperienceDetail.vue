@@ -310,7 +310,7 @@ async function submitComment(parentId) {
       replyContent.value = ''
       replyTo.value = null
     } else {
-      comments.value.unshift(newComment)
+      comments.value.unshift({ ...newComment, replies: newComment.replies || [] })
       commentContent.value = ''
     }
     commentTotal.value++
@@ -332,7 +332,7 @@ async function handleDeleteComment(commentId) {
     // Remove from list
     comments.value = comments.value.filter(c => {
       if (c.id === commentId) return false
-      c.replies = c.replies.filter(r => r.id !== commentId)
+      c.replies = (Array.isArray(c.replies) ? c.replies : []).filter(r => r.id !== commentId)
       return true
     })
     commentTotal.value--
