@@ -172,6 +172,7 @@ jobs:
           skopeo copy \
             --authfile "$HOME/.docker/config.json" \
             --format v2s2 \
+            --preserve-digests \
             --retry-times 3 \
             --command-timeout 55m \
             "docker-daemon:$IMAGE_REPOSITORY:$IMAGE_TAG" \
