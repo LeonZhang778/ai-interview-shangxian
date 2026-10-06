@@ -224,6 +224,8 @@ POSTGRES_DB=postgres
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=<随机强密码>
+REDIS_CHECKPOINT_DB=0
+LANGGRAPH_CHECKPOINT_TTL_MINUTES=180
 
 # JWT 密钥 (至少 32 字节)
 SECRET_KEY=<使用 openssl rand -hex 32 生成>
@@ -274,17 +276,17 @@ MAIL_ENCRYPTION=ssl
 ```bash
 cd /home/deploy/ai-interview/ai-interview-backend
 
-# 一键启动 6 个容器 (使用 Docker Compose 插件)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# 一键启动 6 个容器：必须使用 CI 推送的不可变 SHA 镜像
+BACKEND_IMAGE=<ACR仓库>:<commit-sha> docker compose up -d
 ```
 
-> **说明**: 当前 GitHub Actions 工作流 `main.yml` 实际使用 `docker compose up -d`（仅基础 `docker-compose.yml`，未叠加 `docker-compose.prod.yml`）。两种方式均可启动；基础 compose 已含 nginx 127.0.0.1:8080 映射。手动操作建议保持 `-f docker-compose.yml -f docker-compose.prod.yml` 以获得日志轮转等生产配置。
+> **说明**: 当前 GitHub Actions 工作流和生产服务器都使用基础 `docker-compose.yml`。该文件已经包含端口收敛、日志轮转、内存上限和 Redis Stack；`docker-compose.prod.yml` 仅保留兼容说明，不参与生产部署。
 
-首次构建约 3-5 分钟，等待完成后检查:
+镜像拉取完成后检查:
 
 ```bash
 # 查看容器状态 (应该有 6 个)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose ps
 ```
 
 预期输出:
@@ -313,13 +315,13 @@ INFO:     Uvicorn running on http://0.0.0.0:8006
 
 ### 关于 Docker 镜像
 
-生产环境默认使用阿里云容器镜像服务 (ACR) 的预构建镜像:
+生产环境使用阿里云容器镜像服务 (ACR) 的不可变 SHA 镜像:
 
 ```
-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest
+crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:<commit-sha>
 ```
 
-如需本地构建，可设置环境变量 `BACKEND_IMAGE` 覆盖，或删除 `image:` 字段让 Compose 使用 Dockerfile 构建。
+`BACKEND_IMAGE` 必须显式传入；Compose 的 `ai-interview:local` fallback 只用于本地已预加载镜像，避免手动部署时静默拉取旧的 `latest`。
 
 ### 关于容器端口绑定（实测）
 
@@ -469,17 +471,18 @@ git commit -m "update: 描述本次修改"
 git push
 
 # ---- 服务器 SSH ----
-# 方式一: 使用部署脚本 (推荐)
+# 方式一: 使用部署脚本（需显式指定 CI 推送的 SHA 镜像）
 cd /home/deploy/ai-interview/ai-interview-backend
-bash deploy.sh
+BACKEND_IMAGE=<ACR仓库>:<commit-sha> bash scripts/deploy.sh
 
 # 方式二: 手动更新
 cd /home/deploy/ai-interview
 git pull
 
-# 如果改了后端代码
+# 如果改了后端代码，先让 CI 构建并推送 SHA 镜像，再在服务器显式更新
 cd ai-interview-backend
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --no-deps app celery-worker celery-beat
+BACKEND_IMAGE=<ACR仓库>:<commit-sha> docker compose pull app celery-worker celery-beat
+BACKEND_IMAGE=<ACR仓库>:<commit-sha> docker compose up -d --force-recreate --no-deps app celery-worker celery-beat
 
 # 如果改了前端代码 (dist 已提交, 仅需重启 nginx 使新 volume 生效)
 docker compose restart nginx
@@ -499,21 +502,19 @@ docker compose exec app alembic upgrade head
 
 ### 10.3 部署脚本说明
 
-`ai-interview-backend/deploy.sh` 提供零停机部署:
+`ai-interview-backend/scripts/deploy.sh` 提供基于不可变镜像的手动部署:
 
 ```bash
 cd /home/deploy/ai-interview/ai-interview-backend
-bash deploy.sh
+BACKEND_IMAGE=<ACR仓库>:<commit-sha> bash scripts/deploy.sh
 ```
 
 脚本流程:
-1. `git pull` 拉取最新代码
-2. `docker compose build` 构建新镜像
-3. 运行数据库迁移
-4. 滚动更新容器 (先更新 postgres/redis, 再更新 app, 最后更新 worker/beat/nginx)
-5. 健康检查 (6 次重试, 失败自动回滚)
-
-> 注意: `deploy.sh` 内部健康检查使用 `curl http://localhost:8006/...`，但当前 app 无对外端口映射。若脚本健康检查失败，请改用第九步中「容器内部」或「Docker Nginx 链路」的验证方式，或先为 app 补充 `127.0.0.1:8006:8006` 端口映射。
+1. 拉取显式指定的 ACR SHA 镜像
+2. 启动 PostgreSQL 和 Redis Stack
+3. 重建 app 并在容器内执行健康检查
+4. 执行数据库迁移，再更新 worker/beat/nginx
+5. 输出容器状态并再次执行容器内健康检查
 
 ---
 
@@ -589,8 +590,8 @@ FastAPI 后端 (app:8006)
 | ai-interview-app | ACR 或 Dockerfile 构建 | HTTP 健康检查 | 无对外端口 (内部 8006) |
 | ai-interview-celery-worker | 同 app | celery ping | 无 |
 | ai-interview-celery-beat | 同 app | celerybeat-schedule 文件 | 无 |
-| ai-interview-postgres | postgres:16-alpine | pg_isready | 0.0.0.0:5434 → 5432 (建议收敛) |
-| ai-interview-redis | redis:7-alpine | redis-cli ping | 无 (prod) |
+| ai-interview-postgres | postgres:16-alpine | pg_isready | 127.0.0.1:5434 → 5432 |
+| ai-interview-redis | redis/redis-stack-server:7.4.0-v1 | redis-cli ping + RedisJSON + RediSearch | 无 (prod) |
 | ai-interview-nginx | nginx:alpine + default.conf | 无 | 127.0.0.1:8080 → 8080 |
 
 ---
@@ -602,7 +603,7 @@ FastAPI 后端 (app:8006)
 cd /home/deploy/ai-interview/ai-interview-backend
 
 # 查看容器状态
-docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose ps
 
 # 查看后端日志
 docker compose logs -f app --tail 100
@@ -621,7 +622,7 @@ docker compose restart app
 docker compose restart celery-worker
 
 # 重启所有服务
-docker compose -f docker-compose.yml -f docker-compose.prod.yml restart
+docker compose restart
 
 # 进入容器
 docker exec -it ai-interview-app bash
@@ -747,7 +748,7 @@ docker compose up -d --force-recreate postgres
 
 ### Q: app 容器没有对外端口
 
-当前 `docker-compose.yml` 基础配置中 app 没有 `ports` 映射（8006 仅容器内部）。如需直接访问后端（如 `deploy.sh` 健康检查），可添加:
+当前 `docker-compose.yml` 基础配置中 app 没有 `ports` 映射（8006 仅容器内部）。部署脚本和 CI 都使用容器内健康检查，不需要为 app 增加宿主机端口映射；如确需临时直连，再单独添加:
 
 ```yaml
 # 在 app 服务下添加:
@@ -765,7 +766,7 @@ ports:
 - [ ] 服务器安装 Docker + Docker Compose 插件
 - [ ] 服务器 `git clone` 拉取代码 (前端 dist 已随 Git 提交，无需构建)
 - [ ] 复制 `.env.production` 为 `.env`，填入生产配置
-- [ ] `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
+- [ ] `BACKEND_IMAGE=<ACR仓库>:<commit-sha> docker compose up -d`
 - [ ] 数据库迁移 (`alembic upgrade head`)
 - [ ] 初始化系统设置 (`seed_settings.py`)
 - [ ] 创建管理员 (`python -m app.scripts.seed_admin`)

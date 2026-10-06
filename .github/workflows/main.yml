@@ -40,6 +40,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+      redis:
+        image: redis/redis-stack-server:7.4.0-v1
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
 
     steps:
       - name: Checkout repository
@@ -91,8 +100,14 @@ jobs:
         working-directory: ai-interview-backend
         run: ruff check app tests scripts
 
-      - name: Backend tests
+      - name: Backend tests (including Redis checkpoint integration)
         working-directory: ai-interview-backend
+        env:
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6379"
+          REDIS_PASSWORD: ""
+          REDIS_CHECKPOINT_DB: "0"
+          REDIS_CHECKPOINT_TEST_URL: redis://127.0.0.1:6379/0
         run: python -m pytest tests -q
 
       # 迁移门禁：断言「全新空库能一路迁移到 head，且结果与模型定义完全一致」。

@@ -1,5 +1,5 @@
 # AI-Interview 一键部署
-# 启动: docker compose up -d
+# 生产启动: BACKEND_IMAGE=<ACR仓库>:<commit-sha> docker compose up -d
 # 停止: docker compose down
 #
 # ⚠️ 重要：CI（.github/workflows/main.yml）只使用本文件，**不会**叠加
@@ -19,7 +19,8 @@ x-logging: &default-logging
 
 services:
   app:
-    image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
+    # 生产部署必须注入不可变 SHA 镜像；local fallback 不指向远程 latest，避免静默部署旧代码。
+    image: ${BACKEND_IMAGE:-ai-interview:local}
     container_name: ai-interview-app
     restart: unless-stopped
     mem_limit: ${APP_MEM_LIMIT:-768m}
@@ -46,7 +47,7 @@ services:
       start_period: 40s
 
   celery-worker:
-    image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
+    image: ${BACKEND_IMAGE:-ai-interview:local}
     container_name: ai-interview-celery-worker
     restart: unless-stopped
     # 媒体转换（ffmpeg）较吃内存，但仍需设上限：宁可任务失败，也不要拖垮宿主机。
@@ -75,7 +76,7 @@ services:
       start_period: 40s
 
   celery-beat:
-    image: ${BACKEND_IMAGE:-crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest}
+    image: ${BACKEND_IMAGE:-ai-interview:local}
     container_name: ai-interview-celery-beat
     restart: unless-stopped
     mem_limit: ${CELERY_BEAT_MEM_LIMIT:-128m}

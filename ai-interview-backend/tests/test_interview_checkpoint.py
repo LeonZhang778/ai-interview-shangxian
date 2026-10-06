@@ -1,8 +1,12 @@
 import asyncio
+import os
+import uuid
 
+import pytest
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.base import empty_checkpoint
 
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.graphs.interview_graph import InterviewState, build_interview_graph
 
 
@@ -55,5 +59,86 @@ def test_checkpoint_manager_start_is_idempotent(monkeypatch):
         await manager.start()
         assert manager.saver is fake_saver
         assert manager._started is True
+
+    asyncio.run(run())
+
+
+def test_settings_reject_nonzero_checkpoint_database():
+    with pytest.raises(ValueError, match="REDIS_CHECKPOINT_DB.*0"):
+        Settings(REDIS_CHECKPOINT_DB=1)
+
+
+def test_settings_reject_nonpositive_checkpoint_ttl():
+    with pytest.raises(ValueError, match="LANGGRAPH_CHECKPOINT_TTL_MINUTES"):
+        Settings(LANGGRAPH_CHECKPOINT_TTL_MINUTES=0)
+
+
+def test_redis_checkpoint_round_trip_ttl_and_thread_isolation():
+    redis_url = os.getenv("REDIS_CHECKPOINT_TEST_URL")
+    if not redis_url:
+        pytest.skip("REDIS_CHECKPOINT_TEST_URL is not configured")
+
+    async def run():
+        prefix = f"test_ai_interview_checkpoint_{uuid.uuid4().hex}"
+        saver = __import__(
+            "langgraph.checkpoint.redis.aio",
+            fromlist=["AsyncRedisSaver"],
+        ).AsyncRedisSaver(
+            redis_url=redis_url,
+            ttl={"default_ttl": 1, "refresh_on_read": True},
+            checkpoint_prefix=prefix,
+            checkpoint_write_prefix=f"{prefix}_write",
+        )
+        thread_a = f"integration-a-{uuid.uuid4().hex}"
+        thread_b = f"integration-b-{uuid.uuid4().hex}"
+
+        async with saver:
+            await saver._redis.ft(saver.checkpoints_index.name).info()
+
+            def checkpoint(label: str) -> dict:
+                value = empty_checkpoint()
+                value["channel_values"] = {"label": label}
+                value["channel_versions"] = {"label": 1}
+                return value
+
+            async def put(thread_id: str, label: str):
+                config = {
+                    "configurable": {
+                        "thread_id": thread_id,
+                        "checkpoint_ns": "",
+                    }
+                }
+                metadata = {
+                    "source": "input",
+                    "step": 0,
+                    "parents": {},
+                    "run_id": f"run-{thread_id}",
+                    "counters_since_delta_snapshot": {},
+                }
+                await saver.aput(config, checkpoint(label), metadata, {"label": 1})
+
+            await put(thread_a, "a")
+            await put(thread_b, "b")
+
+            loaded_a = await saver.aget(
+                {"configurable": {"thread_id": thread_a, "checkpoint_ns": ""}}
+            )
+            loaded_b = await saver.aget(
+                {"configurable": {"thread_id": thread_b, "checkpoint_ns": ""}}
+            )
+
+            assert loaded_a["channel_values"]["label"] == "a"
+            assert loaded_b["channel_values"]["label"] == "b"
+
+            checkpoint_id = loaded_a["id"]
+            checkpoint_key = saver._make_redis_checkpoint_key_cached(
+                thread_a, "", checkpoint_id
+            )
+            pointer_key = saver._make_redis_checkpoint_latest_key(thread_a, "")
+            assert await saver._redis.ttl(checkpoint_key) > 0
+            assert await saver._redis.ttl(pointer_key) > 0
+
+            await saver.adelete_thread(thread_a)
+            await saver.adelete_thread(thread_b)
 
     asyncio.run(run())

@@ -199,15 +199,15 @@ npm test   # Playwright E2E
 详见 `AI-Interview-服务器部署流程.md`。要点：
 
 ```bash
-# 服务器目录 /home/deploy/ai-interview
-docker compose up -d --build
+# 服务器目录 /home/deploy/ai-interview/ai-interview-backend
+BACKEND_IMAGE=<ACR仓库>:<commit-sha> docker compose up -d
 docker compose ps        # app/postgres/redis/celery-worker/celery-beat/nginx 均健康
 docker compose exec app alembic upgrade head
 docker compose exec app python scripts/seed_settings.py
 curl -k https://localhost/api/v1/config/health
 ```
 
-- 生产镜像：阿里云个人仓库 `crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:latest`（`docker-compose.yml` 中通过 `BACKEND_IMAGE` 覆盖）。
+- 生产镜像：阿里云个人仓库中的不可变 SHA 镜像 `crpi-yluu2a4ik5gs0met.cn-guangzhou.personal.cr.aliyuncs.com/rwkkyyds-ai-interviews/ai-interviews-shangxian:<commit-sha>`；CI/CD 通过 `BACKEND_IMAGE` 显式注入，Compose 不再默认指向远程 `latest`。
 - Nginx 反代 `https://localhost` → 前端/管理端/后端；宿主机 8080 → 容器 Nginx。
 - Celery worker 队列：`media_tasks,celery`；beat 负责定时任务（示例任务见 `app/schedule/celery_job.py`）。
 - 健康检查：app 用 `GET /api/v1/config/health`；celery-worker 用 `celery inspect ping`。

@@ -186,6 +186,19 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"  # 可选，指定编码
 
     @model_validator(mode="after")
+    def _validate_checkpoint_settings(self):
+        """Validate the Redis features required by LangGraph checkpoints."""
+        if self.REDIS_CHECKPOINT_DB != 0:
+            raise ValueError(
+                "REDIS_CHECKPOINT_DB 必须为 0，因为 RediSearch 只能在 Redis DB 0 建索引。"
+            )
+        if self.LANGGRAPH_CHECKPOINT_TTL_MINUTES <= 0:
+            raise ValueError(
+                "LANGGRAPH_CHECKPOINT_TTL_MINUTES 必须大于 0，避免 checkpoint 永不过期。"
+            )
+        return self
+
+    @model_validator(mode="after")
     def _validate_secret_key(self):
         """生产环境必须持有独立的强随机 SECRET_KEY，否则拒绝启动。
 
