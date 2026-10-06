@@ -152,42 +152,19 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build backend image
-        run: |
-          docker build \
-            -t "$IMAGE_REPOSITORY:$IMAGE_TAG" \
-            -t "$IMAGE_REPOSITORY:latest" \
-            ./ai-interview-backend
-
-      - name: Push backend image
-        # ACR 曾在大层上传完成后卡住 manifest 提交；每个引用单独限时并重试，
-        # 避免一次 registry 瞬时卡顿拖垮整条部署流水线。
+      - name: Build and push backend image
+        # 使用 BuildKit 直接提交镜像 manifest，避免旧版 docker push 在 ACR
+        # 完成层上传后卡住的问题。
         timeout-minutes: 20
         run: |
           set -Eeuo pipefail
-
-          push_with_retry() {
-            local image_ref="$1"
-            for attempt in 1 2; do
-              echo "Pushing $image_ref (attempt ${attempt}/2)"
-              if timeout --signal=TERM --kill-after=30s 8m docker push "$image_ref"; then
-                return 0
-              fi
-              if [ "$attempt" -lt 2 ]; then
-                echo "Push timed out or failed; retrying in 15 seconds"
-                sleep 15
-              fi
-            done
-            echo "Failed to push $image_ref after 2 attempts"
-            return 1
-          }
-
-          push_with_retry "$IMAGE_REPOSITORY:$IMAGE_TAG"
-          # 复用已上传的不可变 SHA 镜像，避免再次上传全部层。
-          timeout --signal=TERM --kill-after=30s 5m \
-            docker buildx imagetools create \
-            --tag "$IMAGE_REPOSITORY:latest" \
-            "$IMAGE_REPOSITORY:$IMAGE_TAG"
+          docker buildx build \
+            --push \
+            --provenance=false \
+            --sbom=false \
+            -t "$IMAGE_REPOSITORY:$IMAGE_TAG" \
+            -t "$IMAGE_REPOSITORY:latest" \
+            ./ai-interview-backend
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
