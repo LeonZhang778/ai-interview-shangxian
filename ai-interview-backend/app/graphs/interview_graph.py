@@ -21,6 +21,7 @@ import time
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.runtime import Runtime
 
 from app.graphs.nodes.interview_nodes import (
     evaluate_node,
@@ -28,6 +29,7 @@ from app.graphs.nodes.interview_nodes import (
     load_context_node,
     save_results_node,
 )
+from app.graphs.checkpoint import redis_checkpoint_manager
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +49,11 @@ def trace_node(name: str):
 
     def decorator(fn):
         @functools.wraps(fn)
-        async def wrapper(state):
+        async def wrapper(state, runtime: Runtime[InterviewRuntimeContext] | None = None):
             start = time.perf_counter()
             logger.info(f"[graph][node={name}] ▶ 进入")
             try:
-                result = await fn(state)
+                result = await fn(state, runtime)
                 dur_ms = (time.perf_counter() - start) * 1000
                 logger.info(f"[graph][node={name}] ✔ 完成 耗时={dur_ms:.1f}ms")
                 return result
@@ -76,8 +78,6 @@ class InterviewState(TypedDict):
     interview_id: int
     user_id: int
     answer: str
-    db: object  # AsyncSession，数据库连接
-    chunk_queue: object  # asyncio.Queue | None，流式输出用
 
     # 上下文（由 load_context 填充）
     current_question: str
@@ -108,6 +108,13 @@ class InterviewState(TypedDict):
     result: dict
 
 
+class InterviewRuntimeContext(TypedDict):
+    """Request-only dependencies that must not enter persisted graph state."""
+
+    db: object
+    chunk_queue: object | None
+
+
 # ---------------------------------------------------------------------------
 # 图构建
 # ---------------------------------------------------------------------------
@@ -121,9 +128,12 @@ def _route_after_evaluate(state: dict) -> str:
     return "success"
 
 
-def build_interview_graph():
+def build_interview_graph(checkpointer=None):
     """构建面试流程图（带条件边路由）"""
-    graph = StateGraph(InterviewState)
+    graph = StateGraph(
+        InterviewState,
+        context_schema=InterviewRuntimeContext,
+    )
 
     # 用 trace_node 包装，注入节点级可观测性
     graph.add_node("load_context", trace_node("load_context")(load_context_node))
@@ -144,35 +154,32 @@ def build_interview_graph():
     graph.add_edge("generate_next", "save_results")
     graph.add_edge("save_results", END)
 
-    # 刻意不挂 checkpointer（原来是进程内 MemorySaver）。三个原因：
-    #   1) 生产是 2 个 uvicorn worker，MemorySaver 是进程内的，thread_id 不跨进程共享，
-    #      所谓「断点续传」名不副实 —— 同一题重试落到另一个 worker 就从头跑；
-    #   2) 它没有 TTL / 容量上限，每个 iv:{interview_id}:{index} 的完整 state（含简历
-    #      解析结果、聊天历史）会永久驻留内存 —— 在 1.6Gi 内存的机器上是持续增长；
-    #   3) 换成 Redis/Postgres 持久化同样不成立：state 里带着 db(AsyncSession) 与
-    #      chunk_queue(asyncio.Queue)，二者都无法序列化。
-    # 幂等不受影响：它由 DB 层的 _get_duplicate_submission_result 独立保证，
-    # submit_answer 与 submit_answer_stream 两条路径都在入口先查一次。
-    # 因此调用方传的 configurable.thread_id 现在是惰性的（已验证：无 checkpointer 时无害）。
-    return graph.compile()
+    # Runtime context 中只放 AsyncSession / Queue 等请求级对象，避免进入 Redis JSON。
+    # Redis Checkpoint 负责跨 Worker 共享图状态；数据库幂等约束仍是最终写入保障。
+    return graph.compile(checkpointer=checkpointer)
 
 
 # 模块级单例：submit 与 stream 共用同一编译图（无状态，各次调用互不影响）
-interview_graph = build_interview_graph()
+interview_graph = build_interview_graph(checkpointer=redis_checkpoint_manager.saver)
 
 
 # ---------------------------------------------------------------------------
 # 流式执行器（SSE 用）
 # ---------------------------------------------------------------------------
 
-async def interview_graph_stream(input_data: dict, thread_id: str = "default"):
+async def interview_graph_stream(
+    input_data: dict,
+    thread_id: str = "default",
+    *,
+    context: dict,
+):
     """
     流式执行面试图，实时 yield LLM token + 最终结果。
 
     Args:
         input_data: 图输入状态
-        thread_id:  会话标识（iv:{interview_id}:{question_index}）。当前编译图未挂
-                    checkpointer，该配置是惰性的，仅保留给将来可能引入的持久化检查点用。
+        thread_id:  会话标识（iv:{interview_id}:{question_index}）。
+        context:    请求级依赖，不会写入 Redis Checkpoint。
 
     事件格式：
       {"type": "chunk", "content": "..."}     ← LLM token（逐字）
@@ -180,12 +187,18 @@ async def interview_graph_stream(input_data: dict, thread_id: str = "default"):
     """
     queue = asyncio.Queue()
 
-    # 把队列注入 state，evaluate 节点会把 token 推入队列
-    input_data["chunk_queue"] = queue
+    # 把队列注入 runtime context，evaluate 节点会把 token 推入队列；
+    # queue 不进入持久化 State，避免 Redis 序列化 asyncio.Queue。
+    runtime_context = dict(context)
+    runtime_context["chunk_queue"] = queue
 
     # 后台任务执行图，完成后往队列放终止信号
     graph_task = asyncio.create_task(
-        interview_graph.ainvoke(input_data, config={"configurable": {"thread_id": thread_id}})
+        interview_graph.ainvoke(
+            input_data,
+            context=runtime_context,
+            config={"configurable": {"thread_id": thread_id}},
+        )
     )
     graph_task.add_done_callback(lambda _: queue.put_nowait(_SENTINEL))
 

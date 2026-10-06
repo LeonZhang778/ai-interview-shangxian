@@ -14,6 +14,7 @@ from app.services.common.thread_pool import thread_pool_service
 from app.db.base import close_db_engine
 from app.schedule.schedule import setup_scheduler, shutdown_scheduler
 from app.services.common.setting_service import get_setting_bool
+from app.graphs.checkpoint import redis_checkpoint_manager
 import logging
 from app.common.log_consumer import consume_logs_forever
 import threading
@@ -36,6 +37,8 @@ async def lifespan(application: FastAPI):
     # 启动时执行
     setup_logging()
     logger.info("Application starting up")
+    await redis_checkpoint_manager.start()
+    logger.info("[Checkpoint] Redis checkpoint 已初始化")
 
     # 日志消费线程（仅主进程启动，防止多进程重复）
     if is_master_process():
@@ -64,6 +67,7 @@ async def lifespan(application: FastAPI):
     if is_master_process():
         shutdown_logging()  # 关闭日志
         # shutdown_scheduler()  # 关闭定时任务调度器
+    await redis_checkpoint_manager.stop()
     await close_db_engine()  # 清理数据库引擎
     await redis_client.close()  # 关闭Redis连接
     thread_pool_service.shutdown()  # 关闭邮件线程池

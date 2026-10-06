@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str = ""
+    # Redis Search 只支持在 DB 0 建索引；通过专用 key/index 前缀隔离 Checkpoint
+    REDIS_CHECKPOINT_DB: int = 0
+    LANGGRAPH_CHECKPOINT_TTL_MINUTES: int = 180
 
     # Celery 配置
     CELERY_BROKER_URL: str = ""  # 在 __init__ 中设置

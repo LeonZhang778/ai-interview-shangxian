@@ -218,9 +218,9 @@ RAG 的"打分"分两层，恰好对应你提到的**检索召回内容准确性
 
 #### 4.2.2 遗漏项落地状态（✅ 已实现 / ⬜ 待补）
 
-> 2026-10-02 已按用户指令补齐 LangGraph 不足（RAG 暂不引入），涉及文件：`app/graphs/checkpoint.py`(新增)、`interview_graph.py`、`nodes/interview_nodes.py`、`services/client/ai_service.py`、`interview_service.py`、`core/config.py`。
+> 2026-10-06 已按用户指令补齐 LangGraph Checkpoint 生产化（RAG 暂不引入），涉及文件：`app/graphs/checkpoint.py`、`interview_graph.py`、`nodes/interview_nodes.py`、`interview_service.py`、`core/config.py` 与 Compose 配置。
 
-- ✅ **Checkpointer 检查点持久化（断点续传核心）**：图编译时挂载 `MemorySaver`，以 `thread_id = iv:{interview_id}:{question_index}` 持久化每步状态。预留 `RedisSaver / PostgresSaver` 切换分支（装对应依赖后改 `app/graphs/checkpoint.py` 一行即可，无需动业务代码）。
+- ✅ **Checkpointer 检查点持久化（断点续传核心）**：图编译时挂载 Redis-backed `AsyncRedisSaver`，以 `thread_id = iv:{interview_id}:{question_index}` 跨 Worker 持久化每步状态；Redis Stack 提供 RedisJSON + RediSearch，Checkpoint 使用专用 key/index 前缀、默认 180 分钟 TTL 和读时续期。`AsyncSession` 与 SSE `Queue` 放入 runtime context，不进入 Redis 序列化。
 - ⬜ **Human-in-the-loop（人在环）**：尚未实现中断等待人工。建议补充 `interrupt() / __interrupt__ / interrupt_before|after`，在报告发布前、敏感判定处暂停交人工确认。
 - ✅ **会话记忆分离**：
   - 短期工作记忆（`InterviewState`，本轮）+ 长期记忆（聊天历史由 `load_context_node` 从 DB `InterviewMessage` 按归属加载，外部化于 DB）；
@@ -228,7 +228,7 @@ RAG 的"打分"分两层，恰好对应你提到的**检索召回内容准确性
   - ✅ **记忆外部化**：聊天历史与检查点分别存于 DB / 检查点，不耦合业务 State。
 - ⬜ **并行分支（Parallel Branches）**：当前仍为线性链。复杂场景可用 `Send` API 并行跑"评分 + 弱点抽取 + 报告草稿"。
 - ⬜ **子图（Subgraphs）**：可将"面试 / 复盘 / 报告"封装为可复用子图。
-- ✅ **幂等性（Idempotency）**：`thread_id + checkpoint` 保证续跑只跑未完成节点；`save_results_node` 增加同题（interview_id + question_index）已评分守卫，网络重试不会重复存分 / 重复生成报告。
+- ✅ **幂等性（Idempotency）**：Redis Checkpoint 支持同一 `thread_id` 的跨 Worker 续跑；最终幂等仍由 `save_results_node` 的同题守卫和数据库唯一约束保证，网络重试不会重复存分 / 重复生成报告。
 - **超时与重试（已实现 tenacity/asyncio.wait_for）**：建议后续加熔断（Circuit Breaker）防雪崩。
 - ✅ **可观测性（节点级）**：`trace_node` 包装四节点，记录进入/完成/耗时(ms)/异常；条件路由 `_route_after_evaluate` 打印 `success / fallback` 分支走向。LangSmith / OpenTelemetry 接入为可选增强（需外部服务与密钥），当前用既有 logging 零依赖实现。
 - ⬜ **Tool Calling / Agent 化**：可把"检索、计算器、代码执行"封装为工具节点。
@@ -317,7 +317,7 @@ RAG 的"打分"分两层，恰好对应你提到的**检索召回内容准确性
 ## 5. 风险与后续建议（仅列出，供人工复核）
 
 1. **RAG 尚未落地**：当前面试上下文为直注式，Milvus 仅规划中；若要做"面经/知识库语义检索"，需补齐检索→重排→评估链路与 §4.1.6 指标。
-2. **检查点与记忆分离缺失**：长面试/异常重启会丢失中间态，建议接入 Checkpointer 与记忆压缩（§4.2.2）。
+2. **Checkpoint 运行依赖 Redis Stack**：生产 Redis 必须加载 RedisJSON + RediSearch，并保证索引创建和 AOF 持久化正常；否则图服务启动应失败并由部署监控告警。
 3. **文档解析已补齐（见 §4.3）**：多格式(PDF/DOCX/TXT)、多栏重排、表格转 Markdown、标题检测、扫描件 VLM OCR 兜底均已落地且零新增依赖；重模型方案（LayoutLM/Nougat/传统 OCR/bbox）按最小改动铁律暂缓，公式识别与 bbox 溯源仍为缺口。
 4. **人工审核（Human-in-the-loop）缺口**：报告发布、敏感判定建议加 `interrupt` 人工确认。
 5. **评估指标闭环缺失**：建议引入 RAGAS / LLM-as-Judge 监控 Faithfulness 漂移。

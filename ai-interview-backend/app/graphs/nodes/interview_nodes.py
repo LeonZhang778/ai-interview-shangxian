@@ -23,6 +23,16 @@ from app.utils.utils import safe_parse_json
 logger = logging.getLogger(__name__)
 
 
+def _runtime_value(state: dict, runtime, key: str):
+    """Read request-only dependencies from runtime, with test compatibility fallback."""
+    if runtime is not None:
+        context = runtime.context
+        if isinstance(context, dict):
+            return context.get(key)
+        return getattr(context, key, None)
+    return state.get(key)
+
+
 def _get_question_text(questions: list, index: int) -> str | None:
     if index < 0 or index >= len(questions):
         return None
@@ -38,9 +48,9 @@ def _get_question_text(questions: list, index: int) -> str | None:
 # 节点 1：加载上下文
 # ---------------------------------------------------------------------------
 
-async def load_context_node(state: dict) -> dict:
+async def load_context_node(state: dict, runtime=None) -> dict:
     """从 DB 加载面试上下文（简历/面经 + 对话历史 + 题目列表）"""
-    db: AsyncSession = state["db"]
+    db: AsyncSession = _runtime_value(state, runtime, "db")
     interview_id = state["interview_id"]
 
     interview = await db.get(Interview, interview_id)
@@ -115,7 +125,7 @@ async def load_context_node(state: dict) -> dict:
 # 节点 2：评估回答
 # ---------------------------------------------------------------------------
 
-async def evaluate_node(state: dict) -> dict:
+async def evaluate_node(state: dict, runtime=None) -> dict:
     """评估候选人回答，带三级容错 + 流式输出"""
     import asyncio
     import re
@@ -128,7 +138,7 @@ async def evaluate_node(state: dict) -> dict:
     current_question = state["current_question"]
     parsed_resume = state["parsed_resume"]
     chat_history = state["chat_history"]
-    chunk_queue = state.get("chunk_queue")  # 可选：用于流式输出
+    chunk_queue = _runtime_value(state, runtime, "chunk_queue")  # 可选：用于流式输出
 
     # 评分语义统一交给 AI 按提示词判断：坦诚跳过给 4-5 / 2-3 分等分档规则
     # 已写入 EVALUATE_STREAM_SYSTEM。此处刻意不做关键词预判——正常技术回答里的
@@ -194,7 +204,7 @@ async def evaluate_node(state: dict) -> dict:
 # 节点 3：生成下一题 / 标记完成
 # ---------------------------------------------------------------------------
 
-async def generate_next_node(state: dict) -> dict:
+async def generate_next_node(state: dict, runtime=None) -> dict:
     """判断是否最后一题，生成下一题或标记面试结束"""
     if state.get("error"):
         return {"is_finished": False, "next_question": None}
@@ -222,13 +232,13 @@ async def generate_next_node(state: dict) -> dict:
 # 节点 4：保存结果到 DB
 # ---------------------------------------------------------------------------
 
-async def save_results_node(state: dict) -> dict:
+async def save_results_node(state: dict, runtime=None) -> dict:
     """保存评估结果、推进面试进度、生成报告、发送通知"""
     # 如果上游已出错，返回错误结果
     if state.get("error"):
         return {"result": {"error": state["error"]}}
 
-    db: AsyncSession = state["db"]
+    db: AsyncSession = _runtime_value(state, runtime, "db")
     interview_id = state["interview_id"]
     user_id = state["user_id"]
     current_index = state["current_index"]

@@ -167,8 +167,8 @@ class InterviewService:
         if interview.status == "completed":
             raise ValidationError(message="面试已结束")
 
-        # thread_id 沿用「面试ID:题号」。当前编译图未挂 checkpointer，该配置是惰性的；
-        # 幂等由入口的 _get_duplicate_submission_result 与 save_results_node 的守卫保证。
+        # thread_id 沿用「面试ID:题号」，用于 Redis Checkpoint 的跨 Worker 状态隔离；
+        # 幂等仍由入口校验与 save_results_node 的数据库唯一约束共同保证。
         thread_id = f"iv:{interview_id}:{interview.current_question_index}"
 
         # 执行图
@@ -176,7 +176,6 @@ class InterviewService:
             "interview_id": interview_id,
             "user_id": user_id,
             "answer": answer,
-            "db": db,
             # 以下字段由 load_context 节点填充
             "current_question": "",
             "parsed_resume": {},
@@ -197,7 +196,7 @@ class InterviewService:
             "overall_score": 0.0,
             "error": None,
             "result": {},
-        }, config={"configurable": {"thread_id": thread_id}})
+        }, context={"db": db, "chunk_queue": None}, config={"configurable": {"thread_id": thread_id}})
 
         result = graph_result["result"]
         if result.get("error"):
@@ -233,7 +232,7 @@ class InterviewService:
             yield f"data: {json.dumps({'type': 'error', 'content': '面试已结束'})}\n\n"
             return
 
-        # thread_id 同上（惰性配置，见 submit_answer）
+        # thread_id 同上，使用 Redis Checkpoint 在多 Worker 间共享。
         thread_id = f"iv:{interview_id}:{interview.current_question_index}"
 
         # 流式执行图（evaluate 节点内部 LLM token 通过 queue 实时输出）
@@ -244,8 +243,6 @@ class InterviewService:
                 "interview_id": interview_id,
                 "user_id": user_id,
                 "answer": answer,
-                "db": db,
-                "chunk_queue": None,  # 由 interview_graph_stream 注入
                 "current_question": "",
                 "parsed_resume": {},
                 "chat_history": [],
@@ -264,7 +261,7 @@ class InterviewService:
                 "overall_score": 0.0,
                 "error": None,
                 "result": {},
-            }, thread_id=thread_id):
+            }, thread_id=thread_id, context={"db": db, "chunk_queue": None}):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.error(f"[submit_answer_stream] 流式执行异常: {e}", exc_info=True)
