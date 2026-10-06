@@ -152,19 +152,20 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and push backend image
-        # 使用 BuildKit 直接提交镜像 manifest，避免旧版 docker push 在 ACR
-        # 完成层上传后卡住的问题。
+      - name: Build backend image
+        # 仅构建部署使用的不可变 SHA 标签，避免额外的 latest manifest 提交。
+        run: |
+          docker build \
+            -t "$IMAGE_REPOSITORY:$IMAGE_TAG" \
+            ./ai-interview-backend
+
+      - name: Push backend image
+        # Docker 引擎上传层速度明显快于 BuildKit；ACR manifest 提交允许更长等待。
         timeout-minutes: 60
         run: |
           set -Eeuo pipefail
-          docker buildx build \
-            --push \
-            --provenance=false \
-            --sbom=false \
-            -t "$IMAGE_REPOSITORY:$IMAGE_TAG" \
-            -t "$IMAGE_REPOSITORY:latest" \
-            ./ai-interview-backend
+          timeout --signal=TERM --kill-after=30s 55m \
+            docker push "$IMAGE_REPOSITORY:$IMAGE_TAG"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
