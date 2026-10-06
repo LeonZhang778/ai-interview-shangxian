@@ -160,13 +160,34 @@ jobs:
             ./ai-interview-backend
 
       - name: Push backend image
-        # 单独设超时：ACR 推送曾经两次静默阻塞（一次 1h57m 后被全局超时取消）。
-        # 没有这一步，挂起的 push 会一直占满 job 的 timeout-minutes(120)，
-        # 期间既不报错也无法判断是网络还是认证问题。
-        timeout-minutes: 15
+        # ACR 曾在大层上传完成后卡住 manifest 提交；每个引用单独限时并重试，
+        # 避免一次 registry 瞬时卡顿拖垮整条部署流水线。
+        timeout-minutes: 20
         run: |
-          docker push "$IMAGE_REPOSITORY:$IMAGE_TAG"
-          docker push "$IMAGE_REPOSITORY:latest"
+          set -Eeuo pipefail
+
+          push_with_retry() {
+            local image_ref="$1"
+            for attempt in 1 2; do
+              echo "Pushing $image_ref (attempt ${attempt}/2)"
+              if timeout --signal=TERM --kill-after=30s 8m docker push "$image_ref"; then
+                return 0
+              fi
+              if [ "$attempt" -lt 2 ]; then
+                echo "Push timed out or failed; retrying in 15 seconds"
+                sleep 15
+              fi
+            done
+            echo "Failed to push $image_ref after 2 attempts"
+            return 1
+          }
+
+          push_with_retry "$IMAGE_REPOSITORY:$IMAGE_TAG"
+          # 复用已上传的不可变 SHA 镜像，避免再次上传全部层。
+          timeout --signal=TERM --kill-after=30s 5m \
+            docker buildx imagetools create \
+            --tag "$IMAGE_REPOSITORY:latest" \
+            "$IMAGE_REPOSITORY:$IMAGE_TAG"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
