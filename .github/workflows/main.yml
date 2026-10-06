@@ -160,12 +160,22 @@ jobs:
             ./ai-interview-backend
 
       - name: Push backend image
-        # Docker 引擎上传层速度明显快于 BuildKit；ACR manifest 提交允许更长等待。
+        # Docker 引擎上传层速度快，但其 ACR manifest 提交会静默阻塞；使用
+        # skopeo 复用本地镜像并完成 registry manifest 写入。
         timeout-minutes: 60
         run: |
           set -Eeuo pipefail
-          timeout --signal=TERM --kill-after=30s 55m \
-            docker push "$IMAGE_REPOSITORY:$IMAGE_TAG"
+          if ! command -v skopeo >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y skopeo
+          fi
+          skopeo copy \
+            --authfile "$HOME/.docker/config.json" \
+            --format v2s2 \
+            --retry-times 3 \
+            --command-timeout 55m \
+            "docker-daemon:$IMAGE_REPOSITORY:$IMAGE_TAG" \
+            "docker://$IMAGE_REPOSITORY:$IMAGE_TAG"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
