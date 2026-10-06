@@ -155,7 +155,7 @@ jobs:
       - name: Build and push backend image
         # 使用 BuildKit 直接提交镜像 manifest，避免旧版 docker push 在 ACR
         # 完成层上传后卡住的问题。
-        timeout-minutes: 20
+        timeout-minutes: 60
         run: |
           set -Eeuo pipefail
           docker buildx build \
