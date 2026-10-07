@@ -1,10 +1,10 @@
 <template>
   <div>
-    <h1 style="font-size:22px;margin-bottom:24px;color:#1e293b">📊 数据概览</h1>
+    <h1 style="font-size:22px;margin-bottom:24px;color:var(--admin-text-primary)">📊 数据概览</h1>
 
     <!-- 统计卡片 -->
     <div class="stats-grid">
-      <div class="stat-card" v-for="(s, i) in statCards" :key="i" :style="{ '--accent': s.color, '--glow': s.glow }">
+      <div class="stat-card" v-for="(s, i) in statCards" :key="i" :style="{ '--accent': s.color }">
         <div class="stat-icon">{{ s.icon }}</div>
         <div class="stat-num">{{ stats[s.key] }}</div>
         <div class="stat-label">{{ s.label }}</div>
@@ -60,9 +60,9 @@
                 <tr v-for="(r, i) in geo.top_countries" :key="r.name">
                   <td>{{ i + 1 }}</td>
                   <td>{{ r.name }}</td>
-                  <td><span style="font-weight:700;color:#6366f1">{{ r.count }}</span></td>
+                  <td><span style="font-weight:700;color:var(--admin-primary)">{{ r.count }}</span></td>
                 </tr>
-                <tr v-if="!geo.top_countries.length"><td colspan="3" style="color:#94a3b8;text-align:center">暂无数据</td></tr>
+                <tr v-if="!geo.top_countries.length"><td colspan="3" style="color:var(--admin-text-muted);text-align:center">暂无数据</td></tr>
               </tbody>
             </table>
           </div>
@@ -74,9 +74,9 @@
                 <tr v-for="(r, i) in geo.top_provinces" :key="r.name">
                   <td>{{ i + 1 }}</td>
                   <td>{{ r.name }}</td>
-                  <td><span style="font-weight:700;color:#8b5cf6">{{ r.count }}</span></td>
+                  <td><span style="font-weight:700;color:var(--admin-primary)">{{ r.count }}</span></td>
                 </tr>
-                <tr v-if="!geo.top_provinces.length"><td colspan="3" style="color:#94a3b8;text-align:center">暂无数据</td></tr>
+                <tr v-if="!geo.top_provinces.length"><td colspan="3" style="color:var(--admin-text-muted);text-align:center">暂无数据</td></tr>
               </tbody>
             </table>
           </div>
@@ -107,13 +107,18 @@ let interviewChart = null
 let pvChart = null
 
 const statCards = [
-  { key: 'total_users', label: '注册用户', icon: '👥', color: '#6366f1', glow: 'rgba(99,102,241,0.3)' },
-  { key: 'total_interviews', label: '面试总数', icon: '🎤', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)' },
-  { key: 'total_experiences', label: '面经数量', icon: '📝', color: '#06b6d4', glow: 'rgba(6,182,212,0.3)' },
-  { key: 'average_score', label: '平均分', icon: '⭐', color: '#10b981', glow: 'rgba(16,185,129,0.3)' },
+  { key: 'total_users', label: '注册用户', icon: '👥', color: 'var(--admin-primary)' },
+  { key: 'total_interviews', label: '面试总数', icon: '🎤', color: 'var(--admin-primary)' },
+  { key: 'total_experiences', label: '面经数量', icon: '📝', color: 'var(--admin-primary)' },
+  { key: 'average_score', label: '平均分', icon: '⭐', color: 'var(--admin-primary)' },
 ]
 
-function initChart(el, labels, data, color) {
+function getAdminToken(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+function initChart(el, labels, data) {
+  const color = getAdminToken('--admin-primary')
   const chart = echarts.init(el)
   chart.setOption({
     tooltip: { trigger: 'axis' },
@@ -123,15 +128,12 @@ function initChart(el, labels, data, color) {
     series: [{
       type: 'line',
       data: data,
-      smooth: true,
+      smooth: false,
       symbol: 'circle',
       symbolSize: 6,
       lineStyle: { color, width: 2 },
       itemStyle: { color },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-        { offset: 0, color: color + '40' },
-        { offset: 1, color: color + '05' },
-      ]) },
+      areaStyle: { color, opacity: 0.06 },
     }],
   })
   return chart
@@ -152,9 +154,9 @@ onMounted(async () => {
     activeUsers.value = active
 
     await nextTick()
-    if (userChartRef.value) userChart = initChart(userChartRef.value, userTrend.labels, userTrend.data, '#6366f1')
-    if (interviewChartRef.value) interviewChart = initChart(interviewChartRef.value, interviewTrend.labels, interviewTrend.data, '#06b6d4')
-    if (pvChartRef.value) pvChart = initChart(pvChartRef.value, pvTrend.labels, pvTrend.data, '#f59e0b')
+    if (userChartRef.value) userChart = initChart(userChartRef.value, userTrend.labels, userTrend.data)
+    if (interviewChartRef.value) interviewChart = initChart(interviewChartRef.value, interviewTrend.labels, interviewTrend.data)
+    if (pvChartRef.value) pvChart = initChart(pvChartRef.value, pvTrend.labels, pvTrend.data)
   } catch (e) { console.error(e) }
 })
 
@@ -169,30 +171,30 @@ onBeforeUnmount(() => {
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
 
 .stat-card {
-  background: white;
-  border-radius: 14px;
-  padding: 28px 24px;
+  background: var(--admin-bg-card);
+  border-radius: var(--admin-radius-lg);
+  padding: 24px;
   text-align: center;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: border-color 0.15s;
+  border: 1px solid var(--admin-border);
+  box-shadow: none;
 }
 .stat-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent), transparent);
+  height: 2px;
+  background: var(--accent);
 }
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px var(--glow);
+  transform: none;
+  border-color: var(--admin-border-strong);
 }
 .stat-icon { font-size: 32px; margin-bottom: 8px; }
 .stat-num { font-size: 40px; font-weight: 700; color: var(--accent); }
-.stat-label { font-size: 14px; color: #6b7280; margin-top: 4px; }
+.stat-label { font-size: 14px; color: var(--admin-text-secondary); margin-top: 4px; }
 
 .active-row {
   display: flex;
@@ -201,16 +203,17 @@ onBeforeUnmount(() => {
 }
 .active-card {
   flex: 1;
-  background: white;
-  border-radius: 12px;
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
   padding: 20px 24px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  box-shadow: none;
 }
-.active-num { font-size: 36px; font-weight: 700; color: #f59e0b; }
-.active-label { font-size: 14px; color: #6b7280; }
+.active-num { font-size: 36px; font-weight: 700; color: var(--admin-primary); }
+.active-label { font-size: 14px; color: var(--admin-text-secondary); }
 
 .charts-grid {
   display: grid;
@@ -219,15 +222,16 @@ onBeforeUnmount(() => {
   margin-bottom: 20px;
 }
 .chart-card {
-  background: white;
-  border-radius: 14px;
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  box-shadow: none;
 }
 .chart-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--admin-text-primary);
   margin-bottom: 12px;
 }
 .chart-box { width: 100%; height: 260px; }
@@ -240,7 +244,7 @@ onBeforeUnmount(() => {
 .geo-block h4.geo-subtitle {
   font-size: 13px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--admin-text-secondary);
   margin: 0 0 8px;
 }
 .ip-stat {
@@ -249,7 +253,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--admin-border);
 }
 
 table {
@@ -260,11 +264,11 @@ th, td {
   padding: 8px 12px;
   text-align: left;
   font-size: 13px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--admin-border);
 }
 th {
   font-weight: 600;
-  color: #6b7280;
+  color: var(--admin-text-secondary);
   font-size: 12px;
 }
 

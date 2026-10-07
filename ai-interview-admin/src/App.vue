@@ -63,33 +63,14 @@ async function logout() { await authStore.logout(); router.push('/login') }
 
 .sidebar {
   width: 230px;
-  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-  color: white;
+  background: var(--admin-bg-sidebar);
+  color: var(--admin-text-sidebar-active);
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
   position: fixed;
   top: 0; left: 0; bottom: 0;
   overflow: hidden;
-}
-
-.sidebar::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-              radial-gradient(ellipse at 70% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
-  animation: auroraFloat 8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes auroraFloat {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  33% { transform: translate(2%, -3%) rotate(1deg); }
-  66% { transform: translate(-2%, 2%) rotate(-1deg); }
 }
 
 .sidebar-logo {
@@ -110,15 +91,12 @@ async function logout() { await authStore.logout(); router.push('/login') }
 }
 
 .logo-text {
-  background: linear-gradient(135deg, #a78bfa, #818cf8, #6ee7b7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--admin-text-sidebar-active);
 }
 
 .sidebar-subtitle {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--admin-text-sidebar);
   margin-bottom: 32px;
   position: relative;
 }
@@ -133,32 +111,31 @@ async function logout() { await authStore.logout(); router.push('/login') }
 
 .sidebar-nav a {
   padding: 11px 14px;
-  border-radius: 10px;
-  color: #94a3b8;
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-sidebar);
   font-size: 14px;
-  transition: all 0.3s;
+  transition: background 0.15s, color 0.15s;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .sidebar-nav a:hover {
-  background: rgba(99, 102, 241, 0.15);
-  color: #e0e7ff;
+  background: var(--admin-bg-sidebar-hover);
+  color: var(--admin-text-sidebar-active);
 }
 
 .sidebar-nav a.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.2));
-  color: white;
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+  background: var(--admin-bg-sidebar-active);
+  color: var(--admin-text-sidebar-active);
 }
 
 .nav-icon { font-size: 16px; }
 
 .sidebar-footer {
   font-size: 12px;
-  color: #6b7280;
-  border-top: 1px solid rgba(99, 102, 241, 0.15);
+  color: var(--admin-text-sidebar);
+  border-top: 1px solid #262626;
   padding-top: 16px;
   position: relative;
 }
@@ -168,25 +145,25 @@ async function logout() { await authStore.logout(); router.push('/login') }
   width: 100%;
   margin-top: 10px;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--admin-radius-md);
   font-size: 13px;
-  background: rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: transparent;
+  color: var(--admin-text-sidebar);
+  border: 1px solid #262626;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--admin-bg-sidebar-hover);
+  color: var(--admin-text-sidebar-active);
+  border-color: #404040;
 }
 
 .main-content {
   margin-left: 230px;
   flex: 1;
   padding: 28px;
-  background: #f8fafc;
+  background: var(--admin-bg-page);
 }
 </style>

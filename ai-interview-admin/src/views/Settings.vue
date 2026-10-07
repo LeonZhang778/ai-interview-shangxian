@@ -7,7 +7,7 @@
       </button>
     </div>
 
-    <div v-if="loading" style="text-align:center;padding:60px;color:#6b7280">加载中...</div>
+    <div v-if="loading" style="text-align:center;padding:60px;color:var(--admin-text-secondary)">加载中...</div>
 
     <div v-else class="settings-grid">
       <!-- 基本信息 -->
@@ -183,7 +183,7 @@ onMounted(loadSettings)
   font-size: 15px;
   font-weight: 700;
   margin-bottom: 16px;
-  color: #1e293b;
+  color: var(--admin-text-primary);
 }
 
 .form-group {
@@ -195,17 +195,19 @@ onMounted(loadSettings)
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 4px;
-  color: #374151;
+  color: var(--admin-text-primary);
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
   font-size: 14px;
   box-sizing: border-box;
+  background: var(--admin-bg-content);
+  color: var(--admin-text-primary);
 }
 
 .form-group textarea {
@@ -223,7 +225,7 @@ onMounted(loadSettings)
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--admin-border);
 }
 
 .toggle-item:last-child {
@@ -233,12 +235,12 @@ onMounted(loadSettings)
 .toggle-label {
   font-size: 14px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--admin-text-primary);
 }
 
 .toggle-desc {
   font-size: 12px;
-  color: #64748b;
+  color: var(--admin-text-secondary);
   margin-top: 2px;
 }
 
@@ -261,9 +263,9 @@ onMounted(loadSettings)
   position: absolute;
   cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #cbd5e1;
-  transition: 0.3s;
-  border-radius: 24px;
+  background-color: var(--admin-border-strong);
+  transition: background-color 0.15s;
+  border-radius: var(--admin-radius-lg);
 }
 
 .slider:before {
@@ -273,13 +275,13 @@ onMounted(loadSettings)
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
+  background-color: var(--admin-bg-content);
+  transition: transform 0.15s;
   border-radius: 50%;
 }
 
 input:checked + .slider {
-  background-color: #4f46e5;
+  background-color: var(--admin-primary);
 }
 
 input:checked + .slider:before {

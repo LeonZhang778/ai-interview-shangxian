@@ -154,7 +154,7 @@ async function logout() {
   position: sticky;
   top: 0;
   z-index: 100;
-  transition: transform 0.3s ease;
+  transition: transform 0.2s ease;
 }
 .top-sticky.nav-hidden {
   transform: translateY(-100%);
@@ -164,8 +164,6 @@ async function logout() {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-default);
   padding: 0 20px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
 }
 
 .nav-content {
@@ -197,9 +195,8 @@ async function logout() {
 .nav-logo-text {
   white-space: nowrap;
   line-height: 1;
-  background: linear-gradient(135deg, #a855f7, #06b6d4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .nav-links {
@@ -221,7 +218,8 @@ async function logout() {
 }
 
 .nav-links a:hover {
-  color: var(--accent-light);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .nav-links a.router-link-active {
@@ -239,7 +237,7 @@ async function logout() {
 }
 
 .nav-user-link:hover {
-  color: var(--accent-light);
+  color: var(--text-primary);
 }
 
 .nav-avatar {
@@ -253,7 +251,8 @@ async function logout() {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--purple-bg);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,12 +260,12 @@ async function logout() {
 }
 
 .guest-banner {
-  background: var(--amber-bg);
-  color: var(--amber);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   text-align: center;
   padding: 8px 16px;
   font-size: 13px;
-  border-bottom: 1px solid rgba(245,158,11,0.15);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .guest-banner a {
@@ -293,9 +292,10 @@ async function logout() {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
-  background: #ef4444;
-  color: white;
+  border-radius: var(--radius-sm);
+  background: var(--text-primary);
+  color: var(--bg-base);
+  border: 1px solid var(--border-default);
   font-size: 11px;
   font-weight: 700;
   display: flex;
@@ -318,9 +318,9 @@ async function logout() {
 }
 
 .btn-logout:hover {
-  background: var(--red-bg);
-  color: var(--red);
-  border-color: rgba(239,68,68,0.2);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
 }
 
 .nav-toggle {
@@ -368,8 +368,6 @@ async function logout() {
     align-items: stretch;
     gap: 0;
     background: var(--bg-surface);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border-default);
     padding: 0 14px;
     max-height: 0;

@@ -34,49 +34,48 @@ const { theme, toggleTheme } = useTheme()
 .toggle-track {
   width: 52px;
   height: 28px;
-  border-radius: 14px;
-  background: rgba(139,92,246,0.15);
-  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: var(--radius-lg);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 6px;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 .toggle-track.light {
-  background: rgba(139,92,246,0.1);
-  border-color: rgba(139,92,246,0.15);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 .toggle-thumb {
   position: absolute;
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  background: #EDEDED;
   top: 2px;
   left: 2px;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(124,58,237,0.4);
+  transition: transform 0.2s ease;
+  box-shadow: none;
 }
 .toggle-thumb.light {
   transform: translateX(24px);
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  box-shadow: 0 2px 8px rgba(245,158,11,0.4);
+  background: #0A0A0A;
 }
 .toggle-icon {
-  color: rgba(255,255,255,0.3);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1;
-  transition: color 0.3s;
+  transition: color 0.2s ease;
 }
 .toggle-icon.active {
-  color: rgba(255,255,255,0.8);
+  color: var(--text-primary);
 }
-.toggle-icon.sun { color: rgba(251,191,36,0.4); }
-.toggle-icon.sun.active { color: #fbbf24; }
-.toggle-icon.moon { color: rgba(167,139,250,0.4); }
-.toggle-icon.moon.active { color: #c4b5fd; }
+.toggle-icon.sun,
+.toggle-icon.moon { color: var(--text-muted); }
+.toggle-icon.sun.active,
+.toggle-icon.moon.active { color: var(--text-primary); }
 </style>

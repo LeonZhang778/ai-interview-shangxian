@@ -162,6 +162,7 @@ async function handleGuest() {
 <style scoped>
 .landing {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-base);
   color: var(--text-primary);
   position: relative;
   min-height: 100vh;
@@ -172,8 +173,8 @@ async function handleGuest() {
 .hero {
   position: relative;
   z-index: 2;
-  background: linear-gradient(135deg, rgba(124,58,237,0.25) 0%, rgba(99,102,241,0.18) 50%, rgba(139,92,246,0.12) 100%);
-  color: white;
+  background: var(--bg-surface);
+  color: var(--text-primary);
   padding: 100px 20px 80px;
   text-align: center;
   border-bottom: 1px solid var(--border-default);
@@ -190,9 +191,7 @@ async function handleGuest() {
   font-family: 'Space Grotesk', sans-serif;
 }
 .highlight {
-  background: linear-gradient(90deg, #c4b5fd, #a855f7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 .hero-desc {
   font-size: 17px;
@@ -210,19 +209,20 @@ async function handleGuest() {
 }
 .btn-glow {
   padding: 14px 32px;
-  border: none;
-  border-radius: 10px;
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 700;
-  color: white;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  font-weight: 500;
+  color: var(--bg-base);
+  background: var(--text-primary);
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 4px 24px rgba(124,58,237,0.35);
+  transition: opacity 0.15s;
+  box-shadow: none;
 }
 .btn-glow:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(124,58,237,0.5);
+  opacity: 0.85;
+  transform: none;
+  box-shadow: none;
 }
 .btn-glow:disabled {
   opacity: 0.7;
@@ -230,24 +230,24 @@ async function handleGuest() {
 }
 .btn-outline {
   padding: 14px 32px;
-  border: 2px solid rgba(167,139,250,0.4);
-  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
   font-size: 16px;
   font-weight: 600;
-  color: var(--accent-light);
+  color: var(--text-primary);
   text-decoration: none;
-  transition: all 0.3s;
+  transition: background-color 0.15s, border-color 0.15s;
 }
 .btn-outline:hover {
-  border-color: var(--accent-purple);
-  background: rgba(139,92,246,0.1);
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
 }
 .hero-stats {
   font-size: 14px;
   color: var(--text-secondary);
 }
 .hero-stats strong {
-  color: var(--accent-light);
+  color: var(--text-primary);
 }
 
 /* Features */
@@ -261,7 +261,7 @@ async function handleGuest() {
 }
 .intro-kicker {
   margin: 0 0 10px;
-  color: var(--accent-cyan);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .12em;
@@ -291,7 +291,7 @@ async function handleGuest() {
   gap: 8px;
   padding: 18px 16px;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   text-align: left;
 }
@@ -318,9 +318,7 @@ async function handleGuest() {
   font-weight: 700;
   margin-bottom: 40px;
   font-family: 'Space Grotesk', sans-serif;
-  background:var(--title-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 .feature-grid {
   display: grid;
@@ -329,16 +327,15 @@ async function handleGuest() {
 }
 .feature-card {
   background: var(--bg-card);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   padding: 28px 24px;
   text-align: center;
   border: 1px solid var(--border-default);
-  transition: all 0.3s;
+  transition: border-color 0.15s;
 }
 .feature-card:hover {
-  transform: translateY(-4px);
   border-color: var(--border-hover);
-  box-shadow: 0 12px 40px rgba(139,92,246,0.1);
+  box-shadow: none;
 }
 .feature-icon {
   font-size: 36px;
@@ -381,16 +378,16 @@ async function handleGuest() {
 .step-num {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white;
+  border-radius: var(--radius-md);
+  background: var(--text-primary);
+  color: var(--bg-base);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 16px;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(124,58,237,0.25);
+  box-shadow: none;
 }
 .step-info h4 {
   font-size: 16px;

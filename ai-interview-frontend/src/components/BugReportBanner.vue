@@ -3,7 +3,7 @@
     <transition name="fade">
       <div v-if="expanded" class="bug-panel">
         <div class="bug-header">
-          <span>🐛 意见反馈</span>
+          <span>意见反馈</span>
           <button class="close-btn" @click="expanded = false">&times;</button>
         </div>
         <div class="form-group">
@@ -29,8 +29,8 @@
         <p class="bug-note">所有反馈都会被记录，帮助我们持续改进</p>
       </div>
     </transition>
-    <button class="bug-toggle" @click="expanded = !expanded" title="意见反馈">
-      🐛
+    <button class="bug-toggle" @click="expanded = !expanded" title="意见反馈" aria-label="意见反馈">
+      ?
     </button>
   </div>
 </template>
@@ -88,33 +88,33 @@ async function submitFeedback() {
 .bug-toggle {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  border: 2px solid rgba(139,92,246,0.3);
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--text-primary);
+  color: var(--bg-base);
   font-size: 22px;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(124,58,237,0.4);
-  transition: all 0.3s;
+  box-shadow: none;
+  transition: opacity 0.15s, background-color 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .bug-toggle:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 28px rgba(124,58,237,0.55);
+  transform: none;
+  opacity: 0.85;
+  box-shadow: none;
 }
 
 .bug-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   padding: 18px 20px;
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  box-shadow: none;
   width: 300px;
   font-size: 13px;
   line-height: 1.6;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
 }
 
 .bug-header {
@@ -174,33 +174,35 @@ async function submitFeedback() {
 
 /* Dark mode: override browser defaults for select/option */
 .bug-panel select option {
-  background-color: #1a1b2e;
-  color: #e2e8f0;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
 }
 :root[data-theme="light"] .bug-panel select option {
-  background-color: #fff;
-  color: #1E293B;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .submit-btn {
   width: 100%;
   padding: 10px;
-  background: var(--accent-gradient);
-  color: white;
-  border: none;
-  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-base);
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: var(--shadow-sm);
+  transition: opacity 0.15s;
+  box-shadow: none;
 }
 .submit-btn:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  opacity: 0.85;
+  transform: none;
+  box-shadow: none;
 }
 .submit-btn:disabled {
-  background: var(--text-dim);
+  background: var(--text-primary);
+  border-color: var(--text-primary);
   cursor: not-allowed;
   transform: none;
   box-shadow: none;

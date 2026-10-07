@@ -167,12 +167,16 @@ button:hover:not(:disabled) {
   background: var(--accent-primary);
   color: var(--bg-base);
   border-color: var(--accent-primary);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-weight: 500;
+  transition: opacity 0.15s;
+  box-shadow: none;
 }
 
 .btn-primary:hover {
-  opacity: 0.8;
-  box-shadow: var(--shadow-sm);
+  opacity: 0.85;
+  box-shadow: none;
   transform: none;
 }
 
@@ -181,21 +185,21 @@ button:hover:not(:disabled) {
   color: var(--bg-base);
   border-color: var(--text-dim);
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.4;
   transform: none;
   box-shadow: none;
 }
 
 .btn-secondary {
-  background: var(--bg-hover);
-  color: var(--accent-primary);
+  background: transparent;
+  color: var(--text-primary);
   border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
 }
 
 .btn-secondary:hover {
   background: var(--bg-hover);
   border-color: var(--border-hover);
-  opacity: 0.8;
 }
 
 input,
@@ -221,6 +225,8 @@ textarea::placeholder {
 input:focus,
 select:focus,
 textarea:focus {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
   border-color: var(--border-focus);
   box-shadow: none;
   background: var(--bg-input-focus);
@@ -255,13 +261,34 @@ select option:checked {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: none;
+  transition: border-color 0.15s;
 }
 
 .card:hover {
   border-color: var(--border-hover);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+
+.badge-success,
+.badge-error,
+.badge-warning,
+.badge-info {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-default);
 }
 
 /* Scrollbar */
@@ -273,7 +300,7 @@ select option:checked {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: var(--radius-sm);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -292,4 +319,20 @@ body,
 .task-card,
 .filter-section {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
