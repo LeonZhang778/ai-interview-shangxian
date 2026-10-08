@@ -172,9 +172,9 @@ onMounted(loadData)
 .back-btn,
 .section-link,
 .page-message button {
-  border: 1px solid rgba(99, 102, 241, 0.28);
+  border: 1px solid rgba(128, 128, 128, 0.28);
   border-radius: 8px;
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(128, 128, 128, 0.12);
   color: var(--accent-light);
   cursor: pointer;
   text-decoration: none;
@@ -191,8 +191,8 @@ onMounted(loadData)
 .back-btn:hover,
 .section-link:hover,
 .page-message button:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(128, 128, 128, 0.2);
+  border-color: rgba(128, 128, 128, 0.45);
 }
 .page-message {
   display: flex;
@@ -205,9 +205,9 @@ onMounted(loadData)
   font-size: 13px;
 }
 .error-message {
-  color: #fecaca;
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #A3A3A3;
+  background: rgba(128, 128, 128, 0.14);
+  border: 1px solid rgba(128, 128, 128, 0.3);
 }
 .loading-state,
 .empty-state {
@@ -236,7 +236,7 @@ onMounted(loadData)
   padding: 16px;
 }
 .stat-tile.accent {
-  background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(99,102,241,0.08));
+  background: var(--bg-surface);
 }
 .stat-value {
   font-size: 26px;
@@ -285,14 +285,14 @@ onMounted(loadData)
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid rgba(239,68,68,var(--heat));
+  border: 1px solid rgba(128, 128, 128,var(--heat));
   border-radius: 8px;
-  background: rgba(239,68,68,var(--heat));
+  background: rgba(128, 128, 128,var(--heat));
   color: var(--text-primary);
   cursor: default;
 }
 .heat-chip strong {
-  color: #fecaca;
+  color: #A3A3A3;
 }
 .mistake-list,
 .recommend-list,
@@ -315,8 +315,8 @@ onMounted(loadData)
 }
 .mistake-item:hover,
 .recommend-item:hover {
-  border-color: rgba(99,102,241,0.35);
-  background: rgba(99,102,241,0.08);
+  border-color: rgba(128, 128, 128,0.35);
+  background: rgba(128, 128, 128,0.08);
 }
 .mistake-title,
 .recommend-item strong {

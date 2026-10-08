@@ -613,7 +613,7 @@ function clamp(value, min, max) {
 .overlay-editor {
   margin-top: 18px;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--bg-card);
   padding: 14px;
 }
@@ -649,8 +649,8 @@ function clamp(value, min, max) {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 10px;
-  background: #050816;
+  border-radius: 8px;
+  background: #111111;
   border: 1px solid rgba(255,255,255,.06);
 }
 .stage-placeholder {
@@ -663,10 +663,8 @@ function clamp(value, min, max) {
 .stage-loading-bar {
   height: 6px;
   margin-top: 14px;
-  border-radius: 999px;
-  background:
-    linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent),
-    var(--border-default);
+  border-radius: 8px;
+  background: var(--accent-primary);
   background-size: 70px 100%, 100% 100%;
   overflow: hidden;
   position: relative;
@@ -677,7 +675,7 @@ function clamp(value, min, max) {
   inset: 0;
   width: 45%;
   border-radius: inherit;
-  background: var(--accent-gradient);
+  background: var(--accent-primary);
   animation: indeterminate-progress 1.1s ease-in-out infinite;
 }
 .video-frame {
@@ -736,7 +734,7 @@ function clamp(value, min, max) {
 .redact-box {
   position: absolute;
   border: 2px solid var(--red);
-  background: rgba(239, 68, 68, .2);
+  background: rgba(128, 128, 128, .2);
   cursor: move;
   box-sizing: border-box;
   touch-action: none;
@@ -744,7 +742,7 @@ function clamp(value, min, max) {
 .redact-box.drawing {
   border-style: dashed;
   border-color: var(--accent-cyan);
-  background: rgba(6, 182, 212, .18);
+  background: rgba(128, 128, 128, .18);
   pointer-events: none;
 }
 .redact-label {

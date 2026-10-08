@@ -106,7 +106,7 @@ onMounted(async () => {
 }
 .loading-spinner {
   width: 32px; height: 32px;
-  border: 3px solid rgba(139,92,246,0.15);
+  border: 3px solid rgba(128, 128, 128,0.15);
   border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -126,14 +126,14 @@ onMounted(async () => {
 
 /* 详情卡片 */
 .detail-card {
-  background: rgba(139, 92, 246, 0.04);
-  border: 1px solid rgba(139, 92, 246, 0.1);
-  border-radius: 16px;
+  background: rgba(128, 128, 128, 0.04);
+  border: 1px solid rgba(128, 128, 128, 0.1);
+  border-radius: 8px;
   overflow: hidden;
 }
 .card-top-line {
   height: 2px;
-  background: linear-gradient(90deg, #a855f7, #06b6d4);
+  background: var(--accent-primary);
 }
 .card-inner {
   padding: 32px;
@@ -152,14 +152,14 @@ onMounted(async () => {
   font-weight: 600;
   letter-spacing: 0.3px;
 }
-.tag.type-info { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+.tag.type-info { background: rgba(128, 128, 128,0.1); color: var(--accent-purple); }
 .tag.type-update { background: var(--bg-hover); color: var(--accent-purple); }
 .tag.type-maintenance { background: var(--bg-hover); color: var(--accent-purple); }
-.tag.type-activity { background: rgba(6,182,212,0.08); color: var(--accent-cyan); }
-.pin-badge { font-size: 11px; color: #f59e0b; font-weight: 600; }
+.tag.type-activity { background: rgba(128, 128, 128,0.08); color: var(--accent-cyan); }
+.pin-badge { font-size: 11px; color: #A3A3A3; font-weight: 600; }
 
 .detail-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 26px;
   font-weight: 700;
   color: var(--text-primary);

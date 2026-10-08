@@ -257,20 +257,19 @@ onMounted(() => {
 }
 
 .hero-section {
-  background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(99,102,241,0.15) 50%, rgba(139,92,246,0.1) 100%);
+  background: var(--bg-surface);
   padding: 48px 20px 40px;
   text-align: center;
   border-bottom: 1px solid var(--border-default);
 }
 
 .hero-section h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 32px;
   font-weight: 800;
   margin: 0 0 10px;
-  background:var(--title-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+
 }
 
 .hero-desc {
@@ -282,19 +281,18 @@ onMounted(() => {
 .btn-submit-hero {
   display: inline-block;
   padding: 10px 28px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 15px;
   font-weight: 700;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   text-decoration: none;
   transition: all 0.2s;
-  box-shadow: 0 4px 20px rgba(124,58,237,0.25);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-submit-hero:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(124,58,237,0.4);
+  box-shadow: var(--shadow-sm);
 }
 
 .main-container {
@@ -307,7 +305,7 @@ onMounted(() => {
 .filter-section {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
 }
@@ -341,7 +339,7 @@ onMounted(() => {
 }
 .filter-tag {
   padding: 4px 12px;
-  border-radius: 16px;
+  border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
   background: var(--bg-hover);
@@ -350,13 +348,13 @@ onMounted(() => {
   user-select: none;
 }
 .filter-tag:hover {
-  background: rgba(139,92,246,0.12);
+  background: rgba(128, 128, 128,0.12);
   color: var(--accent-purple);
 }
 .filter-tag.active {
-  background: rgba(139,92,246,0.2);
+  background: rgba(128, 128, 128,0.2);
   color: var(--accent-light);
-  border: 1px solid rgba(139,92,246,0.3);
+  border: 1px solid rgba(128, 128, 128,0.3);
 }
 
 .sort-row {
@@ -388,16 +386,16 @@ onMounted(() => {
 .experience-card {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.3s;
 }
 .experience-card:hover {
   border-color: var(--border-hover);
-  background: rgba(139,92,246,0.07);
+  background: rgba(128, 128, 128,0.07);
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(139,92,246,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-header { margin-bottom: 10px; }
@@ -411,10 +409,10 @@ onMounted(() => {
 
 .card-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .company-tag {
-  background: rgba(139,92,246,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--accent-purple);
   padding: 2px 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
 }
@@ -422,21 +420,21 @@ onMounted(() => {
   background: var(--bg-hover);
   color: var(--accent-purple);
   padding: 2px 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 12px;
 }
 .level-tag {
-  background: rgba(6,182,212,0.08);
+  background: rgba(128, 128, 128,0.08);
   color: var(--accent-cyan);
   padding: 2px 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 12px;
 }
 .round-tag {
   background: var(--bg-hover);
   color: var(--accent-purple);
   padding: 2px 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 12px;
 }
 
@@ -471,12 +469,11 @@ onMounted(() => {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   text-decoration: none;
   transition: all 0.2s;
 }
-.btn-read:hover { box-shadow: 0 4px 16px rgba(124,58,237,0.3); }
+.btn-read:hover { box-shadow: var(--shadow-sm); }
 .btn-practice {
   padding: 6px 16px;
   border-radius: 8px;
@@ -484,7 +481,7 @@ onMounted(() => {
   font-weight: 600;
   background: transparent;
   color: var(--accent-purple);
-  border: 1px solid rgba(139,92,246,0.2);
+  border: 1px solid rgba(128, 128, 128,0.2);
   text-decoration: none;
   transition: all 0.2s;
 }
@@ -511,8 +508,8 @@ onMounted(() => {
   transition: all 0.2s;
 }
 .btn-load-more:hover {
-  border-color: rgba(139,92,246,0.3);
-  background: rgba(139,92,246,0.12);
+  border-color: rgba(128, 128, 128,0.3);
+  background: rgba(128, 128, 128,0.12);
 }
 .btn-load-more:disabled { opacity: 0.5; cursor: not-allowed; }
 

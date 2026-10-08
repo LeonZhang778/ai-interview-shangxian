@@ -84,12 +84,12 @@
           <div class="q-score-header">
             <span class="q-index">Q{{ i + 1 }}</span>
             <span class="q-text">{{ q.question }}</span>
-            <span class="q-score" :style="{ color: q.score >= 7 ? '#059669' : q.score >= 5 ? '#d97706' : '#dc2626' }">
+            <span class="q-score" :style="{ color: q.score >= 7 ? '#A3A3A3' : q.score >= 5 ? '#A3A3A3' : '#A3A3A3' }">
               {{ q.score }}
             </span>
           </div>
           <div class="q-bar">
-            <div class="q-bar-fill" :style="{ width: (q.score * 10) + '%', background: q.score >= 7 ? '#10b981' : q.score >= 5 ? '#f59e0b' : '#ef4444' }"></div>
+            <div class="q-bar-fill" :style="{ width: (q.score * 10) + '%', background: q.score >= 7 ? '#A3A3A3' : q.score >= 5 ? '#A3A3A3' : '#A3A3A3' }"></div>
           </div>
         </div>
       </div>
@@ -350,7 +350,7 @@ async function handleShowQRCode() {
       width: 480,
       margin: 2,
       errorCorrectionLevel: 'H',
-      color: { dark: '#111827', light: '#ffffff' }
+      color: { dark: '#141414', light: '#ffffff' }
     })
     shareStatus.value = 'idle'
   } catch (e) {
@@ -482,7 +482,7 @@ async function handleExportDocx() {
   border-radius: 50%;
   flex-shrink: 0;
   border: 2px solid var(--border-default);
-  border-top-color: #7c3aed;
+  border-top-color: #A3A3A3;
   animation: poll-spin .8s linear infinite;
 }
 @keyframes poll-spin { to { transform: rotate(360deg); } }
@@ -502,12 +502,12 @@ async function handleExportDocx() {
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  background: var(--accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 24px rgba(124,58,237,0.3);
+  box-shadow: var(--shadow-sm);
 }
 .score-num {
   font-size: 32px;
@@ -519,7 +519,7 @@ async function handleExportDocx() {
   color: rgba(255,255,255,0.7);
 }
 .score-info h2 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 20px;
   margin-bottom: 4px;
   color: var(--text-primary);
@@ -563,7 +563,7 @@ ul li::before {
   color: var(--text-primary);
 }
 .q-index {
-  background: rgba(139,92,246,0.1);
+  background: rgba(128, 128, 128,0.1);
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
@@ -595,8 +595,7 @@ ul li::before {
 }
 
 .btn-share {
-  background: linear-gradient(135deg, #f59e0b, #f97316);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   border: none;
   font-size: 14px;
   font-weight: 600;
@@ -605,11 +604,10 @@ ul li::before {
 }
 .btn-share:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(245,158,11,0.4);
+  box-shadow: var(--shadow-sm);
 }
 .btn-export-docx {
-  background: linear-gradient(135deg, #0ea5e9, #2563eb);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   border: none;
   font-size: 14px;
   font-weight: 600;
@@ -618,7 +616,7 @@ ul li::before {
 }
 .btn-export-docx:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(14,165,233,0.35);
+  box-shadow: var(--shadow-sm);
 }
 .btn-export-docx:disabled {
   opacity: 0.6;
@@ -628,8 +626,8 @@ ul li::before {
 
 /* Share link panel */
 .share-link-panel {
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(128, 128, 128, 0.08);
+  border: 1px solid rgba(128, 128, 128, 0.2);
 }
 .share-link-box {
   display: flex;
@@ -652,8 +650,8 @@ ul li::before {
 }
 .btn-copy {
   padding: 10px 18px;
-  background: rgba(99, 102, 241, 0.3);
-  border: 1px solid rgba(99, 102, 241, 0.5);
+  background: rgba(128, 128, 128, 0.3);
+  border: 1px solid rgba(128, 128, 128, 0.5);
   border-radius: 8px;
   color: var(--accent-light);
   font-size: 13px;
@@ -663,30 +661,30 @@ ul li::before {
   white-space: nowrap;
 }
 .btn-copy:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(128, 128, 128, 0.5);
 }
 .btn-copy.copied {
-  background: rgba(16, 185, 129, 0.3);
-  border-color: rgba(16, 185, 129, 0.5);
-  color: #10b981;
+  background: rgba(128, 128, 128, 0.3);
+  border-color: rgba(128, 128, 128, 0.5);
+  color: #A3A3A3;
 }
 .btn-unshare {
   align-self: flex-end;
   padding: 6px 14px;
   background: transparent;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(128, 128, 128, 0.3);
   border-radius: 6px;
-  color: #ef4444;
+  color: #A3A3A3;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
 .btn-unshare:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(128, 128, 128, 0.1);
 }
 .btn-generate {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--accent-primary);
   border: none;
   border-radius: 8px;
   color: white;
@@ -697,7 +695,7 @@ ul li::before {
 }
 .btn-generate:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  box-shadow: var(--shadow-sm);
 }
 .btn-generate:disabled {
   opacity: 0.6;
@@ -715,10 +713,10 @@ ul li::before {
   font-weight: 500;
 }
 .note-msg.success {
-  color: #10b981;
+  color: #A3A3A3;
 }
 .note-msg.error {
-  color: #ef4444;
+  color: #A3A3A3;
 }
 .recommend-note-list {
   display: grid;
@@ -738,8 +736,8 @@ ul li::before {
   transition: all 0.2s;
 }
 .recommend-note-item:hover {
-  border-color: rgba(99,102,241,0.35);
-  background: rgba(99,102,241,0.08);
+  border-color: rgba(128, 128, 128,0.35);
+  background: rgba(128, 128, 128,0.08);
 }
 .recommend-note-item span,
 .recommend-note-item small {
@@ -763,8 +761,8 @@ ul li::before {
   position: fixed;
   inset: 0;
   padding: 24px;
-  background: rgba(3, 7, 18, .82);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 10, 10, .82);
+  backdrop-filter: none;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -774,14 +772,14 @@ ul li::before {
 .preview-modal {
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: 8px;
   max-width: 560px;
   width: min(560px, 100%);
   max-height: calc(100vh - 48px);
   overflow: auto;
   margin: auto 0;
   min-width: 0;
-  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+  box-shadow: var(--shadow-sm);
 }
 .preview-header {
   display: flex;
@@ -817,8 +815,8 @@ ul li::before {
   max-height: min(60vh, 320px);
   padding: 12px;
   background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 12px 36px rgba(0,0,0,.35);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
 }
 .preview-footer { display: flex; gap: 12px; padding: 18px 22px; border-top: 1px solid var(--border-default); justify-content: stretch; }
 .preview-footer > * { flex: 1; text-align: center; }

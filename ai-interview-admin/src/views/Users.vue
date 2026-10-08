@@ -1,7 +1,7 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h1 style="font-size:20px">👥 用户管理</h1>
+      <h1 style="font-size:20px">用户管理</h1>
       <input v-model="keyword" placeholder="搜索邮箱/姓名..." style="width:240px" @input="debouncedSearch" />
     </div>
 
@@ -82,5 +82,5 @@ onMounted(loadUsers)
 </script>
 
 <style scoped>
-.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: #6b7280; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: var(--admin-text-secondary); }
 </style>

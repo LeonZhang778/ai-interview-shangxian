@@ -174,17 +174,17 @@ onMounted(() => {
   border-radius: 9px;
   color: var(--red);
   background: var(--red-bg);
-  border: 1px solid rgba(239, 68, 68, .2);
+  border: 1px solid rgba(128, 128, 128, .2);
   font-size: 13px;
   line-height: 1.5;
 }
 .submit-button {
   width: 100%;
   padding: 13px 20px;
-  color: white;
-  background: var(--accent-gradient);
+  color: var(--bg-base);
+  background: var(--accent-primary);
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;

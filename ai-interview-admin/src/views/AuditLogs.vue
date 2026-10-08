@@ -1,13 +1,13 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h1 style="font-size:20px">📋 操作日志</h1>
+      <h1 style="font-size:20px">操作日志</h1>
       <button class="btn-primary btn-sm" @click="handleExport">导出 CSV</button>
     </div>
 
     <!-- 筛选 -->
     <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <select v-model="filterAction" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px">
+      <select v-model="filterAction" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--admin-border);font-size:13px;background:var(--admin-bg-content);color:var(--admin-text-primary)">
         <option value="">全部操作</option>
         <option value="login">登录</option>
         <option value="create">创建</option>
@@ -18,7 +18,7 @@
         <option value="approve">审核通过</option>
         <option value="reject">审核拒绝</option>
       </select>
-      <select v-model="filterTarget" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px">
+      <select v-model="filterTarget" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--admin-border);font-size:13px;background:var(--admin-bg-content);color:var(--admin-text-primary)">
         <option value="">全部对象</option>
         <option value="user">用户</option>
         <option value="experience">面经</option>
@@ -27,8 +27,8 @@
         <option value="setting">设置</option>
         <option value="feedback">反馈</option>
       </select>
-      <input v-model="dateFrom" type="date" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px" placeholder="开始日期" />
-      <input v-model="dateTo" type="date" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px" placeholder="结束日期" />
+      <input v-model="dateFrom" type="date" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--admin-border);font-size:13px;background:var(--admin-bg-content);color:var(--admin-text-primary)" placeholder="开始日期" />
+      <input v-model="dateTo" type="date" @change="page=1;loadLogs()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--admin-border);font-size:13px;background:var(--admin-bg-content);color:var(--admin-text-primary)" placeholder="结束日期" />
     </div>
 
     <div class="card">
@@ -129,12 +129,12 @@ onMounted(loadLogs)
   border-radius: 4px;
   font-weight: 600;
 }
-.action-login { background: #dbeafe; color: #1e40af; }
-.action-create { background: #d1fae5; color: #065f46; }
-.action-update { background: #fef3c7; color: #92400e; }
-.action-delete { background: #fef2f2; color: #dc2626; }
-.action-disable { background: #fce7f3; color: #9d174d; }
-.action-enable { background: #d1fae5; color: #065f46; }
-.action-approve { background: #d1fae5; color: #065f46; }
-.action-reject { background: #fef2f2; color: #dc2626; }
+.action-login,
+.action-create,
+.action-update,
+.action-enable,
+.action-approve { background: var(--admin-primary-soft); color: var(--admin-primary); }
+.action-delete,
+.action-disable,
+.action-reject { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
 </style>

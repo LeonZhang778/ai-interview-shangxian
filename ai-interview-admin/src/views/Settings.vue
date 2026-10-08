@@ -1,9 +1,9 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h1 style="font-size:20px">⚙️ 系统设置</h1>
+      <h1 style="font-size:20px">系统设置</h1>
       <button class="btn-primary btn-sm" @click="handleSave" :disabled="saving">
-        {{ saving ? '保存中...' : '💾 保存所有设置' }}
+        {{ saving ? '保存中...' : '保存所有设置' }}
       </button>
     </div>
 
@@ -12,7 +12,7 @@
     <div v-else class="settings-grid">
       <!-- 基本信息 -->
       <div class="card settings-section">
-        <h3 class="section-title">🏷️ 基本信息</h3>
+        <h3 class="section-title">基本信息</h3>
         <div class="form-group">
           <label>网站名称</label>
           <input v-model="form.site_name" placeholder="智面 AI" />
@@ -29,7 +29,7 @@
 
       <!-- SEO 设置 -->
       <div class="card settings-section">
-        <h3 class="section-title">🔍 SEO 设置</h3>
+        <h3 class="section-title">SEO 设置</h3>
         <div class="form-group">
           <label>SEO 标题</label>
           <input v-model="form.seo_title" placeholder="智面 AI — 智能模拟面试平台" />
@@ -42,7 +42,7 @@
 
       <!-- 功能开关 -->
       <div class="card settings-section">
-        <h3 class="section-title">🔧 功能开关</h3>
+        <h3 class="section-title">功能开关</h3>
         <div class="toggle-group">
           <div class="toggle-item">
             <div>
@@ -89,7 +89,7 @@
 
       <!-- 其他 -->
       <div class="card settings-section">
-        <h3 class="section-title">📧 其他</h3>
+        <h3 class="section-title">其他</h3>
         <div class="form-group">
           <label>备案号</label>
           <input v-model="form.icp_number" placeholder="京ICP备XXXXXXXX号" />

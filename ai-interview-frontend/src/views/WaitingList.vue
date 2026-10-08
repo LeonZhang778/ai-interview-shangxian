@@ -124,8 +124,8 @@ onUnmounted(() => { if (cooldownTimer) clearInterval(cooldownTimer) })
 
 <style scoped>
 .auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-.auth-card { width: 440px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 16px; padding: 36px; text-align: center; backdrop-filter: blur(40px); }
-.auth-card h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; background:var(--title-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
+.auth-card { width: 440px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px; padding: 36px; text-align: center; backdrop-filter: none; }
+.auth-card h2 { font-family: Inter, sans-serif; font-size: 24px; background:var(--title-gradient);   margin-bottom: 4px; }
 .subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
 .subtitle strong { color: var(--accent-light); }
 .hint { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
@@ -133,13 +133,13 @@ onUnmounted(() => { if (cooldownTimer) clearInterval(cooldownTimer) })
 .form-row { display: flex; gap: 12px; }
 .form-group { margin-bottom: 16px; text-align: left; flex: 1; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
-.form-group input { width: 100%; padding: 11px 14px; border:1px solid var(--border-default); border-radius: 10px; font-size: 14px; outline: none; transition: all 0.3s; background: var(--bg-card); color: var(--text-primary); }
+.form-group input { width: 100%; padding: 11px 14px; border:1px solid var(--border-default); border-radius: 8px; font-size: 14px; outline: none; transition: all 0.3s; background: var(--bg-card); color: var(--text-primary); }
 .form-group input::placeholder { color: var(--text-dim); }
-.form-group input:focus { border-color: rgba(139,92,246,0.35); box-shadow: 0 0 16px rgba(139,92,246,0.08); background: rgba(139,92,246,0.07); }
+.form-group input:focus { border-color: rgba(128, 128, 128,0.35); box-shadow: var(--shadow-sm); background: rgba(128, 128, 128,0.07); }
 .error { color: var(--red); font-size: 13px; margin-bottom: 12px; }
 .success { color: var(--green); font-size: 13px; margin-bottom: 12px; }
-.btn-glow { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Space Grotesk', sans-serif; color: white; background: linear-gradient(135deg, #7c3aed, #6366f1); cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 20px rgba(124,58,237,0.3); }
-.btn-glow:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,0.45); }
+.btn-glow { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; font-family: Inter, sans-serif; color: var(--bg-base); background: var(--accent-primary); cursor: pointer; transition: all 0.3s; box-shadow: var(--shadow-sm); }
+.btn-glow:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .btn-glow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .auth-link { margin-top: 18px; font-size: 14px; color: var(--text-muted); }
 .auth-link a { color: var(--accent-primary); font-weight: 500; }

@@ -288,9 +288,8 @@ onMounted(loadData)
 .page-header h1 {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #a78bfa, #60a5fa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+
   background-clip: text;
   margin-bottom: 8px;
 }
@@ -321,7 +320,7 @@ onMounted(loadData)
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: 8px;
   font-size: 13px;
   color: var(--text-muted);
   background: rgba(255,255,255,0.05);
@@ -331,23 +330,23 @@ onMounted(loadData)
   white-space: nowrap;
 }
 .group-tab:hover {
-  background: rgba(99,102,241,0.1);
-  border-color: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.1);
+  border-color: rgba(128, 128, 128,0.3);
 }
 .group-tab.active {
-  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2));
-  border-color: rgba(99,102,241,0.5);
+  background: var(--accent-primary);
+  border-color: rgba(128, 128, 128,0.5);
   color: var(--accent-light);
 }
 .group-count {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(255,255,255,0.1);
   color: var(--text-muted);
 }
 .group-tab.active .group-count {
-  background: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.3);
   color: var(--accent-light);
 }
 .group-actions {
@@ -376,7 +375,7 @@ onMounted(loadData)
 }
 .group-add:hover {
   color: var(--accent-light);
-  border-color: rgba(99,102,241,0.5);
+  border-color: rgba(128, 128, 128,0.5);
 }
 .group-name-input {
   background: transparent;
@@ -402,8 +401,7 @@ onMounted(loadData)
   display: inline-block;
   margin-top: 16px;
   padding: 10px 24px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   border-radius: 8px;
   text-decoration: none;
   font-size: 14px;
@@ -424,12 +422,12 @@ onMounted(loadData)
 .collection-card {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
   transition: all 0.2s;
 }
 .collection-card:hover {
-  border-color: rgba(99,102,241,0.3);
+  border-color: rgba(128, 128, 128,0.3);
   background: rgba(255,255,255,0.06);
 }
 .card-title {
@@ -452,12 +450,12 @@ onMounted(loadData)
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(99,102,241,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--accent-purple);
 }
 .meta-position {
-  background: rgba(16,185,129,0.1);
-  color: #10b981;
+  background: rgba(128, 128, 128,0.1);
+  color: #A3A3A3;
 }
 .card-summary {
   font-size: 13px;
@@ -506,7 +504,7 @@ onMounted(loadData)
   cursor: pointer;
 }
 .group-select option {
-  background: #1a1a2e;
+  background: #141414;
   color: var(--text-primary);
 }
 
@@ -529,8 +527,8 @@ onMounted(loadData)
   transition: all 0.2s;
 }
 .page-btn:hover:not(:disabled) {
-  background: rgba(99,102,241,0.15);
-  border-color: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.15);
+  border-color: rgba(128, 128, 128,0.3);
 }
 .page-btn:disabled {
   opacity: 0.4;

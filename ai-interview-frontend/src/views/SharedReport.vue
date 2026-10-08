@@ -62,12 +62,12 @@
           <div class="q-score-header">
             <span class="q-index">Q{{ i + 1 }}</span>
             <span class="q-text">{{ q.question }}</span>
-            <span class="q-score" :style="{ color: q.score >= 7 ? '#059669' : q.score >= 5 ? '#d97706' : '#dc2626' }">
+            <span class="q-score" :style="{ color: q.score >= 7 ? '#A3A3A3' : q.score >= 5 ? '#A3A3A3' : '#A3A3A3' }">
               {{ q.score }}
             </span>
           </div>
           <div class="q-bar">
-            <div class="q-bar-fill" :style="{ width: (q.score * 10) + '%', background: q.score >= 7 ? '#10b981' : q.score >= 5 ? '#f59e0b' : '#ef4444' }"></div>
+            <div class="q-bar-fill" :style="{ width: (q.score * 10) + '%', background: q.score >= 7 ? '#A3A3A3' : q.score >= 5 ? '#A3A3A3' : '#A3A3A3' }"></div>
           </div>
         </div>
       </div>
@@ -84,7 +84,7 @@
       <p style="font-size:40px;margin-bottom:16px">🔗</p>
       <p style="font-size:16px;margin-bottom:8px">分享链接无效或已失效</p>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">该分享可能已被取消或链接不正确</p>
-      <router-link to="/" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border-radius:8px;text-decoration:none">
+      <router-link to="/" style="display:inline-block;padding:10px 24px;background: var(--accent-primary); color: var(--bg-base);border-radius:8px;text-decoration:none">
         前往智面AI
       </router-link>
     </div>
@@ -128,9 +128,9 @@ onMounted(async () => {
   justify-content: center;
   gap: 8px;
   padding: 12px 20px;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 10px;
+  background: rgba(128, 128, 128, 0.1);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 8px;
   margin-bottom: 20px;
   font-size: 13px;
   color: var(--text-secondary);
@@ -147,12 +147,12 @@ onMounted(async () => {
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  background: var(--accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 24px rgba(124,58,237,0.3);
+  box-shadow: var(--shadow-sm);
 }
 .score-num {
   font-size: 32px;
@@ -164,7 +164,7 @@ onMounted(async () => {
   color: rgba(255,255,255,0.7);
 }
 .score-info h2 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 20px;
   margin-bottom: 4px;
   color: var(--text-primary);
@@ -213,7 +213,7 @@ ul li::before {
   color: var(--text-primary);
 }
 .q-index {
-  background: rgba(139,92,246,0.1);
+  background: rgba(128, 128, 128,0.1);
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
@@ -247,15 +247,14 @@ ul li::before {
 /* CTA */
 .cta-card {
   text-align: center;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: var(--bg-surface);
+  border: 1px solid rgba(128, 128, 128, 0.2);
 }
 .btn-cta {
   display: inline-block;
   padding: 12px 32px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  border-radius: 10px;
+  background: var(--accent-primary); color: var(--bg-base);
+  border-radius: 8px;
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
@@ -263,6 +262,6 @@ ul li::before {
 }
 .btn-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  box-shadow: var(--shadow-sm);
 }
 </style>

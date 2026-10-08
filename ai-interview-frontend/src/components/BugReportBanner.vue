@@ -90,11 +90,11 @@ async function submitFeedback() {
   height: 48px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
-  background: var(--text-primary);
+  background: var(--accent-primary);
   color: var(--bg-base);
   font-size: 22px;
   cursor: pointer;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
   transition: opacity 0.15s, background-color 0.15s;
   display: flex;
   align-items: center;
@@ -103,7 +103,7 @@ async function submitFeedback() {
 .bug-toggle:hover {
   transform: none;
   opacity: 0.85;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .bug-panel {
@@ -111,7 +111,7 @@ async function submitFeedback() {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
   width: 300px;
   font-size: 13px;
   line-height: 1.6;
@@ -185,27 +185,27 @@ async function submitFeedback() {
 .submit-btn {
   width: 100%;
   padding: 10px;
-  background: var(--text-primary);
+  background: var(--accent-primary);
   color: var(--bg-base);
-  border: 1px solid var(--text-primary);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 .submit-btn:hover {
   opacity: 0.85;
   transform: none;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 .submit-btn:disabled {
-  background: var(--text-primary);
-  border-color: var(--text-primary);
+  background: var(--text-dim);
+  border-color: var(--text-dim);
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .success-msg {

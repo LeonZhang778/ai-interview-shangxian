@@ -8,7 +8,7 @@
       <router-link to="/register" class="btn-primary" style="display:inline-block;padding:10px 28px;color:white;border-radius:8px;font-size:14px;text-decoration:none">注册账号</router-link>
     </div>
     <div v-else class="profile-page">
-      <h2 style="margin-bottom:24px;font-family:'Space Grotesk',sans-serif;background:var(--title-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent">个人中心</h2>
+      <h2 style="margin-bottom:24px;font-family:Inter,sans-serif;background:var(--title-gradient);">个人中心</h2>
 
       <div class="card avatar-section">
         <div class="avatar-wrapper" @click="$refs.avatarInput.click()">
@@ -193,8 +193,7 @@ async function handleChangePassword() {
 }
 .avatar-img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-placeholder {
-  width: 100%; height: 100%; background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white; display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; background: var(--accent-primary); color: var(--bg-base); display: flex; align-items: center; justify-content: center;
   font-size: 24px; font-weight: 700;
 }
 .avatar-overlay {

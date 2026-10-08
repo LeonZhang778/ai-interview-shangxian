@@ -6,7 +6,7 @@
       <div class="prepare-card">
         <div class="ai-face-large">
           <svg viewBox="0 0 80 80" width="80" height="80">
-            <circle cx="40" cy="40" r="38" fill="white" stroke="#4f46e5" stroke-width="2"/>
+            <circle cx="40" cy="40" r="38" fill="white" stroke="#A3A3A3" stroke-width="2"/>
             <ellipse cx="28" cy="36" rx="5" ry="6" fill="#1e1e1e">
               <animate attributeName="ry" values="6;1;6" dur="2.5s" repeatCount="indefinite"/>
             </ellipse>
@@ -29,7 +29,7 @@
     <div class="interview-header" v-if="!preparing">
       <div style="display:flex;align-items:center;gap:8px">
         <svg viewBox="0 0 32 32" width="24" height="24">
-          <circle cx="16" cy="16" r="15" fill="white" stroke="#4f46e5" stroke-width="1.5"/>
+          <circle cx="16" cy="16" r="15" fill="white" stroke="#A3A3A3" stroke-width="1.5"/>
           <ellipse cx="11" cy="14" rx="2.5" ry="3" fill="#1e1e1e"/>
           <ellipse cx="21" cy="14" rx="2.5" ry="3" fill="#1e1e1e"/>
         </svg>
@@ -81,7 +81,7 @@
       <div v-if="streamingText" class="message interviewer">
         <div class="avatar-col">
           <svg viewBox="0 0 40 40" width="36" height="36" class="ai-avatar thinking">
-            <circle cx="20" cy="20" r="19" fill="white" stroke="#4f46e5" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="19" fill="white" stroke="#A3A3A3" stroke-width="1.5"/>
             <ellipse cx="14" cy="17" rx="2.5" ry="3" fill="#1e1e1e">
               <animate attributeName="ry" values="3;1;3" dur="1.5s" repeatCount="indefinite"/>
             </ellipse>
@@ -100,7 +100,7 @@
       <div v-if="thinking && !streamingText" class="message interviewer">
         <div class="avatar-col">
           <svg viewBox="0 0 40 40" width="36" height="36" class="ai-avatar thinking">
-            <circle cx="20" cy="20" r="19" fill="white" stroke="#4f46e5" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="19" fill="white" stroke="#A3A3A3" stroke-width="1.5"/>
             <ellipse cx="14" cy="17" rx="2.5" ry="3" fill="#1e1e1e">
               <animate attributeName="ry" values="3;1;3" dur="1s" repeatCount="indefinite"/>
             </ellipse>
@@ -457,11 +457,11 @@ async function handleSubmit() {
   50% { transform: translateY(-8px); }
 }
 .prepare-progress {
-  width: 280px; height: 6px; background: rgba(139,92,246,0.1); border-radius: 3px;
+  width: 280px; height: 6px; background: rgba(128, 128, 128,0.1); border-radius: 3px;
   margin: 16px auto 0; overflow: hidden;
 }
 .prepare-bar {
-  height: 100%; background: linear-gradient(90deg, #7c3aed, #a855f7);
+  height: 100%; background: var(--accent-primary);
   border-radius: 3px; transition: width 0.3s ease;
 }
 
@@ -469,7 +469,7 @@ async function handleSubmit() {
 .interview-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border-default);
-  font-size: 14px; font-weight: 600; backdrop-filter: blur(20px);
+  font-size: 14px; font-weight: 600; backdrop-filter: none;
 }
 .progress { color: var(--text-muted); font-weight: 400; }
 
@@ -481,24 +481,23 @@ async function handleSubmit() {
 
 /* 头像 */
 .avatar-col { flex-shrink: 0; margin-top: 2px; }
-.ai-avatar { border-radius: 50%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+.ai-avatar { border-radius: 50%; filter: none; }
 .ai-avatar.thinking { animation: avatarPulse 1.5s ease-in-out infinite; }
 @keyframes avatarPulse {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(168,85,247,0)); }
-  50% { filter: drop-shadow(0 0 8px rgba(168,85,247,0.5)); }
+  0%, 100% { filter: none; }
+  50% { filter: none; }
 }
 .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
 .user-avatar-placeholder {
   width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white; display: flex; align-items: center; justify-content: center;
+  background: var(--accent-primary); color: var(--bg-base); display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 600;
 }
 
 /* 气泡 */
-.bubble { max-width: 70%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
+.bubble { max-width: 70%; padding: 12px 16px; border-radius: 8px; font-size: 14px; line-height: 1.6; }
 .interviewer .bubble { background: var(--bg-hover); border:1px solid var(--border-default); border-bottom-left-radius: 4px; color: var(--text-primary); }
-.candidate .bubble { background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; border-bottom-right-radius: 4px; }
+.candidate .bubble { background: var(--accent-primary); color: var(--bg-base); border-bottom-right-radius: 4px; }
 .thinking-bubble { color: var(--text-muted); font-style: italic; }
 .dot-animation .dots::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
 @keyframes dots {
@@ -508,17 +507,17 @@ async function handleSubmit() {
 .cursor-blink { display: inline; animation: blink 0.8s step-end infinite; color: var(--accent-primary); font-size: 14px; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .bubble-score { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); font-size: 13px; }
-.interviewer .bubble-score { border-top-color: rgba(139,92,246,0.12); }
+.interviewer .bubble-score { border-top-color: rgba(128, 128, 128,0.12); }
 
 /* 面试官评语气泡：用左侧强调色边框与普通题目气泡区分，且不与下一题混淆 */
 .feedback-message .feedback-bubble {
-  border-left: 3px solid var(--accent-primary, #7c3aed);
-  background: rgba(139, 92, 246, 0.06);
+  border-left: 3px solid var(--accent-primary, #A3A3A3);
+  background: rgba(128, 128, 128, 0.06);
 }
-.feedback-message .ai-avatar { filter: drop-shadow(0 1px 2px rgba(139,92,246,0.35)); }
+.feedback-message .ai-avatar { filter: none; }
 
 /* 输入 */
-.input-area { padding: 16px 20px; background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: blur(20px); }
+.input-area { padding: 16px 20px; background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: none; }
 .input-area textarea { flex: 1; resize: none; font-family: inherit; }
 .input-area.finished { flex-direction: column; justify-content: center; align-items: center; padding: 24px; gap: 14px; }
 .input-area.finished > p { font-size: 18px; font-weight: 600; }
@@ -536,7 +535,7 @@ async function handleSubmit() {
 .btn-ghost:hover { color: var(--text-primary); border-color: var(--text-secondary); }
 .poll-spinner {
   width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
-  border: 2px solid var(--border-default); border-top-color: #4f46e5;
+  border: 2px solid var(--border-default); border-top-color: #A3A3A3;
   animation: poll-spin .8s linear infinite;
 }
 @keyframes poll-spin { to { transform: rotate(360deg); } }

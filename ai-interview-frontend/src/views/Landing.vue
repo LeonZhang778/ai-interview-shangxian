@@ -188,7 +188,7 @@ async function handleGuest() {
   font-weight: 800;
   line-height: 1.3;
   margin-bottom: 16px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
 }
 .highlight {
   color: var(--text-primary);
@@ -209,20 +209,20 @@ async function handleGuest() {
 }
 .btn-glow {
   padding: 14px 32px;
-  border: 1px solid var(--text-primary);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
   font-size: 16px;
   font-weight: 500;
   color: var(--bg-base);
-  background: var(--text-primary);
+  background: var(--accent-primary);
   cursor: pointer;
   transition: opacity 0.15s;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 .btn-glow:hover:not(:disabled) {
   opacity: 0.85;
   transform: none;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 .btn-glow:disabled {
   opacity: 0.7;
@@ -317,7 +317,7 @@ async function handleGuest() {
   font-size: 28px;
   font-weight: 700;
   margin-bottom: 40px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   color: var(--text-primary);
 }
 .feature-grid {
@@ -335,7 +335,7 @@ async function handleGuest() {
 }
 .feature-card:hover {
   border-color: var(--border-hover);
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 .feature-icon {
   font-size: 36px;
@@ -379,7 +379,7 @@ async function handleGuest() {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-md);
-  background: var(--text-primary);
+  background: var(--accent-primary);
   color: var(--bg-base);
   display: flex;
   align-items: center;
@@ -387,7 +387,7 @@ async function handleGuest() {
   font-weight: 700;
   font-size: 16px;
   flex-shrink: 0;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 .step-info h4 {
   font-size: 16px;

@@ -1,20 +1,20 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h1 style="font-size:20px">📢 公告管理</h1>
+      <h1 style="font-size:20px">公告管理</h1>
       <button class="btn-primary btn-sm" @click="openCreate">+ 发布公告</button>
     </div>
 
     <!-- 筛选 -->
     <div style="display:flex;gap:12px;margin-bottom:16px">
-      <select v-model="filterType" @change="page=1;loadAnnouncements()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px">
+      <select v-model="filterType" @change="page=1;loadAnnouncements()" class="filter-control">
         <option value="">全部类型</option>
         <option value="info">通知</option>
         <option value="update">更新</option>
         <option value="maintenance">维护</option>
         <option value="activity">活动</option>
       </select>
-      <select v-model="filterActive" @change="page=1;loadAnnouncements()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px">
+      <select v-model="filterActive" @change="page=1;loadAnnouncements()" class="filter-control">
         <option value="">全部状态</option>
         <option value="true">已上线</option>
         <option value="false">已下线</option>
@@ -43,8 +43,8 @@
             <td><span class="level-badge" :class="`level-${a.level}`">{{ a.level }}</span></td>
             <td><span :class="['badge', a.is_active ? 'badge-green' : 'badge-red']">{{ a.is_active ? '已上线' : '已下线' }}</span></td>
             <td>
-              <button class="btn-sm" :style="a.is_pinned ? 'background:#f59e0b;color:white' : ''" @click="togglePin(a)">
-                {{ a.is_pinned ? '📌 已置顶' : '置顶' }}
+              <button class="btn-sm" :class="{ 'pinned-btn': a.is_pinned }" @click="togglePin(a)">
+                {{ a.is_pinned ? '已置顶' : '置顶' }}
               </button>
             </td>
             <td>{{ formatDate(a.published_at || a.created_at) }}</td>
@@ -219,19 +219,34 @@ onMounted(loadAnnouncements)
   border-radius: 4px;
   font-weight: 600;
 }
-.tag.type-info { background: #dbeafe; color: #1e40af; }
-.tag.type-update { background: #d1fae5; color: #065f46; }
-.tag.type-maintenance { background: #fef3c7; color: #92400e; }
-.tag.type-activity { background: #fce7f3; color: #9d174d; }
+.tag.type-info,
+.tag.type-update,
+.tag.type-maintenance,
+.tag.type-activity { background: var(--admin-primary-soft); color: var(--admin-primary); }
 .level-badge {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 700;
 }
-.level-P0 { background: #fef2f2; color: #dc2626; }
-.level-P1 { background: #eff6ff; color: #2563eb; }
-.level-P2 { background: #f1f5f9; color: #64748b; }
+.level-P0 { background: var(--admin-bg-sidebar); color: var(--admin-text-sidebar-active); }
+.level-P1 { background: var(--admin-primary-soft); color: var(--admin-primary); }
+.level-P2 { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
+
+.filter-control {
+  padding: 6px 12px;
+  border-radius: var(--admin-radius-md);
+  border: 1px solid var(--admin-border);
+  font-size: 13px;
+  background: var(--admin-bg-content);
+  color: var(--admin-text-primary);
+}
+
+.pinned-btn {
+  background: var(--admin-primary);
+  color: var(--admin-primary-contrast);
+  border-color: var(--admin-primary);
+}
 
 .modal-overlay {
   position: fixed;
@@ -243,8 +258,9 @@ onMounted(loadAnnouncements)
   z-index: 1000;
 }
 .modal {
-  background: white;
-  border-radius: 12px;
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
   padding: 24px;
   width: 520px;
   max-height: 80vh;
@@ -258,17 +274,19 @@ onMounted(loadAnnouncements)
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 4px;
-  color: #374151;
+  color: var(--admin-text-primary);
 }
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
   font-size: 14px;
   box-sizing: border-box;
+  background: var(--admin-bg-content);
+  color: var(--admin-text-primary);
 }
 .form-group textarea {
   resize: vertical;

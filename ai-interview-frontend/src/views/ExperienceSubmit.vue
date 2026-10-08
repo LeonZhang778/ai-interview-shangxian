@@ -273,20 +273,19 @@ onMounted(() => {
 }
 
 .page-header {
-  background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(99,102,241,0.15) 50%, rgba(139,92,246,0.1) 100%);
+  background: var(--bg-surface);
   padding: 48px 20px 40px;
   text-align: center;
   border-bottom: 1px solid var(--border-default);
 }
 
 .page-header h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 32px;
   font-weight: 800;
   margin: 0 0 10px;
-  background: var(--title-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+
 }
 
 .page-header p {
@@ -304,7 +303,7 @@ onMounted(() => {
 form {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 28px;
 }
 
@@ -331,7 +330,7 @@ form {
 }
 
 .required {
-  color: #ef4444;
+  color: #A3A3A3;
 }
 
 input[type="text"],
@@ -409,7 +408,7 @@ textarea {
 }
 
 .preview-toggle.active {
-  background: rgba(139,92,246,0.15);
+  background: rgba(128, 128, 128,0.15);
   color: var(--accent-purple);
 }
 
@@ -432,7 +431,7 @@ textarea {
 }
 
 .markdown-preview :deep(pre) {
-  background: #111827;
+  background: #141414;
   color: #f3f4f6;
   padding: 12px;
   border-radius: 8px;
@@ -501,9 +500,9 @@ textarea {
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  background: rgba(139,92,246,0.15);
+  background: rgba(128, 128, 128,0.15);
   color: var(--accent-purple);
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 13px;
 }
 
@@ -531,7 +530,7 @@ textarea {
   padding: 2px 10px;
   background: var(--bg-hover);
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
@@ -539,7 +538,7 @@ textarea {
 }
 
 .suggested-tags button:hover {
-  border-color: rgba(139,92,246,0.3);
+  border-color: rgba(128, 128, 128,0.3);
   color: var(--accent-purple);
 }
 
@@ -586,15 +585,14 @@ textarea {
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   border: none;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-submit:hover {
-  box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-submit:disabled {

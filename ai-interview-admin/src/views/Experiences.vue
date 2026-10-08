@@ -232,7 +232,7 @@ onMounted(() => fetchData())
 .page-header h2 {
   font-size: 22px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--admin-text-primary);
 }
 
 .status-tabs { display: flex; gap: 4px; }
@@ -240,17 +240,17 @@ onMounted(() => fetchData())
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
-  background: white;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-bg-content);
+  color: var(--admin-text-secondary);
+  border: 1px solid var(--admin-border);
   cursor: pointer;
   transition: all 0.2s;
 }
-.tab-btn:hover { background: #f1f5f9; }
+.tab-btn:hover { background: var(--admin-bg-muted); }
 .tab-btn.active {
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white;
-  border-color: transparent;
+  background: var(--admin-primary);
+  color: var(--admin-primary-contrast);
+  border-color: var(--admin-primary);
 }
 
 .batch-bar {
@@ -258,20 +258,21 @@ onMounted(() => fetchData())
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  background: #ede9fe;
-  border: 1px solid #c4b5fd;
+  background: var(--admin-primary-soft);
+  border: 1px solid var(--admin-primary);
   border-radius: 10px;
   margin-bottom: 16px;
   font-size: 14px;
-  color: #5b21b6;
+  color: var(--admin-primary);
   font-weight: 600;
 }
 .batch-bar .btn-action { font-size: 12px; }
 
 .content-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-card);
   overflow: hidden;
 }
 
@@ -280,26 +281,26 @@ onMounted(() => fetchData())
   border-collapse: collapse;
 }
 .data-table th {
-  background: #f8fafc;
+  background: var(--admin-bg-page);
   padding: 12px 16px;
   text-align: left;
   font-size: 13px;
   font-weight: 600;
-  color: #64748b;
-  border-bottom: 1px solid #e2e8f0;
+  color: var(--admin-text-secondary);
+  border-bottom: 1px solid var(--admin-border);
 }
 .data-table td {
   padding: 12px 16px;
   font-size: 14px;
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
+  color: var(--admin-text-primary);
+  border-bottom: 1px solid var(--admin-border);
 }
-.data-table tr:hover { background: #f8fafc; }
-.row-selected { background: #f5f3ff !important; }
+.data-table tr:hover { background: var(--admin-bg-page); }
+.row-selected { background: var(--admin-primary-soft) !important; }
 
 .checkbox-col { width: 40px; text-align: center; }
 .checkbox-col input[type="checkbox"] {
-  width: 16px; height: 16px; accent-color: #7c3aed; cursor: pointer;
+  width: 16px; height: 16px; accent-color: var(--admin-primary); cursor: pointer;
 }
 
 .title-cell {
@@ -316,9 +317,9 @@ onMounted(() => fetchData())
   font-size: 12px;
   font-weight: 600;
 }
-.status-badge.pending { background: #fef3c7; color: #92400e; }
-.status-badge.published { background: #d1fae5; color: #065f46; }
-.status-badge.rejected { background: #fee2e2; color: #991b1b; }
+.status-badge.pending { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
+.status-badge.published { background: var(--admin-primary-soft); color: var(--admin-primary); }
+.status-badge.rejected { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
 
 .action-cell { display: flex; gap: 6px; }
 .btn-action {
@@ -330,16 +331,16 @@ onMounted(() => fetchData())
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-view { background: #e0e7ff; color: #3730a3; }
-.btn-view:hover { background: #c7d2fe; }
-.btn-approve { background: #d1fae5; color: #065f46; }
-.btn-approve:hover { background: #a7f3d0; }
-.btn-reject { background: #fee2e2; color: #991b1b; }
-.btn-reject:hover { background: #fecaca; }
-.btn-delete { background: #f1f5f9; color: #dc2626; border: 1px solid #e2e8f0; }
-.btn-delete:hover { background: #fee2e2; border-color: #fca5a5; }
-.btn-cancel { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-.btn-cancel:hover { background: #e2e8f0; }
+.btn-view { background: var(--admin-primary-soft); color: var(--admin-primary); }
+.btn-view:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
+.btn-approve { background: var(--admin-primary); color: var(--admin-primary-contrast); }
+.btn-approve:hover { background: var(--admin-primary-hover); }
+.btn-reject { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
+.btn-reject:hover { background: var(--admin-border-strong); }
+.btn-delete { background: var(--admin-bg-muted); color: var(--admin-text-primary); border: 1px solid var(--admin-border); }
+.btn-delete:hover { background: var(--admin-border-strong); border-color: var(--admin-border-strong); }
+.btn-cancel { background: var(--admin-bg-muted); color: var(--admin-text-secondary); border: 1px solid var(--admin-border); }
+.btn-cancel:hover { background: var(--admin-border-strong); }
 
 .pagination {
   display: flex;
@@ -347,15 +348,15 @@ onMounted(() => fetchData())
   align-items: center;
   gap: 16px;
   padding: 16px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--admin-border);
 }
 .pagination button {
   padding: 6px 16px;
   border-radius: 6px;
   font-size: 13px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #475569;
+  background: var(--admin-bg-muted);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text-secondary);
   cursor: pointer;
 }
 .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -363,7 +364,7 @@ onMounted(() => fetchData())
 .loading-state, .empty-state {
   text-align: center;
   padding: 60px;
-  color: #94a3b8;
+  color: var(--admin-text-muted);
 }
 
 /* Modal */
@@ -377,8 +378,9 @@ onMounted(() => fetchData())
   z-index: 1000;
 }
 .modal-content {
-  background: white;
-  border-radius: 14px;
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
   width: 90%;
   max-width: 700px;
   max-height: 80vh;
@@ -389,14 +391,14 @@ onMounted(() => fetchData())
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--admin-border);
 }
-.modal-header h3 { font-size: 18px; font-weight: 700; color: #1e293b; }
+.modal-header h3 { font-size: 18px; font-weight: 700; color: var(--admin-text-primary); }
 .modal-close {
   background: none;
   border: none;
   font-size: 24px;
-  color: #94a3b8;
+  color: var(--admin-text-muted);
   cursor: pointer;
 }
 .modal-body { padding: 24px; }
@@ -406,7 +408,7 @@ onMounted(() => fetchData())
   gap: 16px;
   margin-bottom: 16px;
   font-size: 14px;
-  color: #475569;
+  color: var(--admin-text-secondary);
 }
 .detail-tags {
   display: flex;
@@ -415,8 +417,8 @@ onMounted(() => fetchData())
 }
 .detail-tags .tag {
   padding: 3px 10px;
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
   border-radius: 12px;
   font-size: 12px;
 }
@@ -424,8 +426,8 @@ onMounted(() => fetchData())
   white-space: pre-wrap;
   font-size: 14px;
   line-height: 1.8;
-  color: #334155;
-  background: #f8fafc;
+  color: var(--admin-text-primary);
+  background: var(--admin-bg-page);
   padding: 16px;
   border-radius: 8px;
   max-height: 400px;
@@ -436,7 +438,7 @@ onMounted(() => fetchData())
   gap: 12px;
   justify-content: flex-end;
   padding: 16px 24px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--admin-border);
 }
 .modal-footer .btn-action { padding: 8px 20px; font-size: 14px; }
 </style>

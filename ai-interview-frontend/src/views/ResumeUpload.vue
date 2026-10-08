@@ -2,7 +2,7 @@
   <StarryBackground />
   <div class="container">
     <div class="card" style="max-width:600px;margin:40px auto">
-      <h2 style="margin-bottom:20px;font-family:'Space Grotesk',sans-serif;background:var(--title-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent">上传简历 & 开始面试</h2>
+      <h2 style="margin-bottom:20px;font-family:Inter,sans-serif;background:var(--title-gradient);">上传简历 & 开始面试</h2>
 
       <!-- Step 1: 上传简历 -->
       <div v-if="step === 1">
@@ -108,7 +108,7 @@
         </div>
         <p v-if="error" class="error">{{ error }}</p>
         <button class="btn-primary" style="width:100%" @click="handleStart" :disabled="starting">
-          {{ starting ? '生成面试题中...' : '🚀 开始面试' }}
+          {{ starting ? '生成面试题中...' : '开始面试' }}
         </button>
       </div>
 
@@ -116,7 +116,7 @@
       <div v-if="step === 'starting'" class="parsing-stage">
         <div class="ai-face-anim">
           <svg viewBox="0 0 80 80" width="80" height="80">
-            <circle cx="40" cy="40" r="38" fill="white" stroke="#4f46e5" stroke-width="2"/>
+            <circle cx="40" cy="40" r="38" fill="white" stroke="#A3A3A3" stroke-width="2"/>
             <ellipse cx="28" cy="36" rx="5" ry="6" fill="#1e1e1e">
               <animate attributeName="ry" values="6;1;6" dur="2s" repeatCount="indefinite"/>
             </ellipse>
@@ -291,9 +291,9 @@ async function handleUpload() {
 }
 
 function scoreColor(score) {
-  if (score >= 7) return '#10b981'
-  if (score >= 5) return '#f59e0b'
-  return '#ef4444'
+  if (score >= 7) return '#A3A3A3'
+  if (score >= 5) return '#A3A3A3'
+  return '#A3A3A3'
 }
 
 // 面试准备动画
@@ -382,14 +382,14 @@ async function handleStart() {
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
 .upload-area {
-  border: 2px dashed rgba(139,92,246,0.15); border-radius: 12px; padding: 40px;
+  border: 2px dashed rgba(128, 128, 128,0.15); border-radius: 8px; padding: 40px;
   text-align: center; cursor: pointer; transition: all 0.3s;
-  background: rgba(139,92,246,0.02);
+  background: rgba(128, 128, 128,0.02);
 }
-.upload-area:hover { border-color: var(--border-hover); background: rgba(139,92,246,0.05); }
+.upload-area:hover { border-color: var(--border-hover); background: rgba(128, 128, 128,0.05); }
 .error { color: var(--red); font-size: 13px; margin-bottom: 12px; }
 .form-group input.input-error { border-color: var(--red); }
-.form-group input.input-error:focus { border-color: var(--red); box-shadow: 0 0 16px var(--red-bg); }
+.form-group input.input-error:focus { border-color: var(--red); box-shadow: var(--shadow-sm); }
 .parsed-info p { font-size: 14px; margin-bottom: 6px; line-height: 1.6; color: var(--text-secondary); }
 
 .parsing-stage { text-align: center; padding: 30px 0; }
@@ -403,7 +403,7 @@ async function handleStart() {
 }
 .progress-bar {
   height: 100%; border-radius: 4px; transition: width 0.3s ease;
-  background: linear-gradient(90deg, #7c3aed, #a855f7, #c4b5fd);
+  background: var(--accent-primary);
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
 }
@@ -412,7 +412,7 @@ async function handleStart() {
 .tips-area {
   min-height: 50px; display: flex; align-items: center; justify-content: center;
   background: var(--bg-card); border: 1px solid var(--border-default);
-  border-radius: 10px; padding: 14px 20px;
+  border-radius: 8px; padding: 14px 20px;
 }
 .tip-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
 .tip-fade-enter-active, .tip-fade-leave-active { transition: all 0.4s ease; }
@@ -424,7 +424,7 @@ async function handleStart() {
 .score-badge {
   width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center;
   justify-content: center; color: white; font-size: 18px; font-weight: 700;
-  box-shadow: 0 0 16px rgba(124,58,237,0.3);
+  box-shadow: var(--shadow-sm);
 }
 .score-text { font-size: 14px; color: var(--text-muted); }
 .analysis-summary {
@@ -434,9 +434,9 @@ async function handleStart() {
 .analysis-section { margin-bottom: 14px; }
 .analysis-section h4 { font-size: 14px; margin-bottom: 8px; color: var(--accent-light); }
 .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.tag { padding: 3px 10px; border-radius: 12px; font-size: 12px; }
-.tag-green { background: rgba(16,185,129,0.1); color: var(--green); }
-.tag-red { background: rgba(239,68,68,0.1); color: var(--red); }
+.tag { padding: 3px 10px; border-radius: 8px; font-size: 12px; }
+.tag-green { background: rgba(128, 128, 128,0.1); color: var(--green); }
+.tag-red { background: rgba(128, 128, 128,0.1); color: var(--red); }
 .analysis-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
 .analysis-two-col ul, .analysis-section ul { list-style: none; padding: 0; }
 .analysis-two-col li, .analysis-section li {

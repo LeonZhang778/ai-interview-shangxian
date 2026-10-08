@@ -195,9 +195,9 @@ const improvementClass = computed(() => {
 })
 
 function getScoreColor(score) {
-  if (score >= 8) return '#22c55e'
-  if (score >= 6) return '#f59e0b'
-  return '#ef4444'
+  if (score >= 8) return '#EDEDED'
+  if (score >= 6) return '#A3A3A3'
+  return '#737373'
 }
 
 function initTrendChart() {
@@ -209,7 +209,7 @@ function initTrendChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(15, 15, 25, 0.9)',
+      backgroundColor: 'rgba(17, 17, 17, 0.9)',
       borderColor: 'rgba(255,255,255,0.1)',
       textStyle: { color: '#fff' },
       formatter: (params) => {
@@ -240,21 +240,15 @@ function initTrendChart() {
       symbolSize: 8,
       lineStyle: {
         width: 3,
-        color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-          { offset: 0, color: '#7c3aed' },
-          { offset: 1, color: '#6366f1' }
-        ])
+        color: '#A3A3A3'
       },
       itemStyle: {
-        color: '#7c3aed',
+        color: '#A3A3A3',
         borderWidth: 2,
         borderColor: '#fff'
       },
       areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(124, 58, 237, 0.3)' },
-          { offset: 1, color: 'rgba(124, 58, 237, 0)' }
-        ])
+        color: 'rgba(128, 128, 128, 0.12)'
       }
     }]
   }
@@ -281,7 +275,7 @@ function initRadarChart() {
 
   const option = {
     tooltip: {
-      backgroundColor: 'rgba(15, 15, 25, 0.9)',
+      backgroundColor: 'rgba(17, 17, 17, 0.9)',
       borderColor: 'rgba(255,255,255,0.1)',
       textStyle: { color: '#fff' }
     },
@@ -302,13 +296,10 @@ function initRadarChart() {
       data: [{
         value: dims.map(([, score]) => score),
         areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(124, 58, 237, 0.4)' },
-            { offset: 1, color: 'rgba(99, 102, 241, 0.1)' }
-          ])
+          color: 'rgba(128, 128, 128, 0.16)'
         },
-        lineStyle: { color: '#7c3aed', width: 2 },
-        itemStyle: { color: '#7c3aed' }
+        lineStyle: { color: '#A3A3A3', width: 2 },
+        itemStyle: { color: '#A3A3A3' }
       }]
     }]
   }
@@ -324,7 +315,7 @@ function initCompanyChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(15, 15, 25, 0.9)',
+      backgroundColor: 'rgba(17, 17, 17, 0.9)',
       borderColor: 'rgba(255,255,255,0.1)',
       textStyle: { color: '#fff' }
     },
@@ -351,10 +342,7 @@ function initCompanyChart() {
       data: stats.map(s => ({
         value: s.avg_score,
         itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-            { offset: 0, color: getScoreColor(s.avg_score) + '80' },
-            { offset: 1, color: getScoreColor(s.avg_score) }
-          ]),
+          color: getScoreColor(s.avg_score),
           borderRadius: [0, 4, 4, 0]
         }
       })),
@@ -380,7 +368,7 @@ function initPositionChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(15, 15, 25, 0.9)',
+      backgroundColor: 'rgba(17, 17, 17, 0.9)',
       borderColor: 'rgba(255,255,255,0.1)',
       textStyle: { color: '#fff' }
     },
@@ -407,10 +395,7 @@ function initPositionChart() {
       data: stats.map(s => ({
         value: s.avg_score,
         itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-            { offset: 0, color: '#6366f180' },
-            { offset: 1, color: '#6366f1' }
-          ]),
+          color: '#A3A3A3',
           borderRadius: [0, 4, 4, 0]
         }
       })),
@@ -436,7 +421,7 @@ function initScoreDistChart() {
   const option = {
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(15, 15, 25, 0.9)',
+      backgroundColor: 'rgba(17, 17, 17, 0.9)',
       borderColor: 'rgba(255,255,255,0.1)',
       textStyle: { color: '#fff' }
     },
@@ -449,12 +434,12 @@ function initScoreDistChart() {
       radius: ['40%', '70%'],
       center: ['50%', '45%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#0f0f19', borderWidth: 2 },
+      itemStyle: { borderRadius: 8, borderColor: '#111111', borderWidth: 2 },
       label: { show: false },
       data: [
-        { value: dist.high, name: '优秀 (8+)', itemStyle: { color: '#22c55e' } },
-        { value: dist.mid, name: '良好 (6-8)', itemStyle: { color: '#f59e0b' } },
-        { value: dist.low, name: '待提升 (<6)', itemStyle: { color: '#ef4444' } }
+        { value: dist.high, name: '优秀 (8+)', itemStyle: { color: '#EDEDED' } },
+        { value: dist.mid, name: '良好 (6-8)', itemStyle: { color: '#A3A3A3' } },
+        { value: dist.low, name: '待提升 (<6)', itemStyle: { color: '#737373' } }
       ]
     }]
   }
@@ -470,7 +455,7 @@ function initTimeDistChart() {
   const option = {
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(15, 15, 25, 0.9)',
+      backgroundColor: 'rgba(17, 17, 17, 0.9)',
       borderColor: 'rgba(255,255,255,0.1)',
       textStyle: { color: '#fff' }
     },
@@ -483,11 +468,11 @@ function initTimeDistChart() {
       radius: ['40%', '70%'],
       center: ['50%', '45%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#0f0f19', borderWidth: 2 },
+      itemStyle: { borderRadius: 8, borderColor: '#111111', borderWidth: 2 },
       label: { show: false },
       data: [
-        { value: time.weekday, name: '工作日', itemStyle: { color: '#6366f1' } },
-        { value: time.weekend, name: '周末', itemStyle: { color: '#a78bfa' } }
+        { value: time.weekday, name: '工作日', itemStyle: { color: '#EDEDED' } },
+        { value: time.weekend, name: '周末', itemStyle: { color: '#737373' } }
       ]
     }]
   }
@@ -503,7 +488,7 @@ function initActivityChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(15, 15, 25, 0.9)',
+      backgroundColor: 'rgba(17, 17, 17, 0.9)',
       borderColor: 'rgba(255,255,255,0.1)',
       textStyle: { color: '#fff' }
     },
@@ -526,10 +511,7 @@ function initActivityChart() {
         value: a.count,
         itemStyle: {
           color: a.count > 0
-            ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#7c3aed' },
-                { offset: 1, color: '#6366f1' }
-              ])
+            ? '#A3A3A3'
             : 'rgba(255,255,255,0.05)',
           borderRadius: [4, 4, 0, 0]
         }
@@ -581,7 +563,7 @@ onUnmounted(() => {
 }
 .page-header { margin-bottom: 24px; }
 .page-header h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
@@ -598,8 +580,8 @@ onUnmounted(() => {
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(124, 58, 237, 0.2);
-  border-top-color: #7c3aed;
+  border: 3px solid rgba(128, 128, 128, 0.2);
+  border-top-color: #A3A3A3;
   border-radius: 50%;
   margin: 0 auto 16px;
   animation: spin 0.8s linear infinite;
@@ -612,14 +594,13 @@ onUnmounted(() => {
   display: inline-block;
   padding: 10px 24px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.3s;
 }
-.cta-link:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(124,58,237,0.3); }
+.cta-link:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 
 .stats-row {
   display: grid;
@@ -630,7 +611,7 @@ onUnmounted(() => {
 .stat-card {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
   text-align: center;
   transition: transform 0.2s;
@@ -638,7 +619,7 @@ onUnmounted(() => {
 .stat-card:hover { transform: translateY(-2px); }
 .stat-icon { font-size: 20px; margin-bottom: 6px; }
 .stat-value {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 28px;
   font-weight: 800;
   color: var(--text-primary);
@@ -646,7 +627,7 @@ onUnmounted(() => {
   line-height: 1.2;
   word-break: break-all;
 }
-.stat-value.positive { color: #22c55e; }
+.stat-value.positive { color: #A3A3A3; }
 .stat-value.negative { color: var(--red); }
 .stat-value.weakest { font-size: 14px; font-weight: 600; color: var(--amber); }
 .stat-label { font-size: 12px; color: var(--text-muted); }
@@ -654,12 +635,12 @@ onUnmounted(() => {
 .chart-section {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
 }
 .chart-section h2 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
@@ -694,8 +675,8 @@ onUnmounted(() => {
   cursor: pointer;
 }
 .stat-card.clickable:hover {
-  border-color: rgba(124, 58, 237, 0.4);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.15);
+  border-color: rgba(128, 128, 128, 0.4);
+  box-shadow: var(--shadow-sm);
 }
 .stat-label .hint {
   display: inline-block;
@@ -715,7 +696,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
   z-index: 200;
   display: flex;
   align-items: center;
@@ -723,9 +704,9 @@ onUnmounted(() => {
   padding: 20px;
 }
 .modal-box {
-  background: var(--bg-card, #1a1a2e);
+  background: var(--bg-card, #141414);
   border: 1px solid var(--border-default, rgba(255,255,255,0.1));
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 24px;
   max-width: 480px;
   width: 100%;
@@ -734,7 +715,7 @@ onUnmounted(() => {
   position: relative;
 }
 .modal-box h3 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
@@ -767,16 +748,16 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: rgba(124, 58, 237, 0.04);
-  border-radius: 10px;
+  background: rgba(128, 128, 128, 0.04);
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
 }
 .detail-item:hover {
-  background: rgba(124, 58, 237, 0.1);
+  background: rgba(128, 128, 128, 0.1);
 }
 .detail-score {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 22px;
   font-weight: 800;
   min-width: 36px;

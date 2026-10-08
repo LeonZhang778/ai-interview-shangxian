@@ -8,7 +8,7 @@
       </router-link>
     </div>
 
-    <div v-if="authStore.isGuest" class="guest-hint" style="background:var(--bg-hover);border:1px solid var(--border-default);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--accent-purple)">
+    <div v-if="authStore.isGuest" class="guest-hint" style="background:var(--bg-hover);border:1px solid var(--border-default);border-radius: 8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--accent-purple)">
       游客模式下数据临时保存，<router-link to="/register" style="color:var(--accent-primary);font-weight:600">注册账号</router-link>后永久保留
     </div>
 
@@ -120,11 +120,10 @@ async function handleDelete(interviewId) {
   margin: 20px 0;
 }
 .page-header h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 22px;
   background:var(--title-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+
 }
 .loading, .empty {
   text-align: center;
@@ -146,12 +145,12 @@ async function handleDelete(interviewId) {
   padding: 16px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
+  border-radius: 8px;
   text-decoration: none;
   transition: all 0.2s;
 }
 .quick-entry-card:hover {
-  border-color: rgba(99,102,241,0.3);
+  border-color: rgba(128, 128, 128,0.3);
   background: rgba(255,255,255,0.06);
   transform: translateY(-2px);
 }
@@ -210,14 +209,14 @@ async function handleDelete(interviewId) {
 .status {
   font-size: 12px;
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 .status.completed {
-  background: rgba(16,185,129,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--green);
 }
 .status.in_progress {
-  background: rgba(245,158,11,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--amber);
 }
 .item-meta {
@@ -231,12 +230,12 @@ async function handleDelete(interviewId) {
   gap: 8px;
 }
 .btn-danger {
-  background: rgba(239,68,68,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--red);
-  border: 1px solid rgba(239,68,68,0.15);
+  border: 1px solid rgba(128, 128, 128,0.15);
 }
 .btn-danger:hover {
-  background: rgba(239,68,68,0.2);
-  border-color: rgba(239,68,68,0.3);
+  background: rgba(128, 128, 128,0.2);
+  border-color: rgba(128, 128, 128,0.3);
 }
 </style>

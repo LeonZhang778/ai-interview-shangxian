@@ -495,11 +495,11 @@ function closePreview() {
 .status-queued,
 .status-pending {
   color: var(--accent-cyan);
-  background: rgba(6, 182, 212, .12);
+  background: rgba(128, 128, 128, .12);
 }
 .status-processing {
-  color: #fbbf24;
-  background: rgba(251, 191, 36, .12);
+  color: var(--state-warning);
+  background: rgba(163, 163, 163, .12);
 }
 .status-completed {
   color: var(--green);
@@ -545,13 +545,13 @@ function closePreview() {
   color: var(--accent-cyan);
 }
 .task-btn-download:hover {
-  background: rgba(6, 182, 212, .12);
+  background: rgba(128, 128, 128, .12);
 }
 .task-btn-cancel {
-  color: #fbbf24;
+  color: var(--state-warning);
 }
 .task-btn-cancel:hover {
-  background: rgba(251, 191, 36, .12);
+  background: rgba(163, 163, 163, .12);
 }
 .task-btn-retry {
   color: var(--accent-primary);
@@ -577,7 +577,7 @@ function closePreview() {
 .task-progress-bar {
   flex: 1;
   height: 6px;
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--border-default);
   overflow: hidden;
   position: relative;
@@ -586,18 +586,16 @@ function closePreview() {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  background: var(--accent-primary);
   transform: translateX(-100%);
   animation: progress-shimmer 1.35s ease-in-out infinite;
 }
 .task-progress-fill {
   height: 100%;
   min-width: 10px;
-  background:
-    linear-gradient(90deg, rgba(255,255,255,.25), transparent 35%, rgba(255,255,255,.25) 70%, transparent),
-    var(--accent-gradient);
+  background: var(--accent-primary);
   background-size: 42px 100%, 100% 100%;
-  border-radius: 999px;
+  border-radius: 8px;
   transition: width .3s ease;
   animation: progress-flow .85s linear infinite;
 }
@@ -632,7 +630,7 @@ function closePreview() {
 .preview-modal {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 8px;
   max-width: 800px;
   width: 100%;
   max-height: 90vh;

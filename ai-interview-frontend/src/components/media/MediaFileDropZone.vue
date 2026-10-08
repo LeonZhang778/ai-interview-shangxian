@@ -235,7 +235,7 @@ function handleRemoveFile(fileId) {
 }
 .dropzone {
   border: 1px dashed var(--border-hover);
-  border-radius: 13px;
+  border-radius: 8px;
   background: var(--bg-input);
   min-height: 100px;
   display: flex;
@@ -318,7 +318,7 @@ function handleRemoveFile(fileId) {
 .progress-bar {
   width: 100%;
   height: 6px;
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--border-default);
   overflow: hidden;
   position: relative;
@@ -327,18 +327,16 @@ function handleRemoveFile(fileId) {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  background: var(--accent-primary);
   transform: translateX(-100%);
   animation: progress-shimmer 1.35s ease-in-out infinite;
 }
 .progress-fill {
   height: 100%;
   min-width: 10px;
-  background:
-    linear-gradient(90deg, rgba(255,255,255,.25), transparent 35%, rgba(255,255,255,.25) 70%, transparent),
-    var(--accent-gradient);
+  background: var(--accent-primary);
   background-size: 42px 100%, 100% 100%;
-  border-radius: 999px;
+  border-radius: 8px;
   transition: width .3s ease;
   animation: progress-flow .85s linear infinite;
 }

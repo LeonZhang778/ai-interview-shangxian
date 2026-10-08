@@ -1,11 +1,10 @@
 <template>
   <div>
-    <h1 style="font-size:22px;margin-bottom:24px;color:var(--admin-text-primary)">📊 数据概览</h1>
+    <h1 style="font-size:22px;margin-bottom:24px;color:var(--admin-text-primary)">数据概览</h1>
 
     <!-- 统计卡片 -->
     <div class="stats-grid">
       <div class="stat-card" v-for="(s, i) in statCards" :key="i" :style="{ '--accent': s.color }">
-        <div class="stat-icon">{{ s.icon }}</div>
         <div class="stat-num">{{ stats[s.key] }}</div>
         <div class="stat-label">{{ s.label }}</div>
       </div>
@@ -107,10 +106,10 @@ let interviewChart = null
 let pvChart = null
 
 const statCards = [
-  { key: 'total_users', label: '注册用户', icon: '👥', color: 'var(--admin-primary)' },
-  { key: 'total_interviews', label: '面试总数', icon: '🎤', color: 'var(--admin-primary)' },
-  { key: 'total_experiences', label: '面经数量', icon: '📝', color: 'var(--admin-primary)' },
-  { key: 'average_score', label: '平均分', icon: '⭐', color: 'var(--admin-primary)' },
+  { key: 'total_users', label: '注册用户', color: 'var(--admin-primary)' },
+  { key: 'total_interviews', label: '面试总数', color: 'var(--admin-primary)' },
+  { key: 'total_experiences', label: '面经数量', color: 'var(--admin-primary)' },
+  { key: 'average_score', label: '平均分', color: 'var(--admin-primary)' },
 ]
 
 function getAdminToken(name) {

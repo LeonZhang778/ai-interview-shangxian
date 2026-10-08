@@ -4,7 +4,7 @@
   box-sizing: border-box;
 }
 
-/* Monochrome theme tokens */
+/* Neutral theme tokens with blue emphasis */
 :root {
   --bg-base: #0A0A0A;
   --bg-surface: #111111;
@@ -20,12 +20,13 @@
 
   --border-default: #262626;
   --border-hover: #404040;
-  --border-focus: #EDEDED;
+  --border-focus: #7EA2FF;
 
-  --accent-primary: #EDEDED;
-  --accent-light: #FFFFFF;
-  --accent-purple: #A3A3A3;
-  --accent-cyan: #A3A3A3;
+  --accent-primary: #7EA2FF;
+  --accent-light: #B7C8FE;
+  --accent-hover: #9AB6FF;
+  --accent-purple: #7EA2FF;
+  --accent-cyan: #7EA2FF;
   --accent-gradient: none;
   --accent-glow: none;
   --title-gradient: none;
@@ -80,12 +81,13 @@
 
   --border-default: #E5E5E5;
   --border-hover: #D4D4D4;
-  --border-focus: #0A0A0A;
+  --border-focus: #2563EB;
 
-  --accent-primary: #0A0A0A;
-  --accent-light: #0A0A0A;
-  --accent-purple: #525252;
-  --accent-cyan: #525252;
+  --accent-primary: #2563EB;
+  --accent-light: #1D4ED8;
+  --accent-hover: #1D4ED8;
+  --accent-purple: #2563EB;
+  --accent-cyan: #2563EB;
   --accent-gradient: none;
   --accent-glow: none;
   --title-gradient: none;
@@ -128,10 +130,27 @@
 /* Base */
 body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-variant-emoji: text;
   background: var(--bg-base);
   color: var(--text-primary);
   min-height: 100vh;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Keep legacy icon glyphs inside the blue / black / white palette. */
+.feature-icon,
+.entry-icon,
+.empty-icon,
+.banner-icon,
+.notice-icon,
+.parsing-icon,
+.group-action,
+.avatar-overlay,
+.node-icon,
+.bell-icon,
+.nav-avatar-placeholder {
+  font-variant-emoji: text;
+  color: var(--accent-primary);
 }
 
 #app {

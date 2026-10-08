@@ -176,7 +176,7 @@ function handleExportDocx() {
   background: rgba(255, 255, 255, 0.06);
 }
 .node-row.active {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(128, 128, 128, 0.15);
   color: var(--accent-light);
 }
 
@@ -220,11 +220,11 @@ function handleExportDocx() {
 .context-menu {
   position: absolute;
   z-index: 100;
-  background: rgba(30, 30, 40, 0.95);
+  background: rgba(31, 31, 31, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-sm);
   min-width: 130px;
 }
 .menu-item {
@@ -235,12 +235,12 @@ function handleExportDocx() {
   color: var(--text-secondary);
 }
 .menu-item:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(128, 128, 128, 0.15);
   color: var(--accent-light);
 }
 .menu-item.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background: rgba(128, 128, 128, 0.15);
+  color: #A3A3A3;
 }
 
 /* 内联编辑表单 */
@@ -251,7 +251,7 @@ function handleExportDocx() {
   width: 100%;
   padding: 4px 8px;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  border: 1px solid rgba(128, 128, 128, 0.4);
   border-radius: 4px;
   color: var(--text-primary);
   font-size: 13px;

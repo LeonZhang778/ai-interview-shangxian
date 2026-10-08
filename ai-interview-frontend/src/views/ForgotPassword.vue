@@ -1,33 +1,13 @@
 <template>
   <div class="space-forgot">
-    <!-- 星空画布 -->
-    <canvas ref="starCanvas" class="star-canvas"></canvas>
-    <!-- 点击粒子画布 -->
-    <canvas ref="particleCanvas" class="particle-canvas"></canvas>
-    <!-- 极光 -->
-    <div class="aurora"></div>
-    <!-- 轨道环 -->
-    <div class="orbit-ring r1"></div>
-    <div class="orbit-ring r2"></div>
-    <div class="orbit-ring r3"></div>
-    <!-- 流星 -->
-    <div class="meteor m1"></div>
-    <div class="meteor m2"></div>
-    <div class="meteor m3"></div>
-    <!-- 点击闪光 -->
-    <div ref="flashOverlay" class="flash-overlay"></div>
-
     <!-- 主内容 -->
     <div class="forgot-page">
-      <div class="auth-card" ref="authCard">
-        <div class="card-glow"></div>
-        <div class="card-outer-glow"></div>
-        <div class="card-mouse-glow" ref="cardMouseGlow"></div>
+      <div class="auth-card">
         <div class="card-body">
           <div class="card-content">
             <!-- Step 1: 输入邮箱 -->
             <template v-if="step === 1">
-              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">
+              <div class="logo-icon">
                 <img src="/site-logo.png" alt="智面 AI" />
               </div>
               <h2>忘记密码</h2>
@@ -40,7 +20,7 @@
                   </div>
                 </div>
                 <div v-if="error" class="error-msg">{{ error }}</div>
-                <button type="submit" class="btn-primary" :disabled="loading" @mousedown="onBtnClick">
+        <button type="submit" class="btn-primary" :disabled="loading">
                   <span>{{ loading ? '发送中...' : '发送验证码' }}</span>
                 </button>
               </form>
@@ -48,7 +28,7 @@
 
             <!-- Step 2: 输入验证码 -->
             <template v-else-if="step === 2">
-              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">
+              <div class="logo-icon">
                 <img src="/site-logo.png" alt="智面 AI" />
               </div>
               <h2>验证邮箱</h2>
@@ -61,7 +41,7 @@
                   </div>
                 </div>
                 <div v-if="error" class="error-msg">{{ error }}</div>
-                <button type="submit" class="btn-primary" :disabled="loading" @mousedown="onBtnClick">
+                <button type="submit" class="btn-primary" :disabled="loading">
                   <span>{{ loading ? '验证中...' : '验证' }}</span>
                 </button>
               </form>
@@ -73,7 +53,7 @@
 
             <!-- Step 3: 设置新密码 -->
             <template v-else-if="step === 3">
-              <div class="logo-icon" ref="logoIcon" @click="handleLogoClick">
+              <div class="logo-icon">
                 <img src="/site-logo.png" alt="智面 AI" />
               </div>
               <h2>设置新密码</h2>
@@ -92,7 +72,7 @@
                   </div>
                 </div>
                 <div v-if="error" class="error-msg">{{ error }}</div>
-                <button type="submit" class="btn-primary" :disabled="loading" @mousedown="onBtnClick">
+                <button type="submit" class="btn-primary" :disabled="loading">
                   <span>{{ loading ? '重置中...' : '重置密码' }}</span>
                 </button>
               </form>
@@ -119,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../api/auth'
 
 const step = ref(1)
@@ -134,12 +114,6 @@ const resendCountdown = ref(0)
 let countdownTimer = null
 
 // Refs
-const starCanvas = ref(null)
-const particleCanvas = ref(null)
-const authCard = ref(null)
-const cardMouseGlow = ref(null)
-const flashOverlay = ref(null)
-const logoIcon = ref(null)
 
 // ===== 业务逻辑 =====
 function startCountdown(seconds = 60) {
@@ -232,8 +206,8 @@ function onBtnClick(e) {
   const btn = e.currentTarget
   addRipple(btn, e)
   flashAt(e.clientX, e.clientY)
-  spawnParticles(e.clientX, e.clientY, 20, 'rgba(168, 85, 247, 1)')
-  spawnParticles(e.clientX, e.clientY, 12, 'rgba(6, 182, 212, 1)')
+  spawnParticles(e.clientX, e.clientY, 20, 'rgba(128, 128, 128, 1)')
+  spawnParticles(e.clientX, e.clientY, 12, 'rgba(128, 128, 128, 1)')
 }
 
 function handleLogoClick(e) {
@@ -242,9 +216,9 @@ function handleLogoClick(e) {
   const cx = rect.left + rect.width / 2
   const cy = rect.top + rect.height / 2
   flashAt(cx, cy)
-  spawnParticles(cx, cy, 30, 'rgba(168, 85, 247, 1)')
-  spawnParticles(cx, cy, 20, 'rgba(6, 182, 212, 1)')
-  spawnParticles(cx, cy, 10, 'rgba(245, 158, 11, 1)')
+  spawnParticles(cx, cy, 30, 'rgba(128, 128, 128, 1)')
+  spawnParticles(cx, cy, 20, 'rgba(128, 128, 128, 1)')
+  spawnParticles(cx, cy, 10, 'rgba(128, 128, 128, 1)')
   logoIcon.value.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)'
   logoIcon.value.style.transform = 'scale(1.2) rotate(360deg)'
   setTimeout(() => {
@@ -257,7 +231,7 @@ function handleLogoClick(e) {
 
 function onInputFocus(e) {
   const rect = e.target.getBoundingClientRect()
-  spawnParticles(rect.left + rect.width / 2, rect.top, 8, 'rgba(139, 92, 246, 1)')
+  spawnParticles(rect.left + rect.width / 2, rect.top, 8, 'rgba(128, 128, 128, 1)')
 }
 
 // ===== 卡片 3D 倾斜 =====
@@ -297,7 +271,7 @@ function initStars() {
       const alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * s.speed * 100 + s.phase))
       ctx.beginPath()
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(200, 180, 255, ${alpha})`
+      ctx.fillStyle = `rgba(128, 128, 128, ${alpha})`
       ctx.fill()
     })
     animId1 = requestAnimationFrame(draw)
@@ -333,27 +307,10 @@ function onResize() {
   if (c2) { c2.width = window.innerWidth; c2.height = window.innerHeight }
 }
 
-onMounted(() => {
-  initStars()
-  initParticles()
-  const card = authCard.value
-  if (card) {
-    card.addEventListener('mousemove', onCardMouseMove)
-    card.addEventListener('mouseleave', onCardMouseLeave)
-  }
-  window.addEventListener('resize', onResize)
-})
-
 onUnmounted(() => {
   if (animId1) cancelAnimationFrame(animId1)
   if (animId2) cancelAnimationFrame(animId2)
   if (countdownTimer) clearInterval(countdownTimer)
-  const card = authCard.value
-  if (card) {
-    card.removeEventListener('mousemove', onCardMouseMove)
-    card.removeEventListener('mouseleave', onCardMouseLeave)
-  }
-  window.removeEventListener('resize', onResize)
 })
 </script>
 
@@ -361,7 +318,7 @@ onUnmounted(() => {
 .space-forgot {
   position: relative;
   min-height: 100vh;
-  background: #030014;
+  background: var(--bg-base);
   overflow: hidden;
 }
 
@@ -372,82 +329,80 @@ onUnmounted(() => {
 /* ===== 极光 ===== */
 .aurora {
   position: fixed; top: -30%; left: -10%; width: 120%; height: 60%;
-  background: radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.15) 0%, transparent 50%),
-              radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.1) 0%, transparent 50%);
+  background: var(--accent-primary);
   filter: blur(80px); animation: auroraDrift 12s ease-in-out infinite alternate; z-index: 1; pointer-events: none;
 }
 @keyframes auroraDrift { 0% { transform: translateX(-3%) rotate(-2deg); } 100% { transform: translateX(3%) rotate(2deg); } }
 
 /* ===== 轨道环 ===== */
-.orbit-ring { position: fixed; border-radius: 50%; border: 1px solid rgba(139,92,246,0.08); z-index: 2; animation: orbitSpin linear infinite; pointer-events: none; }
+.orbit-ring { position: fixed; border-radius: 50%; border: 1px solid rgba(128, 128, 128,0.08); z-index: 2; animation: orbitSpin linear infinite; pointer-events: none; }
 .orbit-ring.r1 { width: 700px; height: 700px; top: 50%; left: 50%; margin-top: -350px; margin-left: -350px; animation-duration: 60s; }
-.orbit-ring.r2 { width: 500px; height: 500px; top: 50%; left: 50%; margin-top: -250px; margin-left: -250px; border-color: rgba(6,182,212,0.06); animation-duration: 45s; animation-direction: reverse; }
-.orbit-ring.r3 { width: 900px; height: 900px; top: 50%; left: 50%; margin-top: -450px; margin-left: -450px; border-color: rgba(245,158,11,0.04); animation-duration: 80s; }
-.orbit-ring::after { content: ''; position: absolute; top: 0; left: 50%; width: 6px; height: 6px; margin-left: -3px; margin-top: -3px; background: #a855f7; border-radius: 50%; box-shadow: 0 0 15px #a855f7, 0 0 30px rgba(168,85,247,0.3); }
-.orbit-ring.r2::after { background: #06b6d4; box-shadow: 0 0 15px #06b6d4, 0 0 30px rgba(6,182,212,0.3); width: 4px; height: 4px; margin-left: -2px; margin-top: -2px; }
-.orbit-ring.r3::after { background: #f59e0b; box-shadow: 0 0 15px #f59e0b; width: 5px; height: 5px; margin-left: -2.5px; margin-top: -2.5px; }
+.orbit-ring.r2 { width: 500px; height: 500px; top: 50%; left: 50%; margin-top: -250px; margin-left: -250px; border-color: rgba(128, 128, 128,0.06); animation-duration: 45s; animation-direction: reverse; }
+.orbit-ring.r3 { width: 900px; height: 900px; top: 50%; left: 50%; margin-top: -450px; margin-left: -450px; border-color: rgba(128, 128, 128,0.04); animation-duration: 80s; }
+.orbit-ring::after { content: ''; position: absolute; top: 0; left: 50%; width: 6px; height: 6px; margin-left: -3px; margin-top: -3px; background: #A3A3A3; border-radius: 50%; box-shadow: var(--shadow-sm); }
+.orbit-ring.r2::after { background: #A3A3A3; box-shadow: var(--shadow-sm); width: 4px; height: 4px; margin-left: -2px; margin-top: -2px; }
+.orbit-ring.r3::after { background: #A3A3A3; box-shadow: var(--shadow-sm); width: 5px; height: 5px; margin-left: -2.5px; margin-top: -2.5px; }
 @keyframes orbitSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* ===== 流星 ===== */
-.meteor { position: fixed; width: 120px; height: 1px; background: linear-gradient(90deg, rgba(168,85,247,0.8), transparent); z-index: 3; animation: meteorFall linear infinite; opacity: 0; pointer-events: none; }
+.meteor { position: fixed; width: 120px; height: 1px; background: var(--accent-primary); z-index: 3; animation: meteorFall linear infinite; opacity: 0; pointer-events: none; }
 .m1 { top: 10%; left: 20%; animation-delay: 0s; animation-duration: 6s; }
 .m2 { top: 30%; left: 60%; animation-delay: 3s; animation-duration: 5s; width: 80px; }
 .m3 { top: 5%; left: 80%; animation-delay: 7s; animation-duration: 7s; }
 @keyframes meteorFall { 0% { transform: translate(-100px, -100px) rotate(-35deg); opacity: 0; } 5% { opacity: 1; } 30% { opacity: 1; } 40% { transform: translate(calc(100vw + 100px), calc(100vh + 100px)) rotate(-35deg); opacity: 0; } 100% { opacity: 0; } }
 
 /* ===== 闪光 ===== */
-.flash-overlay { position: fixed; inset: 0; z-index: 100; pointer-events: none; opacity: 0; background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), rgba(168,85,247,0.3), transparent 60%); transition: opacity 0.1s; }
+.flash-overlay { position: fixed; inset: 0; z-index: 100; pointer-events: none; opacity: 0; background: var(--accent-primary); transition: opacity 0.1s; }
 .flash-overlay.active { opacity: 1; transition: opacity 0s; }
 
 /* ===== 布局 ===== */
 .forgot-page { position: relative; z-index: 10; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
 
 /* ===== 卡片 ===== */
-.auth-card { width: 420px; padding: 0; border-radius: 24px; position: relative; transition: transform 0.1s ease-out; transform-style: preserve-3d; }
-.card-glow { position: absolute; inset: -2px; border-radius: 26px; background: conic-gradient(from var(--card-angle, 0deg), transparent 0%, #a855f7 10%, #06b6d4 20%, transparent 30%, transparent 70%, #f59e0b 80%, #a855f7 90%, transparent 100%); opacity: 0.5; filter: blur(1px); animation: glowRotate 6s linear infinite; z-index: -1; }
+.auth-card { width: 420px; padding: 0; border-radius: 8px; position: relative; transition: transform 0.1s ease-out; transform-style: preserve-3d; }
+
 @keyframes glowRotate { from { --card-angle: 0deg; } to { --card-angle: 360deg; } }
-.card-outer-glow { position: absolute; inset: -20px; border-radius: 40px; background: radial-gradient(ellipse at center, rgba(139,92,246,0.08), transparent 70%); z-index: -2; pointer-events: none; }
-.card-mouse-glow { position: absolute; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,0.12), transparent 70%); pointer-events: none; transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.3s; z-index: 0; }
+
 .auth-card:hover .card-mouse-glow { opacity: 1; }
-.card-body { background: rgba(8, 5, 25, 0.85); border: 1px solid rgba(139, 92, 246, 0.1); border-radius: 24px; padding: 44px 40px; backdrop-filter: blur(40px); position: relative; overflow: hidden; }
-.card-body::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent 10%, rgba(168,85,247,0.4) 30%, rgba(6,182,212,0.3) 50%, rgba(168,85,247,0.4) 70%, transparent 90%); }
+.card-body { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px; padding: 44px 40px; position: relative; overflow: hidden; }
+.card-body::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--accent-primary); }
 .card-content { position: relative; z-index: 1; }
 
 /* Logo */
-.logo-icon { width: 52px; height: 52px; margin: 0 auto 16px; background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2)); border: 1px solid rgba(139,92,246,0.25); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; position: relative; transition: transform 0.3s, box-shadow 0.3s; }
+.logo-icon { width: 52px; height: 52px; margin: 0 auto 16px; background: var(--bg-hover); border: 1px solid var(--border-default); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: default; position: relative; transition: opacity 0.2s; }
 .logo-icon img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
-.logo-icon:hover { transform: scale(1.1) rotate(5deg); box-shadow: 0 0 30px rgba(139,92,246,0.3); }
-.logo-icon::after { content: ''; position: absolute; inset: -5px; border-radius: 20px; border: 1px solid rgba(139,92,246,0.15); animation: logoPulse 2.5s ease-in-out infinite; }
+.logo-icon:hover { transform: scale(1.1) rotate(5deg); box-shadow: var(--shadow-sm); }
+.logo-icon::after { content: ''; position: absolute; inset: -5px; border-radius: 8px; border: 1px solid rgba(128, 128, 128,0.15); animation: logoPulse 2.5s ease-in-out infinite; }
 @keyframes logoPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0; } }
 .success-logo { cursor: default; }
-.success-logo:hover { transform: none; box-shadow: none; }
+.success-logo:hover { transform: none; box-shadow: var(--shadow-sm); }
 .success-logo::after { animation: none; }
 
-h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; text-align: center; margin-bottom: 4px; background: linear-gradient(135deg, #fff, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.subtitle { text-align: center; font-size: 13px; color: #6b7280; margin-bottom: 28px; }
-.subtitle strong { color: #c4b5fd; }
+h2 { font-family: Inter, sans-serif; font-size: 24px; font-weight: 700; text-align: center; margin-bottom: 4px; background: none; color: var(--text-primary); }
+.subtitle { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+.subtitle strong { color: #A3A3A3; }
 
 /* ===== 表单 ===== */
 .form-group { margin-bottom: 18px; }
-.form-group label { display: block; font-size: 12px; font-weight: 600; color: #9ca3af; margin-bottom: 8px; letter-spacing: 0.5px; transition: color 0.3s; }
-.form-group:focus-within label { color: #a855f7; }
-.input-wrap { position: relative; border-radius: 12px; overflow: hidden; }
-.input-wrap::after { content: ''; position: absolute; bottom: 0; left: 50%; right: 50%; height: 2px; background: linear-gradient(90deg, #a855f7, #06b6d4); border-radius: 2px; transition: left 0.4s, right 0.4s; z-index: 1; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: 0.5px; transition: color 0.3s; }
+.form-group:focus-within label { color: #A3A3A3; }
+.input-wrap { position: relative; border-radius: 8px; overflow: hidden; }
+.input-wrap::after { content: ''; position: absolute; bottom: 0; left: 50%; right: 50%; height: 2px; background: var(--accent-primary); border-radius: 2px; transition: left 0.4s, right 0.4s; z-index: 1; }
 .input-wrap:focus-within::after { left: 0; right: 0; }
-.form-group input { width: 100%; padding: 13px 16px; background: rgba(139,92,246,0.04); border: 1px solid rgba(139,92,246,0.12); border-radius: 12px; font-size: 14px; color: #e2e8f0; outline: none; transition: all 0.3s; position: relative; z-index: 1; }
-.form-group input::placeholder { color: #4a4a6a; }
-.form-group input:focus { border-color: rgba(139,92,246,0.35); box-shadow: 0 0 20px rgba(139,92,246,0.1), 0 0 40px rgba(139,92,246,0.04); background: rgba(139,92,246,0.07); }
+.form-group input { width: 100%; padding: 13px 16px; background: var(--bg-input); border: 1px solid var(--border-default); border-radius: 8px; font-size: 14px; color: var(--text-primary); outline: none; transition: all 0.3s; position: relative; z-index: 1; }
+.form-group input::placeholder { color: var(--text-dim); }
+.form-group input:focus { border-color: var(--border-focus); box-shadow: none; background: var(--bg-input-focus); }
 .code-input { font-size: 24px; letter-spacing: 8px; text-align: center; font-weight: 700; }
 
 /* 错误 */
-.error-msg { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.15); border-radius: 10px; padding: 10px 14px; color: #f87171; font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+.error-msg { background: rgba(128, 128, 128,0.08); border: 1px solid rgba(128, 128, 128,0.15); border-radius: 8px; padding: 10px 14px; color: #A3A3A3; font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
 
 /* ===== 按钮 ===== */
-.btn-primary { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Space Grotesk', sans-serif; cursor: pointer; background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; position: relative; overflow: hidden; transition: all 0.3s; box-shadow: 0 4px 20px rgba(124,58,237,0.3); margin-top: 4px; }
-.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,0.45); }
+.btn-primary { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; font-family: Inter, sans-serif; cursor: pointer; background: var(--accent-primary); color: var(--bg-base); position: relative; overflow: hidden; transition: all 0.3s; box-shadow: var(--shadow-sm); margin-top: 4px; }
+.btn-primary:hover:not(:disabled) { transform: none; box-shadow: none; opacity: 0.72; }
 .btn-primary:active:not(:disabled) { transform: translateY(0) scale(0.98); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: conic-gradient(transparent, rgba(255,255,255,0.12), transparent 30%); animation: btnRotate 4s linear infinite; }
+.btn-primary::before { display: none; }
 @keyframes btnRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .btn-primary span { position: relative; z-index: 1; }
 
@@ -456,11 +411,11 @@ h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700
 @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
 
 .auth-links { margin-top: 18px; text-align: center; font-size: 13px; }
-.auth-links a { color: #6b7280; text-decoration: none; transition: all 0.2s; position: relative; }
-.auth-links a:hover { color: #a855f7; }
-.auth-links a::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 1px; background: #a855f7; transition: width 0.3s; }
+.auth-links a { color: var(--text-muted); text-decoration: none; transition: all 0.2s; position: relative; }
+.auth-links a:hover { color: #A3A3A3; }
+.auth-links a::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 1px; background: #A3A3A3; transition: width 0.3s; }
 .auth-links a:hover::after { width: 100%; }
-.countdown { color: #4a4a6a; }
+.countdown { color: var(--text-muted); }
 
 @media (max-width: 480px) {
   .card-body { padding: 32px 24px; }
@@ -478,58 +433,75 @@ h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700
 /* Light theme overrides for auth pages */
 :root[data-theme="light"] .card-body {
   background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(139, 92, 246, 0.15);
+  border-color: rgba(128, 128, 128, 0.15);
 }
 :root[data-theme="light"] .card-body::before {
-  background: linear-gradient(90deg, transparent 10%, rgba(139,92,246,0.25) 30%, rgba(99,102,241,0.2) 50%, rgba(139,92,246,0.25) 70%, transparent 90%);
+  background: var(--accent-primary);
 }
 :root[data-theme="light"] .card-outer-glow {
-  background: radial-gradient(ellipse at center, rgba(139,92,246,0.05), transparent 70%);
+  background: var(--accent-primary);
 }
 :root[data-theme="light"] .card-mouse-glow {
-  background: radial-gradient(circle, rgba(139,92,246,0.06), transparent 70%);
+  background: var(--accent-primary);
 }
 :root[data-theme="light"] h2 {
-  background: linear-gradient(135deg, #1E293B, #7C3AED);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: none;
+  color: var(--text-primary);
+
 }
 :root[data-theme="light"] .subtitle {
-  color: #64748B;
+  color: var(--text-secondary);
 }
 :root[data-theme="light"] .form-group label {
-  color: #475569;
+  color: var(--text-secondary);
 }
 :root[data-theme="light"] .form-group:focus-within label {
-  color: #7C3AED;
+  color: var(--text-primary);
 }
 :root[data-theme="light"] .form-group input {
-  background: rgba(139, 92, 246, 0.03);
-  border-color: rgba(139, 92, 246, 0.12);
-  color: #1E293B;
+  background: rgba(128, 128, 128, 0.03);
+  border-color: rgba(128, 128, 128, 0.12);
+  color: var(--text-primary);
 }
 :root[data-theme="light"] .form-group input::placeholder {
-  color: #94A3B8;
+  color: var(--text-muted);
 }
 :root[data-theme="light"] .form-group input:focus {
-  border-color: rgba(139, 92, 246, 0.35);
-  background: rgba(139, 92, 246, 0.06);
+  border-color: rgba(128, 128, 128, 0.35);
+  background: rgba(128, 128, 128, 0.06);
 }
 :root[data-theme="light"] .auth-links a {
-  color: #64748B;
+  color: var(--text-secondary);
 }
 :root[data-theme="light"] .auth-links a:hover {
-  color: #7C3AED;
+  color: var(--text-primary);
 }
 :root[data-theme="light"] .divider {
-  color: #94A3B8;
+  color: var(--text-muted);
 }
 :root[data-theme="light"] .orbit-ring { opacity: 0.3; }
 :root[data-theme="light"] .meteor { opacity: 0.3; }
 :root[data-theme="light"] .aurora { opacity: 0.4; }
 :root[data-theme="light"] .space-forgot {
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #e0e7ff 100%);
+  background: var(--bg-base);
 }
 :root[data-theme="light"] .star-canvas { opacity: 0.15; }
 :root[data-theme="light"] .particle-canvas { opacity: 0.25; }
+
+/* Keep authentication focused on the form instead of decorative effects. */
+.space-forgot { background: var(--bg-base); overflow: auto; }
+.star-canvas, .particle-canvas, .aurora, .orbit-ring, .meteor, .flash-overlay,
+.card-glow, .card-outer-glow, .card-mouse-glow { display: none; }
+
+.auth-card { width: min(420px, calc(100vw - 32px)); }
+.card-body { background: var(--bg-card); border-color: var(--border-default); }
+.card-body::before { background: var(--border-default); }
+.logo-icon { background: var(--bg-hover); border-color: var(--border-default); cursor: default; }
+.logo-icon::after, .btn-primary::before, .ripple { display: none; }
+.logo-icon:hover { transform: none; box-shadow: none; }
+h2 { background: none; color: var(--text-primary); }
+.form-group input { background: var(--bg-input); border-color: var(--border-default); color: var(--text-primary); }
+.form-group input:focus { border-color: var(--border-focus); background: var(--bg-input-focus); }
+.btn-primary { background: var(--accent-primary); color: var(--bg-base); }
+.btn-primary:hover:not(:disabled) { transform: none; box-shadow: none; opacity: 0.72; }
 </style>

@@ -160,7 +160,7 @@ function handleRemove() {
   color: var(--accent-primary);
 }
 .thumb-audio {
-  background: rgba(6, 182, 212, .15);
+  background: rgba(128, 128, 128, .15);
   color: var(--accent-cyan);
 }
 .thumb-unknown {

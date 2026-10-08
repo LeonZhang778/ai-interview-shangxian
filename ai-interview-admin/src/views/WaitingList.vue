@@ -1,7 +1,7 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h1 style="font-size:20px">📋 候选名单</h1>
+      <h1 style="font-size:20px">候选名单</h1>
       <div style="display:flex;gap:12px;align-items:center">
         <select v-model="statusFilter" @change="page = 1; loadList()" style="width:120px">
           <option value="all">全部状态</option>
@@ -96,5 +96,5 @@ onMounted(loadList)
 </script>
 
 <style scoped>
-.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: #6b7280; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: var(--admin-text-secondary); }
 </style>

@@ -61,7 +61,7 @@
             class="btn-regenerate"
             @click="regenerateSummary"
           >
-            {{ summary || keyPoints.length ? '🔄 重新生成摘要' : '✨ 生成 AI 摘要' }}
+            {{ summary || keyPoints.length ? '重新生成摘要' : '生成 AI 摘要' }}
           </button>
         </template>
       </div>
@@ -572,8 +572,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   display: inline-block;
   margin-top: 16px;
   padding: 10px 24px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   border-radius: 8px;
   text-decoration: none;
   font-size: 14px;
@@ -596,8 +595,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   transition: all 0.2s;
 }
 .back-btn:hover {
-  background: rgba(99,102,241,0.1);
-  border-color: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.1);
+  border-color: rgba(128, 128, 128,0.3);
 }
 
 /* 标题区 */
@@ -624,22 +623,22 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   font-size: 12px;
   padding: 2px 10px;
   border-radius: 4px;
-  background: rgba(99,102,241,0.15);
+  background: rgba(128, 128, 128,0.15);
   color: var(--accent-light);
 }
 .meta-source {
   font-size: 12px;
   padding: 2px 10px;
   border-radius: 4px;
-  background: rgba(16,185,129,0.15);
-  color: #10b981;
+  background: rgba(128, 128, 128,0.15);
+  color: #A3A3A3;
 }
 .meta-draft {
   font-size: 12px;
   padding: 2px 10px;
   border-radius: 4px;
-  background: rgba(245,158,11,0.15);
-  color: #f59e0b;
+  background: rgba(128, 128, 128,0.15);
+  color: #A3A3A3;
 }
 .meta-visibility {
   font-size: 13px;
@@ -667,18 +666,18 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .guest-notice {
   margin-bottom: 20px;
   padding: 10px 16px;
-  background: rgba(16,185,129,0.08);
-  border: 1px solid rgba(16,185,129,0.2);
-  border-radius: 10px;
-  color: #10b981;
+  background: rgba(128, 128, 128,0.08);
+  border: 1px solid rgba(128, 128, 128,0.2);
+  border-radius: 8px;
+  color: #A3A3A3;
   font-size: 13px;
 }
 .interview-link {
   margin-bottom: 20px;
   padding: 12px 16px;
-  background: rgba(99,102,241,0.08);
-  border: 1px solid rgba(99,102,241,0.2);
-  border-radius: 10px;
+  background: rgba(128, 128, 128,0.08);
+  border: 1px solid rgba(128, 128, 128,0.2);
+  border-radius: 8px;
 }
 .link-text {
   color: var(--accent-light);
@@ -694,9 +693,9 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .summary-block {
   margin-bottom: 20px;
   padding: 16px 18px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.05));
-  border: 1px solid rgba(99,102,241,0.18);
-  border-radius: 12px;
+  background: var(--accent-primary);
+  border: 1px solid rgba(128, 128, 128,0.18);
+  border-radius: 8px;
 }
 .summary-loading {
   color: var(--text-muted);
@@ -735,8 +734,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .btn-regenerate {
   margin-top: 12px;
   padding: 6px 14px;
-  background: rgba(99,102,241,0.12);
-  border: 1px solid rgba(99,102,241,0.25);
+  background: rgba(128, 128, 128,0.12);
+  border: 1px solid rgba(128, 128, 128,0.25);
   border-radius: 8px;
   color: var(--accent-light);
   font-size: 13px;
@@ -744,7 +743,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   transition: all 0.2s;
 }
 .btn-regenerate:hover {
-  background: rgba(99,102,241,0.2);
+  background: rgba(128, 128, 128,0.2);
 }
 .btn-regenerate:disabled {
   opacity: 0.5;
@@ -791,7 +790,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .note-body :deep(blockquote) {
   margin: 12px 0;
   padding: 8px 16px;
-  background: rgba(99,102,241,0.06);
+  background: rgba(128, 128, 128,0.06);
   border-left: 3px solid var(--accent-purple);
   border-radius: 0 8px 8px 0;
   color: var(--text-secondary);
@@ -869,28 +868,28 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   transition: all 0.2s;
 }
 .btn-export-word {
-  background: rgba(16,185,129,0.12);
-  border-color: rgba(16,185,129,0.28);
-  color: #6ee7b7;
+  background: rgba(128, 128, 128,0.12);
+  border-color: rgba(128, 128, 128,0.28);
+  color: #A3A3A3;
 }
 .btn-export-word:hover {
-  background: rgba(16,185,129,0.22);
-  border-color: rgba(16,185,129,0.45);
-  color: #a7f3d0;
+  background: rgba(128, 128, 128,0.22);
+  border-color: rgba(128, 128, 128,0.45);
+  color: #A3A3A3;
 }
 .btn-export-word:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 .btn-edit:hover {
-  background: rgba(99,102,241,0.15);
-  border-color: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.15);
+  border-color: rgba(128, 128, 128,0.3);
   color: var(--accent-light);
 }
 .btn-delete:hover {
-  background: rgba(239,68,68,0.15);
-  border-color: rgba(239,68,68,0.3);
-  color: #ef4444;
+  background: rgba(128, 128, 128,0.15);
+  border-color: rgba(128, 128, 128,0.3);
+  color: #A3A3A3;
 }
 .btn-edit:disabled {
   opacity: 0.5;
@@ -902,10 +901,10 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   font-size: 13px;
 }
 .action-tip.success {
-  color: #10b981;
+  color: #A3A3A3;
 }
 .action-tip.error {
-  color: #ef4444;
+  color: #A3A3A3;
 }
 .interaction-panel,
 .related-panel {
@@ -924,9 +923,9 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 }
 .interaction-btn {
   padding: 7px 14px;
-  border: 1px solid rgba(99,102,241,0.28);
+  border: 1px solid rgba(128, 128, 128,0.28);
   border-radius: 8px;
-  background: rgba(99,102,241,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--accent-light);
   font-size: 13px;
   cursor: pointer;
@@ -934,8 +933,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 }
 .interaction-btn:hover:not(:disabled),
 .interaction-btn.active {
-  background: rgba(99,102,241,0.2);
-  border-color: rgba(99,102,241,0.45);
+  background: rgba(128, 128, 128,0.2);
+  border-color: rgba(128, 128, 128,0.45);
 }
 .interaction-btn:disabled {
   opacity: 0.5;
@@ -1003,7 +1002,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   cursor: pointer;
 }
 .comment-delete:hover {
-  color: #ef4444;
+  color: #A3A3A3;
 }
 .reply-list {
   display: grid;
@@ -1048,8 +1047,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   transition: all 0.2s;
 }
 .related-item:hover {
-  border-color: rgba(99,102,241,0.35);
-  background: rgba(99,102,241,0.08);
+  border-color: rgba(128, 128, 128,0.35);
+  background: rgba(128, 128, 128,0.08);
 }
 .related-title,
 .related-meta {
@@ -1170,7 +1169,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     background: var(--bg-surface);
     color: var(--text-primary);
     font-size: 20px;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
     cursor: pointer;
     z-index: 50;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -1189,7 +1188,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     max-width: 320px;
     background: var(--bg-surface);
     border-left: 1px solid var(--border-default);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-sm);
     z-index: 60;
     overflow-y: auto;
     padding: 16px 0;
@@ -1264,7 +1263,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   .note-content-col {
     padding: 0;
     max-width: none;
-    color: #111827;
+    color: #141414;
     background: #ffffff;
   }
   .note-header h1,
@@ -1272,7 +1271,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   .note-body :deep(h2),
   .note-body :deep(h3),
   .note-body :deep(strong) {
-    color: #111827;
+    color: #141414;
   }
   .note-body,
   .summary-text,

@@ -181,9 +181,9 @@ onMounted(loadData)
 .back-btn,
 .primary-link,
 .page-message button {
-  border: 1px solid rgba(99, 102, 241, 0.28);
+  border: 1px solid rgba(128, 128, 128, 0.28);
   border-radius: 8px;
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(128, 128, 128, 0.12);
   color: var(--accent-light);
   cursor: pointer;
   transition: all 0.2s;
@@ -195,8 +195,8 @@ onMounted(loadData)
 .back-btn:hover,
 .primary-link:hover,
 .page-message button:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(128, 128, 128, 0.2);
+  border-color: rgba(128, 128, 128, 0.45);
 }
 .main-container {
   max-width: 960px;
@@ -217,14 +217,14 @@ onMounted(loadData)
   padding: 4px 10px;
 }
 .error-message {
-  color: #fecaca;
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #A3A3A3;
+  background: rgba(128, 128, 128, 0.14);
+  border: 1px solid rgba(128, 128, 128, 0.3);
 }
 .success-message {
-  color: #bbf7d0;
-  background: rgba(34, 197, 94, 0.14);
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #A3A3A3;
+  background: rgba(163, 163, 163, 0.14);
+  border: 1px solid rgba(163, 163, 163, 0.3);
 }
 .stats-row {
   display: grid;
@@ -262,9 +262,9 @@ onMounted(loadData)
   justify-content: center;
   margin-bottom: 14px;
   border-radius: 50%;
-  color: #bbf7d0;
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  background: rgba(34, 197, 94, 0.12);
+  color: #A3A3A3;
+  border: 1px solid rgba(163, 163, 163, 0.3);
+  background: rgba(163, 163, 163, 0.12);
   font-size: 24px;
 }
 .primary-link {
@@ -291,9 +291,9 @@ onMounted(loadData)
   justify-content: center;
   gap: 16px;
   padding: 28px;
-  border: 1px solid rgba(99, 102, 241, 0.28);
+  border: 1px solid rgba(128, 128, 128, 0.28);
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.16), rgba(16,185,129,0.08));
+  background: var(--bg-card);
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
@@ -301,10 +301,10 @@ onMounted(loadData)
 }
 .flashcard:hover {
   transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgba(128, 128, 128, 0.5);
 }
 .flashcard.flipped {
-  background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(99,102,241,0.08));
+  background: var(--bg-hover);
 }
 .card-kicker {
   color: var(--accent-light);
@@ -336,8 +336,8 @@ onMounted(loadData)
   transition: all 0.2s;
 }
 .quality-btn:hover:not(:disabled) {
-  border-color: rgba(99,102,241,0.4);
-  background: rgba(99,102,241,0.12);
+  border-color: rgba(128, 128, 128,0.4);
+  background: rgba(128, 128, 128,0.12);
   color: var(--text-primary);
 }
 .quality-btn:disabled {

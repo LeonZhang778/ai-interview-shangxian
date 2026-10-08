@@ -82,10 +82,9 @@ function formatTime(iso) {
 .page-header h2 {
   margin: 0 0 4px;
   font-size: 20px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   background:var(--title-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+
 }
 .subtitle { color: var(--text-muted); font-size: 13px; margin: 0; }
 
@@ -99,7 +98,7 @@ function formatTime(iso) {
 .feedback-card {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
   transition: border-color 0.2s;
 }
@@ -107,14 +106,14 @@ function formatTime(iso) {
 
 .feedback-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .feedback-type { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
-.type-bug { background: rgba(239,68,68,0.1); color: var(--red); }
-.type-suggestion { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+.type-bug { background: rgba(128, 128, 128,0.1); color: var(--red); }
+.type-suggestion { background: rgba(128, 128, 128,0.1); color: var(--accent-purple); }
 .type-other { background: var(--bg-hover); color: var(--accent-purple); }
 
 .feedback-status { font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 6px; }
-.status-pending { background: rgba(245,158,11,0.1); color: var(--amber); }
-.status-processing { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
-.status-resolved { background: rgba(16,185,129,0.1); color: var(--green); }
+.status-pending { background: rgba(128, 128, 128,0.1); color: var(--amber); }
+.status-processing { background: rgba(128, 128, 128,0.1); color: var(--accent-purple); }
+.status-resolved { background: rgba(128, 128, 128,0.1); color: var(--green); }
 .status-ignored { background: var(--bg-card); color: var(--text-dim); }
 
 .feedback-content {
@@ -127,8 +126,8 @@ function formatTime(iso) {
 }
 
 .admin-reply {
-  background: rgba(16,185,129,0.06);
-  border: 1px solid rgba(16,185,129,0.12);
+  background: rgba(128, 128, 128,0.06);
+  border: 1px solid rgba(128, 128, 128,0.12);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 10px;
@@ -136,7 +135,7 @@ function formatTime(iso) {
 .reply-label { font-size: 12px; font-weight: 600; color: var(--green); margin-bottom: 6px; }
 .reply-content {
   font-size: 13px;
-  color: #a7f3d0;
+  color: #A3A3A3;
   line-height: 1.6;
   margin: 0;
   white-space: pre-wrap;

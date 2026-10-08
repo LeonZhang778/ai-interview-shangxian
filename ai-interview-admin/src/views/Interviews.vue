@@ -1,7 +1,7 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h1 style="font-size:20px">🎤 面试记录</h1>
+      <h1 style="font-size:20px">面试记录</h1>
       <select v-model="statusFilter" @change="page = 1; loadInterviews()" style="width:140px">
         <option value="">全部状态</option>
         <option value="in_progress">进行中</option>
@@ -32,10 +32,10 @@
             <td>{{ diffMap[i.difficulty] || i.difficulty }}</td>
             <td>{{ i.total_questions }}</td>
             <td>
-              <span v-if="i.overall_score" :style="{ color: i.overall_score >= 7 ? '#059669' : i.overall_score >= 5 ? '#d97706' : '#dc2626', fontWeight: 600 }">
+              <span v-if="i.overall_score" :style="{ color: i.overall_score >= 7 ? 'var(--admin-primary)' : 'var(--admin-text-primary)', fontWeight: 600 }">
                 {{ i.overall_score }}
               </span>
-              <span v-else style="color:#9ca3af">-</span>
+              <span v-else style="color:var(--admin-text-muted)">-</span>
             </td>
             <td><span :class="['badge', i.status === 'completed' ? 'badge-green' : 'badge-yellow']">{{ i.status === 'completed' ? '已完成' : '进行中' }}</span></td>
             <td>{{ formatDate(i.created_at) }}</td>
@@ -92,5 +92,5 @@ onMounted(loadInterviews)
 </script>
 
 <style scoped>
-.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: #6b7280; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: var(--admin-text-secondary); }
 </style>

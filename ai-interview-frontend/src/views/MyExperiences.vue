@@ -101,9 +101,8 @@ onMounted(loadData)
   font-size: 30px;
   font-weight: 800;
   margin: 0 0 10px;
-  background: linear-gradient(135deg, #7c3aed, #0ea5e9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+
 }
 
 .page-header p {
@@ -133,8 +132,8 @@ onMounted(loadData)
   display: inline-block;
   margin-top: 16px;
   padding: 10px 24px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  border-radius: 8px;
+  background: var(--accent-primary);
   color: #fff;
   text-decoration: none;
   font-weight: 600;
@@ -151,7 +150,7 @@ onMounted(loadData)
   gap: 18px;
   padding: 18px;
   border: 1px solid var(--border-default);
-  border-radius: 16px;
+  border-radius: 8px;
   background: var(--bg-card);
 }
 
@@ -191,7 +190,7 @@ onMounted(loadData)
 
 .tag {
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--bg-hover);
   color: var(--text-secondary);
   font-size: 12px;
@@ -200,24 +199,24 @@ onMounted(loadData)
 .status-badge {
   flex-shrink: 0;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 700;
 }
 
 .status-published {
-  background: rgba(34, 197, 94, 0.14);
-  color: #16a34a;
+  background: rgba(163, 163, 163, 0.14);
+  color: #A3A3A3;
 }
 
 .status-pending {
-  background: rgba(245, 158, 11, 0.14);
-  color: #d97706;
+  background: rgba(128, 128, 128, 0.14);
+  color: #A3A3A3;
 }
 
 .status-rejected {
-  background: rgba(239, 68, 68, 0.14);
-  color: #dc2626;
+  background: rgba(128, 128, 128, 0.14);
+  color: #A3A3A3;
 }
 
 .card-actions {
@@ -234,7 +233,7 @@ onMounted(loadData)
   justify-content: center;
   min-width: 112px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
@@ -247,7 +246,7 @@ onMounted(loadData)
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  background: var(--accent-primary);
   color: #fff;
 }
 

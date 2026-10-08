@@ -150,7 +150,7 @@
               class="btn-ai-tag"
               @click="loadAiTags"
               :disabled="loadingTags"
-            >🤖 {{ hasAiRecommendation ? '重新推荐' : 'AI 推荐标签' }}</button>
+            >{{ hasAiRecommendation ? '重新推荐' : 'AI 推荐标签' }}</button>
           </label>
           <div class="tag-input-area">
             <input
@@ -556,15 +556,13 @@ onMounted(loadEditData)
   transition: all 0.2s;
 }
 .back-btn:hover {
-  background: rgba(99,102,241,0.1);
-  border-color: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.1);
+  border-color: rgba(128, 128, 128,0.3);
 }
 .page-header h1 {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, #a78bfa, #60a5fa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
   background-clip: text;
 }
 .main-container {
@@ -603,7 +601,7 @@ label {
   color: var(--text-secondary);
 }
 .required {
-  color: #ef4444;
+  color: #A3A3A3;
 }
 .hint {
   font-size: 12px;
@@ -611,14 +609,14 @@ label {
   color: var(--text-muted);
 }
 .hint.warn {
-  color: #f59e0b;
+  color: #A3A3A3;
   margin-top: 4px;
 }
 .btn-import {
   margin-left: 12px;
   padding: 4px 10px;
-  background: rgba(99,102,241,0.12);
-  border: 1px solid rgba(99,102,241,0.25);
+  background: rgba(128, 128, 128,0.12);
+  border: 1px solid rgba(128, 128, 128,0.25);
   border-radius: 6px;
   color: var(--accent-light);
   font-size: 12px;
@@ -627,28 +625,28 @@ label {
   transition: all 0.2s;
 }
 .btn-import:hover {
-  background: rgba(99,102,241,0.2);
+  background: rgba(128, 128, 128,0.2);
 }
 
 .form-input {
   padding: 10px 14px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
   transition: all 0.2s;
 }
 .form-input:focus {
-  border-color: rgba(99,102,241,0.4);
+  border-color: rgba(128, 128, 128,0.4);
   background: rgba(255,255,255,0.07);
 }
 .form-select {
   padding: 10px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
@@ -674,7 +672,7 @@ label {
   padding: 14px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-size: 14px;
   font-family: 'Consolas', 'Monaco', monospace;
@@ -685,13 +683,13 @@ label {
   min-height: 400px;
 }
 .form-textarea:focus {
-  border-color: rgba(99,102,241,0.4);
+  border-color: rgba(128, 128, 128,0.4);
   background: rgba(255,255,255,0.07);
 }
 
 .editor-wrapper {
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 /* === bytemd 深色主题覆盖 === */
@@ -699,7 +697,7 @@ label {
   background: var(--bg-input);
   color: var(--text-primary);
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: 8px;
   height: 500px;
   transition: border-color 0.2s;
 }
@@ -731,7 +729,7 @@ label {
 .editor-wrapper :deep(.bytemd-toolbar) {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-default);
-  border-radius: 10px 10px 0 0;
+  border-radius: 8px 10px 0 0;
 }
 .editor-wrapper :deep(.bytemd-toolbar-tab) {
   color: var(--text-muted);
@@ -778,10 +776,10 @@ label {
   border-left-color: var(--accent-light) !important;
 }
 .editor-wrapper :deep(.CodeMirror-selected) {
-  background: rgba(99,102,241,0.2) !important;
+  background: rgba(128, 128, 128,0.2) !important;
 }
 .editor-wrapper :deep(.CodeMirror-focused .CodeMirror-selected) {
-  background: rgba(99,102,241,0.3) !important;
+  background: rgba(128, 128, 128,0.3) !important;
 }
 .editor-wrapper :deep(.CodeMirror-activeline-background) {
   background: var(--bg-hover) !important;
@@ -843,8 +841,8 @@ label {
 .btn-ai-tag {
   margin-left: auto;
   padding: 4px 12px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.18));
-  border: 1px solid rgba(99,102,241,0.35);
+  background: var(--accent-primary);
+  border: 1px solid rgba(128, 128, 128,0.35);
   border-radius: 6px;
   color: var(--accent-light);
   font-size: 12px;
@@ -853,7 +851,7 @@ label {
   transition: all 0.2s;
 }
 .btn-ai-tag:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(99,102,241,0.28), rgba(139,92,246,0.28));
+  background: var(--accent-primary);
 }
 .btn-ai-tag:disabled {
   opacity: 0.5;
@@ -876,7 +874,7 @@ label {
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 12px;
-  background: rgba(99,102,241,0.15);
+  background: rgba(128, 128, 128,0.15);
   color: var(--accent-light);
 }
 .tag-remove {
@@ -894,8 +892,8 @@ label {
   flex-wrap: wrap;
   margin-top: 6px;
   padding: 8px 10px;
-  background: rgba(99,102,241,0.05);
-  border: 1px dashed rgba(99,102,241,0.2);
+  background: rgba(128, 128, 128,0.05);
+  border: 1px dashed rgba(128, 128, 128,0.2);
   border-radius: 8px;
 }
 .ai-tags-label {
@@ -918,11 +916,11 @@ label {
   transition: all 0.2s;
 }
 .tag-suggested:hover {
-  background: rgba(99,102,241,0.2);
+  background: rgba(128, 128, 128,0.2);
   color: var(--text-secondary);
 }
 .tag-suggested.selected {
-  background: rgba(99,102,241,0.28);
+  background: rgba(128, 128, 128,0.28);
   color: var(--accent-light);
 }
 
@@ -933,7 +931,7 @@ label {
 }
 .option-tab {
   padding: 6px 14px;
-  border-radius: 16px;
+  border-radius: 8px;
   font-size: 13px;
   color: var(--text-muted);
   background: rgba(255,255,255,0.04);
@@ -942,16 +940,16 @@ label {
   transition: all 0.2s;
 }
 .option-tab:hover {
-  background: rgba(99,102,241,0.1);
+  background: rgba(128, 128, 128,0.1);
 }
 .option-tab.active {
-  background: rgba(99,102,241,0.2);
-  border-color: rgba(99,102,241,0.4);
+  background: rgba(128, 128, 128,0.2);
+  border-color: rgba(128, 128, 128,0.4);
   color: var(--accent-light);
 }
 
 .error-msg {
-  color: #ef4444;
+  color: #A3A3A3;
   font-size: 13px;
   text-align: center;
 }
@@ -964,8 +962,7 @@ label {
 }
 .btn-save {
   padding: 10px 28px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -1003,8 +1000,8 @@ label {
 }
 .btn-template {
   padding: 8px 16px;
-  background: rgba(99,102,241,0.12);
-  border: 1px solid rgba(99,102,241,0.25);
+  background: rgba(128, 128, 128,0.12);
+  border: 1px solid rgba(128, 128, 128,0.25);
   border-radius: 8px;
   color: var(--accent-light);
   font-size: 13px;
@@ -1013,7 +1010,7 @@ label {
   transition: all 0.2s;
 }
 .btn-template:hover:not(:disabled) {
-  background: rgba(99,102,241,0.2);
+  background: rgba(128, 128, 128,0.2);
 }
 .btn-template:disabled {
   opacity: 0.5;
@@ -1021,7 +1018,7 @@ label {
 }
 .template-applied {
   font-size: 12px;
-  color: #22c55e;
+  color: #A3A3A3;
 }
 
 /* 模板选择弹窗 */
@@ -1038,13 +1035,13 @@ label {
 .modal-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: 16px;
+  border-radius: 8px;
   width: 100%;
   max-width: 520px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-sm);
 }
 .modal-header {
   display: flex;
@@ -1093,18 +1090,18 @@ label {
   font: inherit;
   padding: 14px;
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
   background: rgba(255,255,255,0.03);
 }
 .template-card:hover {
-  border-color: rgba(99,102,241,0.4);
-  background: rgba(99,102,241,0.06);
+  border-color: rgba(128, 128, 128,0.4);
+  background: rgba(128, 128, 128,0.06);
 }
 .template-card.active {
-  border-color: rgba(99,102,241,0.5);
-  background: rgba(99,102,241,0.1);
+  border-color: rgba(128, 128, 128,0.5);
+  background: rgba(128, 128, 128,0.1);
 }
 .template-card-title {
   font-size: 14px;
@@ -1130,7 +1127,7 @@ label {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(99,102,241,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--accent-light);
 }
 

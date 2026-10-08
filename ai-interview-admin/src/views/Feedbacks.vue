@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 style="font-size:20px;margin-bottom:20px">📝 用户反馈管理</h1>
+    <h1 style="font-size:20px;margin-bottom:20px">用户反馈管理</h1>
 
     <!-- 统计卡片 -->
     <div style="display:flex;gap:16px;margin-bottom:20px">
@@ -12,14 +12,14 @@
 
     <!-- 筛选 -->
     <div style="display:flex;gap:12px;margin-bottom:16px">
-      <select v-model="filterStatus" @change="page=1;loadFeedbacks()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px">
+      <select v-model="filterStatus" @change="page=1;loadFeedbacks()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--admin-border);font-size:13px;background:var(--admin-bg-content);color:var(--admin-text-primary)">
         <option value="">全部状态</option>
         <option value="pending">待处理</option>
         <option value="processing">处理中</option>
         <option value="resolved">已解决</option>
         <option value="ignored">已忽略</option>
       </select>
-      <select v-model="filterType" @change="page=1;loadFeedbacks()" style="padding:6px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:13px">
+      <select v-model="filterType" @change="page=1;loadFeedbacks()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--admin-border);font-size:13px;background:var(--admin-bg-content);color:var(--admin-text-primary)">
         <option value="">全部类型</option>
         <option value="bug">Bug</option>
         <option value="suggestion">建议</option>
@@ -77,7 +77,7 @@
         <div class="detail-row"><span class="detail-label">时间</span><span>{{ formatDate(detailItem.created_at) }}</span></div>
         <div style="margin:12px 0">
           <div class="detail-label">内容</div>
-          <div style="background:#f8fafc;padding:12px;border-radius:8px;margin-top:4px;white-space:pre-wrap;font-size:14px">{{ detailItem.content }}</div>
+          <div style="background:var(--admin-bg-page);padding:12px;border-radius:8px;margin-top:4px;white-space:pre-wrap;font-size:14px">{{ detailItem.content }}</div>
         </div>
         <div v-if="detailItem.screenshot_url" style="margin:12px 0">
           <div class="detail-label">截图</div>
@@ -85,11 +85,11 @@
         </div>
         <div v-if="detailItem.admin_reply" style="margin:12px 0">
           <div class="detail-label">管理员回复</div>
-          <div style="background:#eff6ff;padding:12px;border-radius:8px;margin-top:4px;white-space:pre-wrap;font-size:14px">{{ detailItem.admin_reply }}</div>
+          <div style="background:var(--admin-primary-soft);padding:12px;border-radius:8px;margin-top:4px;white-space:pre-wrap;font-size:14px">{{ detailItem.admin_reply }}</div>
         </div>
         <div style="margin-top:16px">
           <div class="detail-label">回复</div>
-          <textarea v-model="replyText" rows="3" placeholder="输入回复内容..." style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;margin-top:4px"></textarea>
+          <textarea v-model="replyText" rows="3" placeholder="输入回复内容..." style="width:100%;padding:8px;border:1px solid var(--admin-border);border-radius:6px;font-size:14px;box-sizing:border-box;margin-top:4px;background:var(--admin-bg-content);color:var(--admin-text-primary)"></textarea>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
           <button class="btn-sm" @click="showDetail = false">关闭</button>
@@ -118,10 +118,10 @@ const feedbackStats = ref({})
 const typeLabels = { bug: 'Bug', suggestion: '建议', other: '其他' }
 const statusLabels = { pending: '待处理', processing: '处理中', resolved: '已解决', ignored: '已忽略' }
 const statCards = [
-  { key: 'pending', label: '待处理', color: '#f59e0b' },
-  { key: 'processing', label: '处理中', color: '#3b82f6' },
-  { key: 'resolved', label: '已解决', color: '#10b981' },
-  { key: 'ignored', label: '已忽略', color: '#6b7280' },
+  { key: 'pending', label: '待处理', color: 'var(--admin-primary)' },
+  { key: 'processing', label: '处理中', color: 'var(--admin-primary)' },
+  { key: 'resolved', label: '已解决', color: 'var(--admin-primary)' },
+  { key: 'ignored', label: '已忽略', color: 'var(--admin-text-secondary)' },
 ]
 
 function formatDate(str) {
@@ -178,8 +178,9 @@ onMounted(() => { loadFeedbacks(); loadStats() })
 
 <style scoped>
 .stat-card {
-  background: white;
-  border-radius: 10px;
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
   padding: 16px 24px;
   border-left: 4px solid;
   display: flex;
@@ -188,7 +189,7 @@ onMounted(() => { loadFeedbacks(); loadStats() })
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 .stat-num { font-size: 28px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.stat-label { font-size: 13px; color: var(--admin-text-secondary); margin-top: 2px; }
 
 .tag {
   font-size: 11px;
@@ -196,14 +197,14 @@ onMounted(() => { loadFeedbacks(); loadStats() })
   border-radius: 4px;
   font-weight: 600;
 }
-.tag.type-bug { background: #fef2f2; color: #dc2626; }
-.tag.type-suggestion { background: #eff6ff; color: #2563eb; }
-.tag.type-other { background: #f1f5f9; color: #64748b; }
+.tag.type-bug,
+.tag.type-suggestion { background: var(--admin-primary-soft); color: var(--admin-primary); }
+.tag.type-other { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
 
-.badge-yellow { background: #fef3c7; color: #92400e; }
-.badge-blue { background: #dbeafe; color: #1e40af; }
-.badge-green { background: #d1fae5; color: #065f46; }
-.badge-gray { background: #f1f5f9; color: #64748b; }
+.badge-yellow,
+.badge-blue,
+.badge-green { background: var(--admin-primary-soft); color: var(--admin-primary); }
+.badge-gray { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
 
 .modal-overlay {
   position: fixed;
@@ -215,8 +216,9 @@ onMounted(() => { loadFeedbacks(); loadStats() })
   z-index: 1000;
 }
 .modal {
-  background: white;
-  border-radius: 12px;
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
   padding: 24px;
   width: 560px;
   max-height: 80vh;
@@ -232,7 +234,7 @@ onMounted(() => { loadFeedbacks(); loadStats() })
 .detail-label {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--admin-text-primary);
   min-width: 60px;
 }
 </style>

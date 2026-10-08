@@ -88,12 +88,11 @@ onMounted(async () => {
   margin-bottom: 28px;
 }
 .page-header h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 24px;
   font-weight: 700;
   background:var(--title-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+
 }
 .back-link {
   color: var(--text-muted);
@@ -115,7 +114,7 @@ onMounted(async () => {
 }
 .loading-spinner {
   width: 32px; height: 32px;
-  border: 3px solid rgba(139,92,246,0.15);
+  border: 3px solid rgba(128, 128, 128,0.15);
   border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -141,23 +140,23 @@ onMounted(async () => {
 }
 
 .announcement-card {
-  background: rgba(139, 92, 246, 0.04);
-  border: 1px solid rgba(139, 92, 246, 0.1);
-  border-radius: 16px;
+  background: rgba(128, 128, 128, 0.04);
+  border: 1px solid rgba(128, 128, 128, 0.1);
+  border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s;
   position: relative;
 }
 .announcement-card:hover {
-  border-color: rgba(139, 92, 246, 0.25);
-  background: rgba(139, 92, 246, 0.07);
+  border-color: rgba(128, 128, 128, 0.25);
+  background: rgba(128, 128, 128, 0.07);
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 .card-top-line {
   height: 2px;
-  background: linear-gradient(90deg, #a855f7, #06b6d4);
+  background: var(--accent-primary);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -179,17 +178,17 @@ onMounted(async () => {
   font-weight: 600;
   letter-spacing: 0.3px;
 }
-.tag.type-info { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+.tag.type-info { background: rgba(128, 128, 128,0.1); color: var(--accent-purple); }
 .tag.type-update { background: var(--bg-hover); color: var(--accent-purple); }
 .tag.type-maintenance { background: var(--bg-hover); color: var(--accent-purple); }
-.tag.type-activity { background: rgba(6,182,212,0.08); color: var(--accent-cyan); }
+.tag.type-activity { background: rgba(128, 128, 128,0.08); color: var(--accent-cyan); }
 .pin-badge {
   font-size: 11px;
-  color: #f59e0b;
+  color: #A3A3A3;
   font-weight: 600;
 }
 .item-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 17px;
   font-weight: 600;
   margin-bottom: 8px;

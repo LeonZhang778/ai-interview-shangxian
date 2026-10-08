@@ -147,7 +147,7 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 .page-header h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
@@ -164,8 +164,8 @@ onMounted(() => {
   transition: all 0.2s;
 }
 .btn-mark-all:hover {
-  border-color: rgba(139,92,246,0.3);
-  background: rgba(139,92,246,0.12);
+  border-color: rgba(128, 128, 128,0.3);
+  background: rgba(128, 128, 128,0.12);
 }
 .loading-state, .empty-state {
   text-align: center;
@@ -183,17 +183,17 @@ onMounted(() => {
   padding: 14px 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 .notification-item:hover {
   border-color: var(--border-hover);
-  background: rgba(139,92,246,0.04);
+  background: rgba(128, 128, 128,0.04);
 }
 .notification-item.unread {
   border-left: 3px solid var(--accent-primary);
-  background: rgba(139,92,246,0.06);
+  background: rgba(128, 128, 128,0.06);
 }
 .notification-icon {
   font-size: 20px;
@@ -204,7 +204,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: var(--bg-hover);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 .notification-body { flex: 1; min-width: 0; }
 .notification-title {
@@ -254,7 +254,7 @@ onMounted(() => {
   transition: all 0.2s;
 }
 .btn-delete:hover {
-  background: rgba(239,68,68,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--red);
 }
 .load-more { text-align: center; padding: 16px 0; }
@@ -267,5 +267,5 @@ onMounted(() => {
   color: var(--accent-purple);
   cursor: pointer;
 }
-.btn-sm:hover { border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.12); }
+.btn-sm:hover { border-color: rgba(128, 128, 128,0.3); background: rgba(128, 128, 128,0.12); }
 </style>

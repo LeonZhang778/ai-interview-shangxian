@@ -241,7 +241,7 @@
           <div v-if="loading" class="loading-state">加载中...</div>
 
           <div v-else-if="notes.length === 0" class="empty-state">
-            <div class="empty-icon">🌌</div>
+            <div class="empty-icon" aria-hidden="true">▤</div>
             <p>公开广场还没有笔记</p>
             <router-link v-if="!authStore.isLoggedIn" to="/login" class="btn-browse">登录后创建笔记</router-link>
           </div>
@@ -673,14 +673,14 @@ onMounted(async () => {
   font-size: 13px;
 }
 .error-message {
-  color: #fecaca;
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #A3A3A3;
+  background: rgba(128, 128, 128, 0.14);
+  border: 1px solid rgba(128, 128, 128, 0.3);
 }
 .success-message {
-  color: #bbf7d0;
-  background: rgba(34, 197, 94, 0.14);
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #A3A3A3;
+  background: rgba(163, 163, 163, 0.14);
+  border: 1px solid rgba(163, 163, 163, 0.3);
 }
 .message-actions {
   display: flex;
@@ -713,9 +713,7 @@ onMounted(async () => {
 .page-header h1 {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #a78bfa, #60a5fa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
   background-clip: text;
   margin-bottom: 8px;
 }
@@ -738,7 +736,7 @@ onMounted(async () => {
 }
 .mode-tab {
   padding: 8px 18px;
-  border-radius: 20px;
+  border-radius: 8px;
   font-size: 14px;
   color: var(--text-muted);
   background: rgba(255,255,255,0.05);
@@ -747,13 +745,13 @@ onMounted(async () => {
   transition: all 0.2s;
 }
 .mode-tab:hover {
-  background: rgba(99,102,241,0.1);
-  border-color: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.1);
+  border-color: rgba(128, 128, 128,0.3);
 }
 .mode-tab.active {
-  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2));
-  border-color: rgba(99,102,241,0.5);
-  color: var(--accent-light);
+  background: var(--accent-primary);
+  border-color: rgba(128, 128, 128,0.5);
+  color: var(--bg-base);
 }
 .mode-add {
   border-style: dashed;
@@ -781,7 +779,7 @@ onMounted(async () => {
   flex-shrink: 0;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 12px;
   position: sticky;
   top: 20px;
@@ -805,8 +803,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99,102,241,0.12);
-  border: 1px solid rgba(99,102,241,0.25);
+  background: rgba(128, 128, 128,0.12);
+  border: 1px solid rgba(128, 128, 128,0.25);
   border-radius: 6px;
   color: var(--accent-light);
   font-size: 16px;
@@ -814,7 +812,7 @@ onMounted(async () => {
   transition: all 0.2s;
 }
 .btn-add-nb:hover {
-  background: rgba(99,102,241,0.2);
+  background: rgba(128, 128, 128,0.2);
 }
 .sidebar-empty {
   padding: 20px 0;
@@ -842,7 +840,7 @@ onMounted(async () => {
   background: rgba(255,255,255,0.06);
 }
 .node-row.all-notes.active {
-  background: rgba(99,102,241,0.15);
+  background: rgba(128, 128, 128,0.15);
   color: var(--accent-light);
 }
 .node-icon {
@@ -870,7 +868,7 @@ onMounted(async () => {
   width: 100%;
   padding: 6px 10px;
   background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(99,102,241,0.4);
+  border: 1px solid rgba(128, 128, 128,0.4);
   border-radius: 6px;
   color: var(--text-primary);
   font-size: 13px;
@@ -902,7 +900,7 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  border-radius: 16px;
+  border-radius: 8px;
   font-size: 13px;
   color: var(--text-muted);
   background: rgba(255,255,255,0.04);
@@ -911,17 +909,17 @@ onMounted(async () => {
   transition: all 0.2s;
 }
 .type-tab:hover {
-  background: rgba(99,102,241,0.1);
+  background: rgba(128, 128, 128,0.1);
 }
 .type-tab.active {
-  background: rgba(99,102,241,0.2);
-  border-color: rgba(99,102,241,0.4);
+  background: rgba(128, 128, 128,0.2);
+  border-color: rgba(128, 128, 128,0.4);
   color: var(--accent-light);
 }
 .type-count {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(255,255,255,0.1);
 }
 .status-tabs {
@@ -930,7 +928,7 @@ onMounted(async () => {
 }
 .status-tab {
   padding: 6px 12px;
-  border-radius: 14px;
+  border-radius: 8px;
   font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
@@ -940,7 +938,7 @@ onMounted(async () => {
   background: rgba(255,255,255,0.06);
 }
 .status-tab.active {
-  background: rgba(139,92,246,0.15);
+  background: rgba(128, 128, 128,0.15);
   color: var(--accent-light);
 }
 .search-input {
@@ -950,7 +948,7 @@ onMounted(async () => {
   padding: 8px 14px;
   background: var(--bg-input);
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
@@ -971,10 +969,10 @@ onMounted(async () => {
 }
 .search-btn {
   padding: 8px 16px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 13px;
-  color: #fff;
-  background: var(--accent-gradient);
+  color: var(--bg-base);
+  background: var(--accent-primary);
   border: none;
   cursor: pointer;
   white-space: nowrap;
@@ -990,7 +988,7 @@ onMounted(async () => {
   padding: 8px 28px 8px 12px;
   background: var(--bg-input);
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
@@ -1024,8 +1022,7 @@ onMounted(async () => {
   display: inline-block;
   margin-top: 16px;
   padding: 10px 24px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: var(--accent-primary); color: var(--bg-base);
   border-radius: 8px;
   text-decoration: none;
   font-size: 14px;
@@ -1046,13 +1043,13 @@ onMounted(async () => {
 .note-card {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
   transition: all 0.2s;
   cursor: pointer;
 }
 .note-card:hover {
-  border-color: rgba(99,102,241,0.3);
+  border-color: rgba(128, 128, 128,0.3);
   background: rgba(255,255,255,0.06);
   transform: translateY(-1px);
 }
@@ -1078,12 +1075,12 @@ onMounted(async () => {
   white-space: nowrap;
 }
 .card-badge.draft {
-  background: rgba(245,158,11,0.15);
-  color: #f59e0b;
+  background: rgba(128, 128, 128,0.15);
+  color: #A3A3A3;
 }
 .card-badge.source {
-  background: rgba(16,185,129,0.15);
-  color: #10b981;
+  background: rgba(128, 128, 128,0.15);
+  color: #A3A3A3;
 }
 .card-meta {
   display: flex;
@@ -1094,7 +1091,7 @@ onMounted(async () => {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(99,102,241,0.1);
+  background: rgba(128, 128, 128,0.1);
   color: var(--accent-purple);
 }
 .meta-private {
@@ -1103,7 +1100,7 @@ onMounted(async () => {
 }
 .meta-public {
   font-size: 12px;
-  color: #10b981;
+  color: #A3A3A3;
 }
 .card-tags {
   display: flex;
@@ -1155,25 +1152,25 @@ onMounted(async () => {
 }
 .btn-export-note {
   padding: 2px 8px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.25);
   border-radius: 6px;
-  color: var(--accent-light, #a5b4fc);
+  color: var(--accent-light, #A3A3A3);
   font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
 .btn-export-note:hover {
-  background: rgba(99, 102, 241, 0.25);
-  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(128, 128, 128, 0.25);
+  border-color: rgba(128, 128, 128, 0.45);
 }
 .btn-export-all {
   padding: 2px 8px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.25);
   border-radius: 6px;
-  color: var(--accent-light, #a5b4fc);
+  color: var(--accent-light, #A3A3A3);
   font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1181,17 +1178,17 @@ onMounted(async () => {
   white-space: nowrap;
 }
 .btn-export-all:hover {
-  background: rgba(99, 102, 241, 0.25);
-  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(128, 128, 128, 0.25);
+  border-color: rgba(128, 128, 128, 0.45);
 }
 .btn-export-word {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.28);
-  color: #6ee7b7;
+  background: rgba(128, 128, 128, 0.12);
+  border-color: rgba(128, 128, 128, 0.28);
+  color: #A3A3A3;
 }
 .btn-export-word:hover {
-  background: rgba(16, 185, 129, 0.22);
-  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(128, 128, 128, 0.22);
+  border-color: rgba(128, 128, 128, 0.45);
 }
 
 /* 分页 */
@@ -1213,8 +1210,8 @@ onMounted(async () => {
   transition: all 0.2s;
 }
 .page-btn:hover:not(:disabled) {
-  background: rgba(99,102,241,0.15);
-  border-color: rgba(99,102,241,0.3);
+  background: rgba(128, 128, 128,0.15);
+  border-color: rgba(128, 128, 128,0.3);
 }
 .page-btn:disabled {
   opacity: 0.4;

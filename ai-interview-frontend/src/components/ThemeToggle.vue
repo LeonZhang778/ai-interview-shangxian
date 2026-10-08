@@ -57,7 +57,7 @@ const { theme, toggleTheme } = useTheme()
   top: 2px;
   left: 2px;
   transition: transform 0.2s ease;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 .toggle-thumb.light {
   transform: translateX(24px);

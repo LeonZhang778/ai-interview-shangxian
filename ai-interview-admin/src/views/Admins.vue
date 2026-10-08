@@ -1,7 +1,7 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h1 style="font-size:20px">👤 管理员管理</h1>
+      <h1 style="font-size:20px">管理员管理</h1>
       <div style="display:flex;gap:12px;align-items:center">
         <input v-model="emailFilter" placeholder="搜索邮箱..." style="width:200px" @input="debouncedSearch" />
         <button class="btn-primary btn-sm" @click="openCreate">+ 新建管理员</button>
@@ -29,8 +29,8 @@
             <td>{{ formatDate(a.created_at) }}</td>
             <td class="action-cell">
               <button class="btn-primary btn-sm" @click="openEdit(a)">编辑</button>
-              <button class="btn-sm" style="background:#f59e0b;color:white" @click="openChangePassword(a)">改密码</button>
-              <button class="btn-sm" style="background:#8b5cf6;color:white" @click="openResetPassword(a)">重置密码</button>
+              <button class="btn-sm btn-primary" @click="openChangePassword(a)">改密码</button>
+              <button class="btn-sm btn-primary" @click="openResetPassword(a)">重置密码</button>
               <button class="btn-danger btn-sm" @click="openDelete(a)">删除</button>
             </td>
           </tr>
@@ -71,7 +71,7 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:#e5e7eb;color:#374151" @click="showCreate = false">取消</button>
+          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showCreate = false">取消</button>
           <button class="btn-primary btn-sm" :disabled="modalLoading" @click="handleCreate">{{ modalLoading ? '提交中...' : '确认创建' }}</button>
         </div>
       </div>
@@ -103,7 +103,7 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:#e5e7eb;color:#374151" @click="showEdit = false">取消</button>
+          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showEdit = false">取消</button>
           <button class="btn-primary btn-sm" :disabled="modalLoading" @click="handleEdit">{{ modalLoading ? '保存中...' : '保存' }}</button>
         </div>
       </div>
@@ -124,7 +124,7 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:#e5e7eb;color:#374151" @click="showChangePwd = false">取消</button>
+          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showChangePwd = false">取消</button>
           <button class="btn-primary btn-sm" :disabled="modalLoading" @click="handleChangePassword">{{ modalLoading ? '提交中...' : '确认修改' }}</button>
         </div>
       </div>
@@ -141,8 +141,8 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:#e5e7eb;color:#374151" @click="showResetPwd = false">取消</button>
-          <button class="btn-sm" style="background:#8b5cf6;color:white" :disabled="modalLoading" @click="handleResetPassword">{{ modalLoading ? '提交中...' : '确认重置' }}</button>
+          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showResetPwd = false">取消</button>
+          <button class="btn-sm btn-primary" :disabled="modalLoading" @click="handleResetPassword">{{ modalLoading ? '提交中...' : '确认重置' }}</button>
         </div>
       </div>
     </div>
@@ -154,7 +154,7 @@
         <p class="modal-desc">确定要删除管理员 <strong>{{ deleteTarget?.email }}</strong> 吗？此操作不可撤销。</p>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:#e5e7eb;color:#374151" @click="showDelete = false">取消</button>
+          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showDelete = false">取消</button>
           <button class="btn-danger btn-sm" :disabled="modalLoading" @click="confirmDelete">{{ modalLoading ? '删除中...' : '确认删除' }}</button>
         </div>
       </div>
@@ -313,7 +313,7 @@ onMounted(loadAdmins)
 .action-cell { white-space: nowrap; }
 .action-cell button { margin-right: 6px; }
 .action-cell button:last-child { margin-right: 0; }
-.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: #6b7280; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 0; font-size: 13px; color: var(--admin-text-secondary); }
 
 .modal-mask {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -321,17 +321,17 @@ onMounted(loadAdmins)
   justify-content: center; z-index: 1000;
 }
 .modal {
-  background: white; border-radius: 12px; padding: 28px; width: 440px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  background: var(--admin-bg-card); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); padding: 28px; width: 440px;
+  box-shadow: var(--admin-shadow-md);
 }
-.modal h3 { font-size: 18px; margin-bottom: 20px; color: #1e293b; }
-.modal-desc { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
+.modal h3 { font-size: 18px; margin-bottom: 20px; color: var(--admin-text-primary); }
+.modal-desc { font-size: 13px; color: var(--admin-text-secondary); margin-bottom: 16px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-.error { color: #ef4444; font-size: 13px; margin-top: 8px; }
+.error { color: var(--admin-text-primary); font-size: 13px; margin-top: 8px; }
 
 .form-group { margin-bottom: 14px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #374151; }
-.form-group input { width: 100%; padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; background: #f9fafb; }
-.form-group input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); background: white; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--admin-text-primary); }
+.form-group input { width: 100%; padding: 9px 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); font-size: 14px; outline: none; transition: all 0.2s; background: var(--admin-bg-content); color: var(--admin-text-primary); }
+.form-group input:focus { border-color: var(--admin-primary); box-shadow: 0 0 0 3px var(--admin-primary-soft); background: var(--admin-bg-content); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 </style>
