@@ -175,6 +175,10 @@ const activityChart = ref(null)
 
 let chartInstances = []
 
+function chartAccent() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '#2563EB'
+}
+
 const latestScore = computed(() => {
   const trend = data.value.score_trend
   return trend.length > 0 ? trend[trend.length - 1].score : '-'
@@ -204,6 +208,7 @@ function initTrendChart() {
   if (!trendChart.value || data.value.score_trend.length === 0) return
   const chart = echarts.init(trendChart.value)
   chartInstances.push(chart)
+  const accent = chartAccent()
 
   const trend = data.value.score_trend
   const option = {
@@ -240,15 +245,16 @@ function initTrendChart() {
       symbolSize: 8,
       lineStyle: {
         width: 3,
-        color: '#A3A3A3'
+        color: accent
       },
       itemStyle: {
-        color: '#A3A3A3',
+        color: accent,
         borderWidth: 2,
         borderColor: '#fff'
       },
       areaStyle: {
-        color: 'rgba(128, 128, 128, 0.12)'
+        color: accent,
+        opacity: 0.12
       }
     }]
   }
@@ -259,6 +265,7 @@ function initRadarChart() {
   if (!radarChart.value || Object.keys(data.value.dimension_avg).length === 0) return
   const chart = echarts.init(radarChart.value)
   chartInstances.push(chart)
+  const accent = chartAccent()
 
   // 精简：只展示最薄弱 3 项 + 最强 1 项，突出重点而非密密麻麻全维度
   const allDims = Object.entries(data.value.dimension_avg)
@@ -296,10 +303,11 @@ function initRadarChart() {
       data: [{
         value: dims.map(([, score]) => score),
         areaStyle: {
-          color: 'rgba(128, 128, 128, 0.16)'
+          color: accent,
+          opacity: 0.16
         },
-        lineStyle: { color: '#A3A3A3', width: 2 },
-        itemStyle: { color: '#A3A3A3' }
+        lineStyle: { color: accent, width: 2 },
+        itemStyle: { color: accent }
       }]
     }]
   }
@@ -363,6 +371,7 @@ function initPositionChart() {
   if (!positionChart.value || data.value.position_stats.length === 0) return
   const chart = echarts.init(positionChart.value)
   chartInstances.push(chart)
+  const accent = chartAccent()
 
   const stats = data.value.position_stats.slice(0, 8)
   const option = {
@@ -395,7 +404,7 @@ function initPositionChart() {
       data: stats.map(s => ({
         value: s.avg_score,
         itemStyle: {
-          color: '#A3A3A3',
+          color: accent,
           borderRadius: [0, 4, 4, 0]
         }
       })),
@@ -627,7 +636,7 @@ onUnmounted(() => {
   line-height: 1.2;
   word-break: break-all;
 }
-.stat-value.positive { color: #A3A3A3; }
+.stat-value.positive { color: var(--accent-primary); }
 .stat-value.negative { color: var(--red); }
 .stat-value.weakest { font-size: 14px; font-weight: 600; color: var(--amber); }
 .stat-label { font-size: 12px; color: var(--text-muted); }

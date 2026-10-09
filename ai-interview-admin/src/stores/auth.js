@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshTokenValue = ref(localStorage.getItem('admin_refresh_token') || '')
   const email = ref(localStorage.getItem('admin_email') || '')
   const adminId = ref(localStorage.getItem('admin_id') || '')
+  const role = ref(localStorage.getItem('admin_role') || '')
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -15,16 +16,22 @@ export const useAuthStore = defineStore('auth', () => {
     refreshTokenValue.value = data.refresh_token || ''
     email.value = data.email || ''
     if (data.id) adminId.value = data.id
+    if (data.role) role.value = data.role
     localStorage.setItem('admin_token', data.access_token)
     if (data.refresh_token) localStorage.setItem('admin_refresh_token', data.refresh_token)
     localStorage.setItem('admin_email', email.value)
     if (data.id) localStorage.setItem('admin_id', data.id)
+    if (data.role) localStorage.setItem('admin_role', data.role)
   }
 
   function setAdminInfo(info) {
     if (info.id) {
       adminId.value = info.id
       localStorage.setItem('admin_id', info.id)
+    }
+    if (info.role) {
+      role.value = info.role
+      localStorage.setItem('admin_role', info.role)
     }
   }
 
@@ -43,11 +50,13 @@ export const useAuthStore = defineStore('auth', () => {
     refreshTokenValue.value = ''
     email.value = ''
     adminId.value = ''
+    role.value = ''
     localStorage.removeItem('admin_token')
     localStorage.removeItem('admin_refresh_token')
     localStorage.removeItem('admin_email')
     localStorage.removeItem('admin_id')
+    localStorage.removeItem('admin_role')
   }
 
-  return { token, refreshToken: refreshTokenValue, email, adminId, isLoggedIn, setAuth, setAdminInfo, updateToken, logout }
+  return { token, refreshToken: refreshTokenValue, email, adminId, role, isLoggedIn, setAuth, setAdminInfo, updateToken, logout }
 })

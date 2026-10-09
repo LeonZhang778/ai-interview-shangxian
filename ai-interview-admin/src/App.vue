@@ -57,6 +57,7 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useRouter } from 'vue-router'
+import { authApi } from './api'
 const authStore = useAuthStore()
 const router = useRouter()
 const isDark = ref(false)
@@ -75,6 +76,9 @@ function toggleTheme() {
 onMounted(() => {
   isDark.value = localStorage.getItem('admin-theme') === 'dark'
   applyTheme()
+  if (authStore.token) {
+    authApi.me().then(info => authStore.setAdminInfo(info)).catch(() => {})
+  }
 })
 
 async function logout() { await authStore.logout(); router.push('/login') }

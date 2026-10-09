@@ -62,11 +62,8 @@ api.interceptors.response.use(
         isRefreshing = false
       }
     }
-    if (err.response?.status === 403) {
-      const authStore = useAuthStore()
-      authStore.logout()
-      router.push('/login')
-    }
+    // 403 means the session is valid but the current admin lacks permission.
+    // Keep the page and let the caller render the actionable error instead of logging out.
     const data = err.response?.data
     let msg = data?.message || err.message || '网络错误'
     if (data?.detail) {

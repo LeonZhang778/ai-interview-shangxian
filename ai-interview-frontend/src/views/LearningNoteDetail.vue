@@ -693,13 +693,14 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .summary-block {
   margin-bottom: 20px;
   padding: 16px 18px;
-  background: var(--accent-primary);
-  border: 1px solid rgba(128, 128, 128,0.18);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
 }
 .summary-loading {
-  color: var(--text-muted);
+  color: var(--text-primary);
   font-size: 13px;
+  font-weight: 500;
 }
 .summary-card {
   display: flex;

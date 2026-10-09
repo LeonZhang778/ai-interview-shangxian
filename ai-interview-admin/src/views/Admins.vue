@@ -28,10 +28,10 @@
             <td><span :class="['badge', a.is_active ? 'badge-green' : 'badge-red']">{{ a.is_active ? '正常' : '禁用' }}</span></td>
             <td>{{ formatDate(a.created_at) }}</td>
             <td class="action-cell">
-              <button class="btn-primary btn-sm" @click="openEdit(a)">编辑</button>
-              <button class="btn-sm btn-primary" @click="openChangePassword(a)">改密码</button>
-              <button class="btn-sm btn-primary" @click="openResetPassword(a)">重置密码</button>
-              <button class="btn-danger btn-sm" @click="openDelete(a)">删除</button>
+              <button v-if="canEdit(a)" class="btn-primary btn-sm" @click="openEdit(a)">编辑</button>
+              <button v-if="canChangePassword(a)" class="btn-sm btn-primary" @click="openChangePassword(a)">改密码</button>
+              <button v-if="canResetPassword(a)" class="btn-sm btn-primary" @click="openResetPassword(a)">重置密码</button>
+              <button v-if="canDelete(a)" class="btn-danger btn-sm" @click="openDelete(a)">删除</button>
             </td>
           </tr>
           <tr v-if="admins.length === 0">
@@ -163,9 +163,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '../api'
+import { useAuthStore } from '../stores/auth'
 
+const authStore = useAuthStore()
 const admins = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -188,6 +190,27 @@ const changePwdForm = reactive({ current_password: '', new_password: '' })
 const resetPwdTarget = ref(null)
 const resetPwdForm = reactive({ password: '' })
 const deleteTarget = ref(null)
+const isSuperAdmin = computed(() => authStore.role === 'superadmin')
+
+function isCurrentAdmin(admin) {
+  return String(admin.id) === String(authStore.adminId)
+}
+
+function canChangePassword(admin) {
+  return isCurrentAdmin(admin)
+}
+
+function canResetPassword(admin) {
+  return isSuperAdmin.value || isCurrentAdmin(admin)
+}
+
+function canEdit(admin) {
+  return isSuperAdmin.value || isCurrentAdmin(admin)
+}
+
+function canDelete(admin) {
+  return isSuperAdmin.value && !isCurrentAdmin(admin)
+}
 
 function formatDate(str) {
   if (!str) return ''
@@ -197,8 +220,9 @@ function formatDate(str) {
 async function loadAdmins() {
   try {
     const data = await adminApi.list({ page: page.value, per_page: perPage, email: emailFilter.value || undefined })
+    if (!Array.isArray(data?.items)) throw new Error('管理员列表响应格式错误')
     admins.value = data.items
-    total.value = data.total
+    total.value = Number(data.total || 0)
   } catch (e) { console.error(e) }
 }
 

@@ -323,31 +323,31 @@ onMounted(loadData)
   border-radius: 8px;
   font-size: 13px;
   color: var(--text-muted);
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
 .group-tab:hover {
-  background: rgba(128, 128, 128,0.1);
-  border-color: rgba(128, 128, 128,0.3);
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
 }
 .group-tab.active {
   background: var(--accent-primary);
-  border-color: rgba(128, 128, 128,0.5);
-  color: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--bg-base);
 }
 .group-count {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 8px;
-  background: rgba(255,255,255,0.1);
+  background: var(--bg-hover);
   color: var(--text-muted);
 }
 .group-tab.active .group-count {
-  background: rgba(128, 128, 128,0.3);
-  color: var(--accent-light);
+  background: var(--bg-base);
+  color: var(--accent-primary);
 }
 .group-actions {
   display: inline-flex;
@@ -367,15 +367,15 @@ onMounted(loadData)
   transition: background 0.2s;
 }
 .group-action:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--bg-hover);
 }
 .group-add {
   border-style: dashed;
   color: var(--text-muted);
 }
 .group-add:hover {
-  color: var(--accent-light);
-  border-color: rgba(128, 128, 128,0.5);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 .group-name-input {
   background: transparent;
@@ -420,15 +420,15 @@ onMounted(loadData)
   gap: 12px;
 }
 .collection-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 16px;
   transition: all 0.2s;
 }
 .collection-card:hover {
-  border-color: rgba(128, 128, 128,0.3);
-  background: rgba(255,255,255,0.06);
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
 }
 .card-title {
   font-size: 16px;
@@ -439,7 +439,7 @@ onMounted(loadData)
   margin-bottom: 8px;
 }
 .card-title:hover {
-  color: var(--accent-light);
+  color: var(--accent-primary);
 }
 .card-meta {
   display: flex;
@@ -450,12 +450,12 @@ onMounted(loadData)
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(128, 128, 128,0.1);
-  color: var(--accent-purple);
+  background: var(--bg-hover);
+  color: var(--accent-primary);
 }
 .meta-position {
-  background: rgba(128, 128, 128,0.1);
-  color: #A3A3A3;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 .card-summary {
   font-size: 13px;
@@ -477,7 +477,7 @@ onMounted(loadData)
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(255,255,255,0.06);
+  background: var(--bg-hover);
   color: var(--text-muted);
 }
 .card-bottom {
@@ -485,7 +485,7 @@ onMounted(loadData)
   align-items: center;
   justify-content: space-between;
   padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--border-default);
 }
 .card-stats {
   display: flex;
@@ -494,8 +494,8 @@ onMounted(loadData)
   color: var(--text-muted);
 }
 .group-select {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   color: var(--text-secondary);
   font-size: 12px;
@@ -504,7 +504,7 @@ onMounted(loadData)
   cursor: pointer;
 }
 .group-select option {
-  background: #141414;
+  background: var(--bg-input);
   color: var(--text-primary);
 }
 
@@ -518,8 +518,8 @@ onMounted(loadData)
 }
 .page-btn {
   padding: 8px 20px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   color: var(--text-secondary);
   font-size: 13px;
@@ -527,8 +527,8 @@ onMounted(loadData)
   transition: all 0.2s;
 }
 .page-btn:hover:not(:disabled) {
-  background: rgba(128, 128, 128,0.15);
-  border-color: rgba(128, 128, 128,0.3);
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
 }
 .page-btn:disabled {
   opacity: 0.4;
