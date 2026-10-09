@@ -136,5 +136,5 @@ onMounted(loadLogs)
 .action-approve { background: var(--admin-primary-soft); color: var(--admin-primary); }
 .action-delete,
 .action-disable,
-.action-reject { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
+.action-reject { background: var(--admin-primary-soft); color: var(--admin-primary); }
 </style>

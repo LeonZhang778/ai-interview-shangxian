@@ -71,7 +71,7 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showCreate = false">取消</button>
+          <button class="btn-secondary btn-sm" @click="showCreate = false">取消</button>
           <button class="btn-primary btn-sm" :disabled="modalLoading" @click="handleCreate">{{ modalLoading ? '提交中...' : '确认创建' }}</button>
         </div>
       </div>
@@ -103,7 +103,7 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showEdit = false">取消</button>
+          <button class="btn-secondary btn-sm" @click="showEdit = false">取消</button>
           <button class="btn-primary btn-sm" :disabled="modalLoading" @click="handleEdit">{{ modalLoading ? '保存中...' : '保存' }}</button>
         </div>
       </div>
@@ -124,7 +124,7 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showChangePwd = false">取消</button>
+          <button class="btn-secondary btn-sm" @click="showChangePwd = false">取消</button>
           <button class="btn-primary btn-sm" :disabled="modalLoading" @click="handleChangePassword">{{ modalLoading ? '提交中...' : '确认修改' }}</button>
         </div>
       </div>
@@ -141,7 +141,7 @@
         </div>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showResetPwd = false">取消</button>
+          <button class="btn-secondary btn-sm" @click="showResetPwd = false">取消</button>
           <button class="btn-sm btn-primary" :disabled="modalLoading" @click="handleResetPassword">{{ modalLoading ? '提交中...' : '确认重置' }}</button>
         </div>
       </div>
@@ -154,7 +154,7 @@
         <p class="modal-desc">确定要删除管理员 <strong>{{ deleteTarget?.email }}</strong> 吗？此操作不可撤销。</p>
         <p v-if="modalError" class="error">{{ modalError }}</p>
         <div class="modal-actions">
-          <button class="btn-sm" style="background:var(--admin-bg-muted);color:var(--admin-text-secondary)" @click="showDelete = false">取消</button>
+          <button class="btn-secondary btn-sm" @click="showDelete = false">取消</button>
           <button class="btn-danger btn-sm" :disabled="modalLoading" @click="confirmDelete">{{ modalLoading ? '删除中...' : '确认删除' }}</button>
         </div>
       </div>

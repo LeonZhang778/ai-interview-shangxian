@@ -240,13 +240,13 @@ onMounted(() => fetchData())
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
-  background: var(--admin-bg-content);
-  color: var(--admin-text-secondary);
-  border: 1px solid var(--admin-border);
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border: 1px solid var(--admin-primary);
   cursor: pointer;
   transition: all 0.2s;
 }
-.tab-btn:hover { background: var(--admin-bg-muted); }
+.tab-btn:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
 .tab-btn.active {
   background: var(--admin-primary);
   color: var(--admin-primary-contrast);
@@ -335,12 +335,12 @@ onMounted(() => fetchData())
 .btn-view:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
 .btn-approve { background: var(--admin-primary); color: var(--admin-primary-contrast); }
 .btn-approve:hover { background: var(--admin-primary-hover); }
-.btn-reject { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
-.btn-reject:hover { background: var(--admin-border-strong); }
-.btn-delete { background: var(--admin-bg-muted); color: var(--admin-text-primary); border: 1px solid var(--admin-border); }
-.btn-delete:hover { background: var(--admin-border-strong); border-color: var(--admin-border-strong); }
-.btn-cancel { background: var(--admin-bg-muted); color: var(--admin-text-secondary); border: 1px solid var(--admin-border); }
-.btn-cancel:hover { background: var(--admin-border-strong); }
+.btn-reject { background: var(--admin-primary-soft); color: var(--admin-primary); border: 1px solid var(--admin-primary); }
+.btn-reject:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
+.btn-delete { background: var(--admin-primary-soft); color: var(--admin-primary); border: 1px solid var(--admin-primary); }
+.btn-delete:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
+.btn-cancel { background: var(--admin-primary-soft); color: var(--admin-primary); border: 1px solid var(--admin-primary); }
+.btn-cancel:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
 
 .pagination {
   display: flex;
@@ -354,9 +354,9 @@ onMounted(() => fetchData())
   padding: 6px 16px;
   border-radius: 6px;
   font-size: 13px;
-  background: var(--admin-bg-muted);
-  border: 1px solid var(--admin-border);
-  color: var(--admin-text-secondary);
+  background: var(--admin-primary-soft);
+  border: 1px solid var(--admin-primary);
+  color: var(--admin-primary);
   cursor: pointer;
 }
 .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -398,7 +398,7 @@ onMounted(() => fetchData())
   background: none;
   border: none;
   font-size: 24px;
-  color: var(--admin-text-muted);
+  color: var(--admin-primary);
   cursor: pointer;
 }
 .modal-body { padding: 24px; }

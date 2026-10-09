@@ -198,14 +198,14 @@ async function logout() { await authStore.logout(); router.push('/login') }
   margin-top: 10px;
   padding: 8px;
   border-radius: var(--admin-radius-md);
-  background: transparent;
-  color: var(--admin-text-sidebar);
-  border: 1px solid #262626;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border: 1px solid var(--admin-primary);
 }
 
 .theme-toggle:hover {
-  background: var(--admin-bg-sidebar-hover);
-  color: var(--admin-text-sidebar-active);
+  background: var(--admin-primary);
+  color: var(--admin-primary-contrast);
   border-color: var(--admin-primary);
 }
 
@@ -216,17 +216,17 @@ async function logout() { await authStore.logout(); router.push('/login') }
   padding: 8px;
   border-radius: var(--admin-radius-md);
   font-size: 13px;
-  background: transparent;
-  color: var(--admin-text-sidebar);
-  border: 1px solid #262626;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border: 1px solid var(--admin-primary);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .logout-btn:hover {
-  background: var(--admin-bg-sidebar-hover);
-  color: var(--admin-text-sidebar-active);
-  border-color: #404040;
+  background: var(--admin-primary);
+  color: var(--admin-primary-contrast);
+  border-color: var(--admin-primary);
 }
 
 .main-content {
