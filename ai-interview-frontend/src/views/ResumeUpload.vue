@@ -2,7 +2,7 @@
   <StarryBackground />
   <div class="container">
     <div class="card" style="max-width:600px;margin:40px auto">
-      <h2 style="margin-bottom:20px;font-family:Inter,sans-serif;background:var(--title-gradient);">上传简历 & 开始面试</h2>
+      <h2 style="margin-bottom:20px;font-family:Inter,sans-serif;background:var(--title-gradient);">上传简历，开始面试</h2>
 
       <!-- Step 1: 上传简历 -->
       <div v-if="step === 1">

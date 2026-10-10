@@ -125,9 +125,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue'
+import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { getAnalysis } from '../api/interview'
 import StarryBackground from '../components/StarryBackground.vue'
+import { useTheme } from '../composables/useTheme'
 import * as echarts from 'echarts/core'
 import { LineChart, BarChart, PieChart, RadarChart } from 'echarts/charts'
 import {
@@ -175,8 +176,14 @@ const activityChart = ref(null)
 
 let chartInstances = []
 
+const { theme } = useTheme()
+
+function chartColor(name, fallback) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+}
+
 function chartAccent() {
-  return getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '#2563EB'
+  return chartColor('--accent-primary', '#2563EB')
 }
 
 const latestScore = computed(() => {
@@ -199,9 +206,9 @@ const improvementClass = computed(() => {
 })
 
 function getScoreColor(score) {
-  if (score >= 8) return '#EDEDED'
-  if (score >= 6) return '#A3A3A3'
-  return '#737373'
+  if (score >= 8) return chartColor('--state-success', '#4ADE80')
+  if (score >= 6) return chartColor('--state-warning', '#FBBF24')
+  return chartColor('--state-error', '#F87171')
 }
 
 function initTrendChart() {
@@ -214,9 +221,9 @@ function initTrendChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(17, 17, 17, 0.9)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#fff' },
+      backgroundColor: chartColor('--bg-surface', '#111111'),
+      borderColor: chartColor('--border-default', '#262626'),
+      textStyle: { color: chartColor('--text-primary', '#EDEDED') },
       formatter: (params) => {
         const p = params[0]
         const item = trend[p.dataIndex]
@@ -227,15 +234,15 @@ function initTrendChart() {
     xAxis: {
       type: 'category',
       data: trend.map(t => t.date.slice(5)),
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
+      axisLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
+      axisLabel: { color: chartColor('--text-muted', '#737373'), fontSize: 11 }
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 10,
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
+      splitLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
+      axisLabel: { color: chartColor('--text-muted', '#737373'), fontSize: 11 }
     },
     series: [{
       type: 'line',
@@ -250,7 +257,7 @@ function initTrendChart() {
       itemStyle: {
         color: accent,
         borderWidth: 2,
-        borderColor: '#fff'
+        borderColor: chartColor('--bg-card', '#141414')
       },
       areaStyle: {
         color: accent,
@@ -282,21 +289,21 @@ function initRadarChart() {
 
   const option = {
     tooltip: {
-      backgroundColor: 'rgba(17, 17, 17, 0.9)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#fff' }
+      backgroundColor: chartColor('--bg-surface', '#111111'),
+      borderColor: chartColor('--border-default', '#262626'),
+      textStyle: { color: chartColor('--text-primary', '#EDEDED') }
     },
     radar: {
       indicator: dims.map(([name]) => ({ name, max: 10 })),
       shape: 'polygon',
       splitNumber: 5,
       axisName: {
-        color: 'rgba(255,255,255,0.7)',
+        color: chartColor('--text-secondary', '#A1A1A1'),
         fontSize: 12
       },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      splitLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
       splitArea: { show: false },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+      axisLine: { lineStyle: { color: chartColor('--border-default', '#262626') } }
     },
     series: [{
       type: 'radar',
@@ -323,23 +330,23 @@ function initCompanyChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(17, 17, 17, 0.9)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#fff' }
+      backgroundColor: chartColor('--bg-surface', '#111111'),
+      borderColor: chartColor('--border-default', '#262626'),
+      textStyle: { color: chartColor('--text-primary', '#EDEDED') }
     },
     grid: { left: 80, right: 20, top: 10, bottom: 30 },
     xAxis: {
       type: 'value',
       max: 10,
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
+      splitLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
+      axisLabel: { color: chartColor('--text-muted', '#737373'), fontSize: 11 }
     },
     yAxis: {
       type: 'category',
       data: stats.map(s => s.company),
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      axisLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
       axisLabel: {
-        color: 'rgba(255,255,255,0.7)',
+        color: chartColor('--text-secondary', '#A1A1A1'),
         fontSize: 12,
         width: 60,
         overflow: 'truncate'
@@ -358,7 +365,7 @@ function initCompanyChart() {
       label: {
         show: true,
         position: 'right',
-        color: 'rgba(255,255,255,0.7)',
+        color: chartColor('--text-secondary', '#A1A1A1'),
         fontSize: 11,
         formatter: '{c}分'
       }
@@ -377,23 +384,23 @@ function initPositionChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(17, 17, 17, 0.9)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#fff' }
+      backgroundColor: chartColor('--bg-surface', '#111111'),
+      borderColor: chartColor('--border-default', '#262626'),
+      textStyle: { color: chartColor('--text-primary', '#EDEDED') }
     },
     grid: { left: 80, right: 20, top: 10, bottom: 30 },
     xAxis: {
       type: 'value',
       max: 10,
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
+      splitLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
+      axisLabel: { color: chartColor('--text-muted', '#737373'), fontSize: 11 }
     },
     yAxis: {
       type: 'category',
       data: stats.map(s => s.position),
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      axisLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
       axisLabel: {
-        color: 'rgba(255,255,255,0.7)',
+        color: chartColor('--text-secondary', '#A1A1A1'),
         fontSize: 12,
         width: 60,
         overflow: 'truncate'
@@ -412,7 +419,7 @@ function initPositionChart() {
       label: {
         show: true,
         position: 'right',
-        color: 'rgba(255,255,255,0.7)',
+        color: chartColor('--text-secondary', '#A1A1A1'),
         fontSize: 11,
         formatter: '{c}分'
       }
@@ -430,25 +437,25 @@ function initScoreDistChart() {
   const option = {
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(17, 17, 17, 0.9)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#fff' }
+      backgroundColor: chartColor('--bg-surface', '#111111'),
+      borderColor: chartColor('--border-default', '#262626'),
+      textStyle: { color: chartColor('--text-primary', '#EDEDED') }
     },
     legend: {
       bottom: 10,
-      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 12 }
+      textStyle: { color: chartColor('--text-secondary', '#A1A1A1'), fontSize: 12 }
     },
     series: [{
       type: 'pie',
       radius: ['40%', '70%'],
       center: ['50%', '45%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#111111', borderWidth: 2 },
+      itemStyle: { borderRadius: 8, borderColor: chartColor('--bg-card', '#141414'), borderWidth: 2 },
       label: { show: false },
       data: [
-        { value: dist.high, name: '优秀 (8+)', itemStyle: { color: '#EDEDED' } },
-        { value: dist.mid, name: '良好 (6-8)', itemStyle: { color: '#A3A3A3' } },
-        { value: dist.low, name: '待提升 (<6)', itemStyle: { color: '#737373' } }
+        { value: dist.high, name: '优秀 (8+)', itemStyle: { color: chartColor('--state-success', '#4ADE80') } },
+        { value: dist.mid, name: '良好 (6-8)', itemStyle: { color: chartColor('--state-warning', '#FBBF24') } },
+        { value: dist.low, name: '待提升 (<6)', itemStyle: { color: chartColor('--state-error', '#F87171') } }
       ]
     }]
   }
@@ -464,24 +471,24 @@ function initTimeDistChart() {
   const option = {
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(17, 17, 17, 0.9)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#fff' }
+      backgroundColor: chartColor('--bg-surface', '#111111'),
+      borderColor: chartColor('--border-default', '#262626'),
+      textStyle: { color: chartColor('--text-primary', '#EDEDED') }
     },
     legend: {
       bottom: 10,
-      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 12 }
+      textStyle: { color: chartColor('--text-secondary', '#A1A1A1'), fontSize: 12 }
     },
     series: [{
       type: 'pie',
       radius: ['40%', '70%'],
       center: ['50%', '45%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#111111', borderWidth: 2 },
+      itemStyle: { borderRadius: 8, borderColor: chartColor('--bg-card', '#141414'), borderWidth: 2 },
       label: { show: false },
       data: [
-        { value: time.weekday, name: '工作日', itemStyle: { color: '#EDEDED' } },
-        { value: time.weekend, name: '周末', itemStyle: { color: '#737373' } }
+        { value: time.weekday, name: '工作日', itemStyle: { color: chartAccent() } },
+        { value: time.weekend, name: '周末', itemStyle: { color: chartColor('--text-muted', '#737373') } }
       ]
     }]
   }
@@ -497,22 +504,22 @@ function initActivityChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(17, 17, 17, 0.9)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#fff' }
+      backgroundColor: chartColor('--bg-surface', '#111111'),
+      borderColor: chartColor('--border-default', '#262626'),
+      textStyle: { color: chartColor('--text-primary', '#EDEDED') }
     },
     grid: { left: 40, right: 20, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
       data: activity.map(a => a.date.slice(5)),
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
+      axisLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
+      axisLabel: { color: chartColor('--text-muted', '#737373'), fontSize: 11 }
     },
     yAxis: {
       type: 'value',
       minInterval: 1,
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11 }
+      splitLine: { lineStyle: { color: chartColor('--border-default', '#262626') } },
+      axisLabel: { color: chartColor('--text-muted', '#737373'), fontSize: 11 }
     },
     series: [{
       type: 'bar',
@@ -520,8 +527,8 @@ function initActivityChart() {
         value: a.count,
         itemStyle: {
           color: a.count > 0
-            ? '#A3A3A3'
-            : 'rgba(255,255,255,0.05)',
+            ? chartAccent()
+            : chartColor('--border-default', '#262626'),
           borderRadius: [4, 4, 0, 0]
         }
       })),
@@ -533,6 +540,20 @@ function initActivityChart() {
 
 function handleResize() {
   chartInstances.forEach(chart => chart.resize())
+}
+
+function rerenderCharts() {
+  chartInstances.forEach(chart => chart.dispose())
+  chartInstances = []
+  nextTick(() => {
+    initTrendChart()
+    initRadarChart()
+    initCompanyChart()
+    initPositionChart()
+    initScoreDistChart()
+    initTimeDistChart()
+    initActivityChart()
+  })
 }
 
 onMounted(async () => {
@@ -561,6 +582,8 @@ onUnmounted(() => {
   chartInstances = []
   window.removeEventListener('resize', handleResize)
 })
+
+watch(theme, rerenderCharts)
 </script>
 
 <style scoped>
@@ -590,7 +613,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border: 3px solid rgba(128, 128, 128, 0.2);
-  border-top-color: #A3A3A3;
+  border-top-color: var(--accent-primary);
   border-radius: 50%;
   margin: 0 auto 16px;
   animation: spin 0.8s linear infinite;

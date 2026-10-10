@@ -321,13 +321,15 @@ onMounted(() => fetchData())
 .status-badge.published { background: var(--admin-primary-soft); color: var(--admin-primary); }
 .status-badge.rejected { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
 
-.action-cell { display: flex; gap: 6px; }
+.action-cell { display: flex; align-items: center; gap: 6px; }
 .btn-action {
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
   border: none;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -335,10 +337,10 @@ onMounted(() => fetchData())
 .btn-view:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
 .btn-approve { background: var(--admin-primary); color: var(--admin-primary-contrast); }
 .btn-approve:hover { background: var(--admin-primary-hover); }
-.btn-reject { background: var(--admin-primary-soft); color: var(--admin-primary); border: 1px solid var(--admin-primary); }
-.btn-reject:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
-.btn-delete { background: var(--admin-primary-soft); color: var(--admin-primary); border: 1px solid var(--admin-primary); }
-.btn-delete:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
+.btn-reject { background: var(--admin-danger); color: var(--admin-danger-contrast); border: 1px solid var(--admin-danger); }
+.btn-reject:hover { background: var(--admin-danger-hover); color: var(--admin-danger-contrast); }
+.btn-delete { background: transparent; color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+.btn-delete:hover { background: var(--admin-danger); color: var(--admin-danger-contrast); }
 .btn-cancel { background: var(--admin-primary-soft); color: var(--admin-primary); border: 1px solid var(--admin-primary); }
 .btn-cancel:hover { background: var(--admin-primary); color: var(--admin-primary-contrast); }
 

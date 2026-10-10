@@ -232,10 +232,10 @@ async function submitFeedback() {
   transform: translateY(8px);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .bug-report-wrapper {
-    bottom: 16px;
-    right: 16px;
+    bottom: 12px;
+    right: 12px;
   }
   .bug-panel {
     width: calc(100vw - 32px);

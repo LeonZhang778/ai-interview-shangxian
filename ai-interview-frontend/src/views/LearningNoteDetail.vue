@@ -346,9 +346,11 @@ async function loadData() {
     // 用详情接口已返回的摘要初始化，避免重复调用 AI
     summary.value = data.summary || ''
     keyPoints.value = data.key_points || []
+    // 先结束加载状态，让正文 DOM 挂载后再构建目录
+    loading.value = false
     // bytemd Viewer 异步渲染，双重等待确保 DOM 就绪
     await nextTick()
-    requestAnimationFrame(() => buildToc())
+    await buildTocWithRetry()
     await Promise.all([
       loadRelatedNotes(),
       loadCommentsIfPublic(),
@@ -524,6 +526,18 @@ function buildToc() {
   tocList.value = list
   if (list.length) activeTocId.value = list[0].id
   window.addEventListener('scroll', onScroll, { passive: true })
+}
+
+async function buildTocWithRetry(tries = 10, interval = 200) {
+  for (let i = 0; i < tries; i += 1) {
+    await nextTick()
+    const body = document.querySelector('.note-body')
+    if (body && body.querySelectorAll('h1, h2, h3, h4').length > 1) {
+      buildToc()
+      return
+    }
+    await new Promise(resolve => setTimeout(resolve, interval))
+  }
 }
 
 function scrollToHeading(id) {
@@ -1138,6 +1152,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 @media (max-width: 960px) {
   .note-layout {
     flex-direction: column;
+    align-items: stretch;
   }
   .note-footer {
     align-items: flex-start;

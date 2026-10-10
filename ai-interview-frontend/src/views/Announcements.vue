@@ -31,7 +31,7 @@
               <span v-if="item.is_pinned" class="pin-badge">&#x1F4CC; 置顶</span>
             </div>
             <h3 class="item-title">{{ item.title }}</h3>
-            <p class="item-preview">{{ item.content.slice(0, 100) }}{{ item.content.length > 100 ? '...' : '' }}</p>
+            <p class="item-preview">{{ stripMarkdown(item.content).slice(0, 100) }}{{ stripMarkdown(item.content).length > 100 ? '...' : '' }}</p>
             <div class="item-footer">
               <span class="item-date">{{ formatDate(item.published_at) }}</span>
               <span class="read-more">查看详情 &rarr;</span>
@@ -47,6 +47,7 @@
 import { ref, onMounted } from 'vue'
 import { getAnnouncements } from '../api/announcement'
 import StarryBackground from '../components/StarryBackground.vue'
+import { stripMarkdown } from '../utils/text'
 
 const announcements = ref([])
 const loading = ref(true)

@@ -26,8 +26,9 @@
   --admin-primary-hover: #1D4ED8;
   --admin-primary-soft: #EAF1FF;
   --admin-primary-contrast: #FFFFFF;
-  --admin-danger: var(--admin-primary);
-  --admin-danger-contrast: var(--admin-primary-contrast);
+  --admin-danger: #DC2626;
+  --admin-danger-hover: #B91C1C;
+  --admin-danger-contrast: #FFFFFF;
 
   --admin-radius-sm: 4px;
   --admin-radius-md: 6px;
@@ -59,8 +60,9 @@
   --admin-primary-hover: #9AB6FF;
   --admin-primary-soft: #1A2B4F;
   --admin-primary-contrast: #0A0A0A;
-  --admin-danger: var(--admin-primary);
-  --admin-danger-contrast: var(--admin-primary-contrast);
+  --admin-danger: #F87171;
+  --admin-danger-hover: #FCA5A5;
+  --admin-danger-contrast: #0A0A0A;
 
   --admin-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
   --admin-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4);
@@ -127,7 +129,7 @@ textarea:focus-visible {
 }
 
 .btn-danger:hover {
-  background: var(--admin-primary-hover);
+  background: var(--admin-danger-hover);
 }
 
 .btn-secondary {
@@ -213,17 +215,22 @@ tr:hover {
 }
 
 .badge-green,
+.badge-success { background: #E8F7EE; color: #15803D; border-color: #BBE7CD; }
 .badge-red,
+.badge-error { background: #FDECEC; color: #B91C1C; border-color: #F5C6C6; }
 .badge-yellow,
+.badge-warning { background: #FEF4E6; color: #B45309; border-color: #F7D8AC; }
 .badge-blue,
-.badge-success,
-.badge-error,
-.badge-warning,
-.badge-info {
-  background: var(--admin-bg-muted);
-  color: var(--admin-text-primary);
-  border-color: var(--admin-border);
-}
+.badge-info { background: var(--admin-primary-soft); color: var(--admin-primary); border-color: #C7DBFF; }
+
+:root[data-theme="dark"] .badge-green,
+:root[data-theme="dark"] .badge-success { background: rgba(74, 222, 128, 0.12); color: #4ADE80; border-color: rgba(74, 222, 128, 0.35); }
+:root[data-theme="dark"] .badge-red,
+:root[data-theme="dark"] .badge-error { background: rgba(248, 113, 113, 0.12); color: #F87171; border-color: rgba(248, 113, 113, 0.35); }
+:root[data-theme="dark"] .badge-yellow,
+:root[data-theme="dark"] .badge-warning { background: rgba(251, 191, 36, 0.12); color: #FBBF24; border-color: rgba(251, 191, 36, 0.35); }
+:root[data-theme="dark"] .badge-blue,
+:root[data-theme="dark"] .badge-info { background: var(--admin-primary-soft); color: var(--admin-primary); border-color: rgba(126, 162, 255, 0.45); }
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -239,5 +246,15 @@ tr:hover {
 @media (max-width: 768px) {
   table {
     min-width: 640px;
+  }
+  .data-table td,
+  .data-table th,
+  table td,
+  table th {
+    white-space: nowrap;
+  }
+  .title-cell {
+    white-space: normal;
+    max-width: 180px;
   }
 }

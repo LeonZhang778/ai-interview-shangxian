@@ -62,12 +62,12 @@
           <div class="q-score-header">
             <span class="q-index">Q{{ i + 1 }}</span>
             <span class="q-text">{{ q.question }}</span>
-            <span class="q-score" :style="{ color: q.score >= 7 ? '#A3A3A3' : q.score >= 5 ? '#A3A3A3' : '#A3A3A3' }">
+            <span class="q-score" :style="{ color: q.score >= 7 ? 'var(--state-success)' : q.score >= 5 ? 'var(--state-warning)' : 'var(--state-error)' }">
               {{ q.score }}
             </span>
           </div>
           <div class="q-bar">
-            <div class="q-bar-fill" :style="{ width: (q.score * 10) + '%', background: q.score >= 7 ? '#A3A3A3' : q.score >= 5 ? '#A3A3A3' : '#A3A3A3' }"></div>
+            <div class="q-bar-fill" :style="{ width: (q.score * 10) + '%', background: q.score >= 7 ? 'var(--state-success)' : q.score >= 5 ? 'var(--state-warning)' : 'var(--state-error)' }"></div>
           </div>
         </div>
       </div>

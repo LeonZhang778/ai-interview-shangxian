@@ -88,7 +88,7 @@
 
           <div v-else-if="tasks.length === 0" class="empty-state">
             <p>暂无生成记录</p>
-            <p class="sub">在左侧输入提示词开始创作吧</p>
+          <p class="sub">在上方输入提示词开始创作吧</p>
           </div>
 
           <div v-else class="task-grid">

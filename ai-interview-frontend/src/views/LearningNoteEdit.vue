@@ -776,10 +776,10 @@ label {
   border-left-color: var(--accent-light) !important;
 }
 .editor-wrapper :deep(.CodeMirror-selected) {
-  background: rgba(128, 128, 128,0.2) !important;
+  background: var(--gray-a20) !important;
 }
 .editor-wrapper :deep(.CodeMirror-focused .CodeMirror-selected) {
-  background: rgba(128, 128, 128,0.3) !important;
+  background: var(--gray-a30) !important;
 }
 .editor-wrapper :deep(.CodeMirror-activeline-background) {
   background: var(--bg-hover) !important;

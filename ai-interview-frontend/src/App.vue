@@ -61,12 +61,12 @@
     </div>
 
     <router-view />
-    <BugReportBanner />
+    <BugReportBanner v-if="showBugReport" />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, onUnmounted, watch } from 'vue'
+import { computed, onMounted, ref, onUnmounted, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import BugReportBanner from './components/BugReportBanner.vue'
 import AnnouncementBanner from './components/AnnouncementBanner.vue'
@@ -110,6 +110,8 @@ watch(() => route.path, () => {
 })
 
 useTheme()
+
+const showBugReport = computed(() => !route.path.startsWith('/interview/'))
 
 async function fetchUnreadCount() {
   if (!authStore.token) return
