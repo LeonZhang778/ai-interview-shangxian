@@ -6,7 +6,7 @@
     <div v-else-if="report" style="max-width:700px;margin:30px auto">
       <!-- 头部提示 -->
       <div class="share-banner">
-        <span class="banner-icon">🔗</span>
+        <span class="banner-icon"><BaseIcon name="link" :size="16" /></span>
         <span>这是来自 <strong>智面AI</strong> 的面试报告分享</span>
       </div>
 
@@ -57,7 +57,7 @@
 
       <!-- 各题得分 -->
       <div class="card" style="margin-top:16px" v-if="report.question_scores?.length">
-        <h3 style="margin-bottom:12px">📊 各题得分</h3>
+        <h3 style="margin-bottom:12px"><BaseIcon name="chart" :size="16" /> 各题得分</h3>
         <div v-for="(q, i) in report.question_scores" :key="i" class="q-score-item">
           <div class="q-score-header">
             <span class="q-index">Q{{ i + 1 }}</span>
@@ -74,14 +74,14 @@
 
       <!-- CTA引导 -->
       <div class="card cta-card" style="margin-top:24px;margin-bottom:40px">
-        <h3 style="margin-bottom:8px;color:var(--text-primary)">🎯 也想试试 AI 模拟面试？</h3>
+        <h3 style="margin-bottom:8px;color:var(--text-primary)"><BaseIcon name="target" :size="16" /> 也想试试 AI 模拟面试？</h3>
         <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">上传简历，AI 为你量身定制面试题，实时评估你的表现</p>
         <router-link to="/register" class="btn-cta">免费开始面试</router-link>
       </div>
     </div>
 
     <div v-else class="card" style="text-align:center;padding:60px;max-width:500px;margin:60px auto;color:var(--text-muted)">
-      <p style="font-size:40px;margin-bottom:16px">🔗</p>
+        <p style="font-size:40px;margin-bottom:16px"><BaseIcon name="link" :size="40" /></p>
       <p style="font-size:16px;margin-bottom:8px">分享链接无效或已失效</p>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">该分享可能已被取消或链接不正确</p>
       <router-link to="/" style="display:inline-block;padding:10px 24px;background: var(--accent-primary); color: var(--bg-base);border-radius:8px;text-decoration:none">
@@ -96,6 +96,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getSharedReport } from '../api/interview'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const route = useRoute()
 const shareToken = route.params.token
@@ -183,6 +184,9 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+@media (max-width: 520px) {
+  .two-col { grid-template-columns: 1fr; }
 }
 ul {
   list-style: none;

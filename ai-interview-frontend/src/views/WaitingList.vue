@@ -4,7 +4,7 @@
     <div class="auth-card">
       <!-- Step 1: 填写信息 -->
       <template v-if="step === 1">
-        <h2>📋 等候名单</h2>
+        <h2><BaseIcon name="clipboard" :size="18" /> 等候名单</h2>
         <p class="subtitle">留下您的信息，我们会在开放后第一时间通知您</p>
         <form @submit.prevent="handleSubmit">
           <div class="form-row">
@@ -35,7 +35,7 @@
 
       <!-- Step 2: 等待验证 -->
       <template v-else-if="step === 2">
-        <h2>📧 查收邮件</h2>
+        <h2><BaseIcon name="mail" :size="18" /> 查收邮件</h2>
         <p class="subtitle">验证邮件已发送至 <strong style="color:var(--accent-light)">{{ form.email }}</strong></p>
         <p class="hint">请点击邮件中的链接完成验证，验证后您将加入等候名单。</p>
         <p v-if="error" class="error">{{ error }}</p>
@@ -50,7 +50,7 @@
 
       <!-- Step 3: 验证成功 -->
       <template v-else-if="step === 3">
-        <h2>✅ 验证成功</h2>
+        <h2><BaseIcon name="check" :size="18" /> 验证成功</h2>
         <p class="subtitle">您已成功加入等候名单！</p>
         <p class="hint">我们会在开放后通过邮件通知您，请留意您的邮箱。</p>
         <router-link to="/login" class="btn-glow" style="display:block;text-decoration:none;margin-top:16px">返回登录</router-link>
@@ -64,6 +64,7 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { submitWaitingList, verifyWaitingListEmail, resendWaitingListVerification } from '../api/waitingList'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const route = useRoute()
 const step = ref(1)

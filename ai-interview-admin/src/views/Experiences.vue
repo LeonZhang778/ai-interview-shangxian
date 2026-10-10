@@ -86,7 +86,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3>{{ detailItem.title }}</h3>
-          <button class="modal-close" @click="detailItem = null">&times;</button>
+          <button class="modal-close" aria-label="关闭详情" @click="detailItem = null"><BaseIcon name="x" :size="16" /></button>
         </div>
         <div class="modal-body">
           <div class="detail-meta">
@@ -114,6 +114,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { experienceApi } from '../api'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const items = ref([])
 const loading = ref(false)
@@ -294,6 +295,7 @@ onMounted(() => fetchData())
   font-size: 14px;
   color: var(--admin-text-primary);
   border-bottom: 1px solid var(--admin-border);
+  white-space: nowrap;
 }
 .data-table tr:hover { background: var(--admin-bg-page); }
 .row-selected { background: var(--admin-primary-soft) !important; }
@@ -316,6 +318,7 @@ onMounted(() => fetchData())
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 .status-badge.pending { background: var(--admin-bg-muted); color: var(--admin-text-secondary); }
 .status-badge.published { background: var(--admin-primary-soft); color: var(--admin-primary); }

@@ -48,8 +48,8 @@
               {{ g.name }}
               <span class="group-count">{{ g.count }}</span>
               <span class="group-actions" @click.stop>
-                <span class="group-action" @click="startEditGroup(g)" title="重命名">✏️</span>
-                <span class="group-action" @click="confirmDeleteGroup(g)" title="删除">🗑️</span>
+                <span class="group-action" @click="startEditGroup(g)" title="重命名"><BaseIcon name="pencil" :size="14" /></span>
+                <span class="group-action" @click="confirmDeleteGroup(g)" title="删除"><BaseIcon name="trash" :size="14" /></span>
               </span>
             </template>
           </span>
@@ -75,7 +75,7 @@
       <div v-if="loading" class="loading-state">加载中...</div>
 
       <div v-else-if="collections.length === 0" class="empty-state">
-        <div class="empty-icon">⭐</div>
+        <div class="empty-icon"><BaseIcon name="star" :size="40" /></div>
         <p>还没有收藏面经</p>
         <router-link to="/experiences" class="btn-browse">去逛逛</router-link>
       </div>
@@ -101,9 +101,9 @@
           </div>
           <div class="card-bottom">
             <div class="card-stats">
-              <span>👁 {{ item.experience.view_count }}</span>
-              <span>👍 {{ item.experience.like_count }}</span>
-              <span>⭐ {{ item.experience.collect_count }}</span>
+              <span><BaseIcon name="eye" :size="14" /> {{ item.experience.view_count }}</span>
+              <span><BaseIcon name="thumbs-up" :size="14" /> {{ item.experience.like_count }}</span>
+              <span><BaseIcon name="star-fill" :size="14" /> {{ item.experience.collect_count }}</span>
             </div>
             <div class="card-group-move">
               <select

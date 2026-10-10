@@ -10,7 +10,7 @@
         {{ expanded ? '▾' : '▸' }}
       </span>
       <span class="toggle placeholder" v-else></span>
-      <span class="node-icon">{{ node.icon || '📒' }}</span>
+      <span class="node-icon"><BaseIcon name="notebook" :size="14" /></span>
       <span class="node-name">{{ node.name }}</span>
       <span class="node-count" v-if="node.note_count > 0">{{ node.note_count }}</span>
     </div>
@@ -69,6 +69,7 @@
 
 <script setup>
 import { ref, nextTick } from 'vue'
+import BaseIcon from './BaseIcon.vue'
 
 const props = defineProps({
   node: { type: Object, required: true },

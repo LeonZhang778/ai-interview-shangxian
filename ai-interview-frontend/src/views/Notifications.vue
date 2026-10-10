@@ -10,7 +10,7 @@
 
     <div v-if="loading" class="loading-state">加载中...</div>
     <div v-else-if="notifications.length === 0" class="empty-state">
-      <div class="empty-icon">🔔</div>
+      <div class="empty-icon"><BaseIcon name="bell" :size="40" /></div>
       <p>暂无通知</p>
     </div>
 
@@ -23,9 +23,9 @@
         @click="handleClick(n)"
       >
         <div class="notification-icon">
-          <span v-if="n.type === 'interview'">🎯</span>
-          <span v-else-if="n.type === 'experience'">📝</span>
-          <span v-else>🔔</span>
+          <BaseIcon v-if="n.type === 'interview'" name="target" :size="18" />
+          <BaseIcon v-else-if="n.type === 'experience'" name="file-text" :size="18" />
+          <BaseIcon v-else name="bell" :size="18" />
         </div>
         <div class="notification-body">
           <div class="notification-title">{{ n.title }}</div>
@@ -34,7 +34,7 @@
         </div>
         <div class="notification-actions">
           <span v-if="!n.is_read" class="unread-dot"></span>
-          <button class="btn-delete" @click.stop="handleDelete(n.id)" title="删除">×</button>
+          <button class="btn-delete" aria-label="删除通知" @click.stop="handleDelete(n.id)" title="删除"><BaseIcon name="x" :size="14" /></button>
         </div>
       </div>
     </div>
@@ -50,6 +50,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getNotifications, markRead, markAllRead, deleteNotification } from '../api/notification'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const router = useRouter()
 const notifications = ref([])

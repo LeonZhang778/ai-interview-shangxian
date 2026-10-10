@@ -9,10 +9,10 @@
           role="alert"
         >
           <span class="toast-icon" aria-hidden="true">
-            {{ toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ' }}
+            <BaseIcon :name="toast.type === 'success' ? 'check' : toast.type === 'error' ? 'x' : 'info'" :size="14" />
           </span>
           <span class="toast-message">{{ toast.message }}</span>
-          <button class="toast-close" type="button" aria-label="关闭" @click="store.removeToast(toast.id)">✕</button>
+          <button class="toast-close" type="button" aria-label="关闭" @click="store.removeToast(toast.id)"><BaseIcon name="x" :size="14" /></button>
         </div>
       </TransitionGroup>
     </div>
@@ -21,6 +21,7 @@
 
 <script setup>
 import { useMediaStore } from '../../stores/media'
+import BaseIcon from '../BaseIcon.vue'
 
 const store = useMediaStore()
 </script>

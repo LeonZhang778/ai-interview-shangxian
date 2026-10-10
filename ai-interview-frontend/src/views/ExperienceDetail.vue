@@ -51,11 +51,11 @@
       <!-- 互动区 -->
       <div class="interaction-bar">
         <button class="interact-btn" :class="{ liked }" @click="handleLike">
-          <span class="icon">{{ liked ? '❤️' : '🤍' }}</span>
+          <span class="icon"><BaseIcon name="heart" :size="16" :filled="liked" /></span>
           <span>点赞 {{ experience.like_count }}</span>
         </button>
         <button class="interact-btn" :class="{ collected }" @click="handleCollect">
-          <span class="icon">{{ collected ? '⭐' : '☆' }}</span>
+          <span class="icon"><BaseIcon :name="collected ? 'star-fill' : 'star'" :size="16" /></span>
           <span>{{ collected ? '已收藏' : '收藏' }} {{ experience.collect_count }}</span>
         </button>
       </div>
@@ -191,6 +191,7 @@ import { getExperienceDetail, likeExperience, collectExperience, getInteractionS
 import { startPractice } from '../api/interview'
 import { useAuthStore } from '../stores/auth'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { renderExperienceContent } from '../utils/experienceContent'
 
 const route = useRoute()

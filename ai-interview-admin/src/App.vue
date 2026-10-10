@@ -8,34 +8,34 @@
       <div class="sidebar-subtitle">后台管理</div>
       <nav class="sidebar-nav">
         <router-link to="/" exact-active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 数据概览
+          <BaseIcon name="dashboard" :size="16" /> 数据概览
         </router-link>
         <router-link to="/users" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 用户管理
+          <BaseIcon name="users" :size="16" /> 用户管理
         </router-link>
         <router-link to="/interviews" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 面试记录
+          <BaseIcon name="video" :size="16" /> 面试记录
         </router-link>
         <router-link to="/admins" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 管理员管理
+          <BaseIcon name="shield" :size="16" /> 管理员管理
         </router-link>
         <router-link to="/announcements" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 公告管理
+          <BaseIcon name="megaphone" :size="16" /> 公告管理
         </router-link>
         <router-link to="/settings" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 系统设置
+          <BaseIcon name="settings" :size="16" /> 系统设置
         </router-link>
         <router-link to="/feedbacks" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 用户反馈
+          <BaseIcon name="message-square" :size="16" /> 用户反馈
         </router-link>
         <router-link to="/audit-logs" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 操作日志
+          <BaseIcon name="history" :size="16" /> 操作日志
         </router-link>
         <router-link to="/experiences" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 面经管理
+          <BaseIcon name="newspaper" :size="16" /> 面经管理
         </router-link>
         <router-link to="/waiting-list" active-class="active">
-          <span class="nav-icon" aria-hidden="true"></span> 候选名单
+          <BaseIcon name="list-check" :size="16" /> 候选名单
         </router-link>
       </nav>
       <div class="sidebar-footer">
@@ -58,6 +58,7 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useRouter } from 'vue-router'
 import { authApi } from './api'
+import BaseIcon from './components/BaseIcon.vue'
 const authStore = useAuthStore()
 const router = useRouter()
 const isDark = ref(false)
@@ -154,24 +155,6 @@ async function logout() { await authStore.logout(); router.push('/login') }
 .sidebar-nav a.active {
   background: var(--admin-bg-sidebar-active);
   color: var(--admin-text-sidebar-active);
-}
-
-.nav-icon {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  position: relative;
-  opacity: 0.9;
-}
-
-.nav-icon::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 1px;
-  background: currentColor;
 }
 
 .sidebar-footer {

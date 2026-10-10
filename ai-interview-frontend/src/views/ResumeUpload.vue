@@ -11,7 +11,7 @@
           <div class="upload-area" @click="$refs.fileInput.click()" @dragover.prevent @drop.prevent="onDrop">
             <input ref="fileInput" type="file" accept=".pdf,.docx" @change="onFileChange" hidden />
             <p v-if="!file" style="color:var(--text-muted)">点击或拖拽上传 PDF / DOCX 简历</p>
-            <p v-else>📎 {{ file.name }}</p>
+            <p v-else><BaseIcon name="paperclip" :size="14" /> {{ file.name }}</p>
           </div>
         </div>
         <div class="form-group">
@@ -27,7 +27,7 @@
 
       <!-- Step 1.5: 解析动画 -->
       <div v-if="step === 'parsing'" class="parsing-stage">
-        <div class="parsing-icon">🔍</div>
+        <div class="parsing-icon"><BaseIcon name="search" :size="32" /></div>
         <h3>{{ parsingTitle }}</h3>
         <div class="progress-bar-wrapper">
           <div class="progress-bar" :style="{ width: progress + '%' }"></div>
@@ -35,7 +35,7 @@
         <p class="progress-text">{{ progress }}%</p>
         <div class="tips-area">
           <transition name="tip-fade" mode="out-in">
-            <p class="tip-text" :key="currentTip">💡 {{ currentTip }}</p>
+            <p class="tip-text" :key="currentTip"><BaseIcon name="lightbulb" :size="14" /> {{ currentTip }}</p>
           </transition>
         </div>
       </div>
@@ -63,13 +63,13 @@
           </div>
           <p v-if="analysis.summary" class="analysis-summary">{{ analysis.summary }}</p>
           <div class="analysis-section" v-if="analysis.keyword_match?.length">
-            <h4>🎯 匹配技能</h4>
+            <h4><BaseIcon name="target" :size="14" /> 匹配技能</h4>
             <div class="tag-list">
               <span v-for="k in analysis.keyword_match" :key="k" class="tag tag-green">{{ k }}</span>
             </div>
           </div>
           <div class="analysis-section" v-if="analysis.missing_keywords?.length">
-            <h4>⚠️ 缺少技能</h4>
+            <h4><BaseIcon name="alert-triangle" :size="14" /> 缺少技能</h4>
             <div class="tag-list">
               <span v-for="k in analysis.missing_keywords" :key="k" class="tag tag-red">{{ k }}</span>
             </div>
@@ -85,7 +85,7 @@
             </div>
           </div>
           <div class="analysis-section" v-if="analysis.suggestions?.length">
-            <h4>💡 改进建议</h4>
+            <h4><BaseIcon name="lightbulb" :size="14" /> 改进建议</h4>
             <ul><li v-for="(s, i) in analysis.suggestions" :key="i">{{ s }}</li></ul>
           </div>
         </div>
@@ -133,7 +133,7 @@
         <p class="progress-text">{{ startProgress }}%</p>
         <div class="tips-area">
           <transition name="tip-fade" mode="out-in">
-            <p class="tip-text" :key="startTip">💡 {{ startTip }}</p>
+            <p class="tip-text" :key="startTip"><BaseIcon name="lightbulb" :size="14" /> {{ startTip }}</p>
           </transition>
         </div>
       </div>
@@ -147,6 +147,7 @@ import { useRouter } from 'vue-router'
 import { uploadResume, getResume } from '../api/resume'
 import { startInterview } from '../api/interview'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const router = useRouter()
 const step = ref(1)
@@ -304,7 +305,7 @@ let startTipTimer = null
 let startProgressTimer = null
 
 const startTips = [
-  '深呼吸，保持冷静自信 💪',
+  '深呼吸，保持冷静自信',
   '回答时尽量结合你的项目经验',
   '思路比答案更重要，先理清再作答',
   '不会的问题坦诚说不会，展示学习意愿',

@@ -35,7 +35,7 @@
             title="上移"
             @click="moveUp(index)"
           >
-            ↑
+            <BaseIcon name="arrow-up" :size="14" />
           </button>
           <button
             class="move-btn"
@@ -43,9 +43,9 @@
             title="下移"
             @click="moveDown(index)"
           >
-            ↓
+            <BaseIcon name="arrow-down" :size="14" />
           </button>
-          <button class="remove-btn" title="移除" @click="removeFile(file.id)">✕</button>
+          <button class="remove-btn" aria-label="移除文件" title="移除" @click="removeFile(file.id)"><BaseIcon name="x" :size="14" /></button>
         </div>
       </div>
     </div>
@@ -82,6 +82,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import MediaFileDropZone from '../../components/media/MediaFileDropZone.vue'
 import MediaTaskHistory from '../../components/media/MediaTaskHistory.vue'
+import BaseIcon from '../../components/BaseIcon.vue'
 
 const store = useMediaStore()
 const submitting = ref(false)

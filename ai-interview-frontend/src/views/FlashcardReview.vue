@@ -72,7 +72,7 @@
       </section>
 
       <section v-else class="empty-state">
-        <div class="empty-icon">✓</div>
+        <div class="empty-icon"><BaseIcon name="check" :size="40" /></div>
         <p>今天没有待复习的闪卡</p>
         <router-link to="/learning-notes" class="primary-link">去笔记详情页生成闪卡</router-link>
       </section>
@@ -84,6 +84,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { getDueCards, getFlashcardStats, reviewCard } from '../api/learningNote'
 
 const router = useRouter()

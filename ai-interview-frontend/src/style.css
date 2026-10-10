@@ -35,6 +35,7 @@
   --state-error: #F87171;
   --state-warning: #FBBF24;
   --state-info: var(--accent-primary);
+  --soft-info: rgba(126, 162, 255, 0.12);
 
   /* Backward-compatible aliases used by existing components */
   --green: var(--state-success);
@@ -98,6 +99,7 @@
   --state-error: #DC2626;
   --state-warning: #D97706;
   --state-info: var(--accent-primary);
+  --soft-info: rgba(37, 99, 235, 0.10);
 
   /* Backward-compatible aliases used by existing components */
   --green: var(--state-success);
@@ -307,7 +309,7 @@ select option:checked {
 .badge-success { background: var(--green-bg); color: var(--state-success); border-color: var(--state-success); }
 .badge-error { background: var(--red-bg); color: var(--state-error); border-color: var(--state-error); }
 .badge-warning { background: var(--amber-bg); color: var(--state-warning); border-color: var(--state-warning); }
-.badge-info { background: var(--bg-hover); color: var(--state-info); border-color: var(--state-info); }
+.badge-info { background: var(--soft-info); color: var(--state-info); border-color: var(--state-info); }
 
 /* Scrollbar */
 ::-webkit-scrollbar {

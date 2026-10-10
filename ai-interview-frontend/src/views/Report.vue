@@ -79,7 +79,7 @@
 
       <!-- 各题得分 -->
       <div class="card" style="margin-top:16px" v-if="report.question_scores?.length">
-        <h3 style="margin-bottom:12px">📊 各题得分</h3>
+        <h3 style="margin-bottom:12px"><BaseIcon name="chart" :size="16" /> 各题得分</h3>
         <div v-for="(q, i) in report.question_scores" :key="i" class="q-score-item">
           <div class="q-score-header">
             <span class="q-index">Q{{ i + 1 }}</span>
@@ -96,7 +96,7 @@
 
       <!-- 分享链接面板 -->
       <div class="card share-link-panel" style="margin-top:16px">
-        <h3 style="margin-bottom:12px;color:var(--accent-light)">🔗 分享报告</h3>
+        <h3 style="margin-bottom:12px;color:var(--accent-light)"><BaseIcon name="link" :size="16" /> 分享报告</h3>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">生成分享链接，发给朋友查看你的面试表现</p>
 
         <div v-if="isShared && shareToken" class="share-link-box">
@@ -116,7 +116,7 @@
 
       <!-- 保存到学习笔记 -->
       <div class="card save-note-panel" style="margin-top:16px">
-        <h3 style="margin-bottom:12px;color:var(--accent-light)">📝 保存到学习笔记</h3>
+        <h3 style="margin-bottom:12px;color:var(--accent-light)"><BaseIcon name="file-text" :size="16" /> 保存到学习笔记</h3>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
           将本次面试结果自动生成复盘笔记草稿，含逐题记录、错题标记和 AI 改进建议
         </p>
@@ -169,7 +169,7 @@
           <div class="preview-modal qrcode-modal">
             <div class="preview-header">
               <span>扫码查看报告</span>
-              <button class="preview-close" @click="closeQRCode">&times;</button>
+      <button class="preview-close" aria-label="关闭二维码" @click="closeQRCode"><BaseIcon name="x" :size="16" /></button>
             </div>
             <div class="preview-body">
               <img :src="qrCodeDataUrl" class="qrcode-img" alt="报告分享二维码" />
@@ -196,6 +196,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getReport, shareInterview, unshareInterview, exportReportDocx, regenerateReport } from '../api/interview'
 import { generateFromInterview, recommendForInterview } from '../api/learningNote'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -817,6 +818,7 @@ ul li::before {
 .preview-footer { display: flex; gap: 12px; padding: 18px 22px; border-top: 1px solid var(--border-default); justify-content: stretch; }
 .preview-footer > * { flex: 1; text-align: center; }
 @media (max-width: 520px) {
+  .two-col { grid-template-columns: 1fr; }
   .preview-overlay { padding: 12px; }
   .preview-footer { flex-direction: column; }
 }

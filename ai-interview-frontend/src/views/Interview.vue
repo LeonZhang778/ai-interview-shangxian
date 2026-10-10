@@ -72,7 +72,7 @@
           </div>
           <div class="bubble feedback-bubble">
             <div class="bubble-content" v-html="renderContent(msg.feedback)"></div>
-            <div v-if="msg.score" class="bubble-score">⭐ {{ msg.score }}/10</div>
+            <div v-if="msg.score" class="bubble-score"><BaseIcon name="star-fill" :size="14" /> {{ msg.score }}/10</div>
           </div>
         </div>
       </template>
@@ -125,7 +125,7 @@
 
     <!-- 面试结束 -->
     <div class="input-area finished" v-if="!preparing && finished">
-      <p>🎉 面试结束！</p>
+      <p><BaseIcon name="check" :size="18" /> 面试结束！</p>
       <!-- 报告已改为后台生成：status=completed 只代表问答结束，报告可能还在路上。
            这里等 report_status 就绪再放行，避免用户点进一个空白报告页；
            等待期间也允许先进报告页（那边同样会轮询并给出重试入口）。 -->
@@ -160,6 +160,7 @@ import { useAuthStore } from '../stores/auth'
 import { submitAnswerStream, getMessages, regenerateReport } from '../api/interview'
 import { escapeHtml } from '../utils/html'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -229,7 +230,7 @@ async function retryReport() {
     reportReady.value = false
     startReportPolling()
   } catch (e) {
-    messages.value.push({ role: 'interviewer', content: '⚠️ 重新生成报告失败：' + e.message })
+    messages.value.push({ role: 'interviewer', content: '重新生成报告失败：' + e.message })
     scrollToBottom()
   }
 }
@@ -238,7 +239,7 @@ async function retryReport() {
 const preparing = ref(true)
 const preparePercent = ref(0)
 const prepareTips = [
-  '请做好准备，保持冷静自信 💪',
+  '请做好准备，保持冷静自信',
   '回答时尽量结合项目经验',
   '注意条理清晰，分点作答',
   '面试官会根据你的简历提问'
@@ -250,7 +251,7 @@ const userAvatar = computed(() => authStore.userAvatar || '')
 const avatarError = ref(false)
 const userInitial = computed(() => {
   const name = authStore.userName || ''
-  return name.charAt(0).toUpperCase() || '👤'
+  return name.charAt(0).toUpperCase() || 'U'
 })
 
 // 注意：本函数的返回值会交给 v-html 渲染。AI 输出受用户回答/简历内容影响、
@@ -417,7 +418,7 @@ async function handleSubmit() {
     // 避免界面永久停在“光标闪烁”的思考态。
     if (!doneHandled) {
       if (result?.error) {
-        messages.value.push({ role: 'interviewer', content: '⚠️ ' + result.error.message })
+        messages.value.push({ role: 'interviewer', content: result.error.message })
       }
       try {
         await loadMessages()
@@ -428,7 +429,7 @@ async function handleSubmit() {
     }
   } catch (e) {
     streamingText.value = ''
-    messages.value.push({ role: 'interviewer', content: '⚠️ 出错了：' + e.message })
+        messages.value.push({ role: 'interviewer', content: '出错了：' + e.message })
     scrollToBottom()
     // 出错也尝试拉一次，把后端已落库的内容同步回来
     try {

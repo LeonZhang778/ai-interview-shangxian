@@ -16,7 +16,7 @@
         :to="tool.path"
         :class="['tool-chip', { active: $route.path === tool.path }]"
       >
-        <span class="tool-chip-icon" :style="{ background: tool.color }">{{ tool.icon }}</span>
+        <span class="tool-chip-icon" :style="{ background: tool.color }"><BaseIcon :name="tool.icon" :size="16" /></span>
         <span class="tool-chip-body">
           <strong>{{ tool.name }}</strong>
           <small>{{ tool.description }}</small>
@@ -42,20 +42,21 @@ import { useRoute } from 'vue-router'
 import { useMediaStore } from '../stores/media'
 import MediaToast from '../components/media/MediaToast.vue'
 import MediaFilesPanel from '../components/media/MediaFilesPanel.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const store = useMediaStore()
 const route = useRoute()
 
 const tools = [
-  { code: 'convert', path: '/media-tools/convert', name: '格式转换', icon: '↗', color: '#A3A3A3', description: '转换视频或音频格式' },
-  { code: 'compress', path: '/media-tools/compress', name: '视频压缩', icon: '▤', color: '#A3A3A3', description: '减小体积，保持清晰度' },
-  { code: 'trim', path: '/media-tools/trim', name: '视频截取', icon: '⌁', color: '#A3A3A3', description: '截取需要的时间片段' },
-  { code: 'extract_audio', path: '/media-tools/extract-audio', name: '提取音频', icon: '♫', color: '#A3A3A3', description: '从视频中提取音频' },
-  { code: 'audio_convert', path: '/media-tools/audio-convert', name: '音频转换', icon: '◖', color: '#A3A3A3', description: '转换音频编码和格式' },
-  { code: 'gif', path: '/media-tools/gif', name: '视频转GIF', icon: '✦', color: '#A3A3A3', description: '截取视频片段生成 GIF' },
-  { code: 'merge', path: '/media-tools/merge', name: '视频合并', icon: '⊕', color: '#A3A3A3', description: '按顺序合并多个视频' },
-  { code: 'watermark', path: '/media-tools/watermark', name: '添加水印', icon: '◇', color: '#A3A3A3', description: '给视频添加图片或文字水印' },
-  { code: 'redact', path: '/media-tools/redact', name: '区域遮挡', icon: '⊡', color: '#A3A3A3', description: '模糊或遮挡视频中的敏感区域' },
+  { code: 'convert', path: '/media-tools/convert', name: '格式转换', icon: 'convert', color: '#2563EB', description: '转换视频或音频格式' },
+  { code: 'compress', path: '/media-tools/compress', name: '视频压缩', icon: 'compress', color: '#2563EB', description: '减小体积，保持清晰度' },
+  { code: 'trim', path: '/media-tools/trim', name: '视频截取', icon: 'scissors', color: '#2563EB', description: '截取需要的时间片段' },
+  { code: 'extract_audio', path: '/media-tools/extract-audio', name: '提取音频', icon: 'music', color: '#2563EB', description: '从视频中提取音频' },
+  { code: 'audio_convert', path: '/media-tools/audio-convert', name: '音频转换', icon: 'volume', color: '#2563EB', description: '转换音频编码和格式' },
+  { code: 'gif', path: '/media-tools/gif', name: '视频转GIF', icon: 'film', color: '#2563EB', description: '截取视频片段生成 GIF' },
+  { code: 'merge', path: '/media-tools/merge', name: '视频合并', icon: 'merge', color: '#2563EB', description: '按顺序合并多个视频' },
+  { code: 'watermark', path: '/media-tools/watermark', name: '添加水印', icon: 'droplet', color: '#2563EB', description: '给视频添加图片或文字水印' },
+  { code: 'redact', path: '/media-tools/redact', name: '区域遮挡', icon: 'redact', color: '#2563EB', description: '模糊或遮挡视频中的敏感区域' },
 ]
 
 store.loadCapabilities()

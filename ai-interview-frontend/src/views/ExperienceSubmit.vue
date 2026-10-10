@@ -90,7 +90,7 @@
             <div class="tags-list">
               <span v-for="(tag, i) in form.tags" :key="i" class="tag-item">
                 {{ tag }}
-                <button type="button" @click="removeTag(i)">&times;</button>
+                <button type="button" aria-label="移除标签" @click="removeTag(i)"><BaseIcon name="x" :size="12" /></button>
               </span>
             </div>
             <input
@@ -129,6 +129,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { submitExperience, getMyExperienceDetail, updateMyExperience } from '../api/experience'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { renderExperienceContent } from '../utils/experienceContent'
 
 const route = useRoute()

@@ -3,16 +3,16 @@
   <div class="container">
     <div class="my-feedbacks-page">
       <div class="page-header">
-        <h2>📋 我的反馈</h2>
+        <h2><BaseIcon name="clipboard" :size="18" /> 我的反馈</h2>
         <p class="subtitle">查看你提交的反馈及管理员回复</p>
       </div>
 
       <div v-if="loading" class="loading-state">加载中...</div>
 
       <div v-else-if="feedbacks.length === 0" class="empty-state">
-        <p class="empty-icon">📭</p>
+        <p class="empty-icon"><BaseIcon name="inbox" :size="40" /></p>
         <p>暂无反馈记录</p>
-        <p class="empty-hint">点击右下角 🐛 按钮提交反馈</p>
+        <p class="empty-hint">点击右下角反馈按钮提交反馈</p>
       </div>
 
       <div v-else class="feedback-list">
@@ -23,7 +23,7 @@
           </div>
           <p class="feedback-content">{{ item.content }}</p>
           <div v-if="item.admin_reply" class="admin-reply">
-            <div class="reply-label">💬 管理员回复</div>
+            <div class="reply-label"><BaseIcon name="message" :size="14" /> 管理员回复</div>
             <p class="reply-content">{{ item.admin_reply }}</p>
           </div>
           <div class="feedback-meta">
@@ -40,6 +40,7 @@
 import { ref, onMounted } from 'vue'
 import api from '../api/request'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const feedbacks = ref([])
 const loading = ref(true)

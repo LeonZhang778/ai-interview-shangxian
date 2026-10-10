@@ -12,7 +12,7 @@
     </div>
 
     <div v-else-if="data.total_interviews === 0" class="empty-state">
-      <div class="empty-icon">📊</div>
+      <div class="empty-icon"><BaseIcon name="chart" :size="40" /></div>
       <p>暂无面试数据</p>
       <router-link to="/resume/upload" class="cta-link">开始第一次面试</router-link>
     </div>
@@ -21,22 +21,22 @@
       <!-- 概览卡片 -->
       <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-icon">🎯</div>
+          <div class="stat-icon"><BaseIcon name="target" :size="24" /></div>
           <div class="stat-value">{{ data.total_interviews }}</div>
           <div class="stat-label">面试次数</div>
         </div>
         <div class="stat-card clickable" @click="data.recent_scores?.length && (showRecentScoresModal = true)">
-          <div class="stat-icon">⭐</div>
+          <div class="stat-icon"><BaseIcon name="star-fill" :size="24" /></div>
           <div class="stat-value">{{ latestScore }}</div>
           <div class="stat-label">最近得分<span v-if="data.recent_scores?.length > 1" class="hint">查看历史 ›</span></div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">📈</div>
+          <div class="stat-icon"><BaseIcon name="chart" :size="24" /></div>
           <div class="stat-value" :class="improvementClass">{{ improvementText }}</div>
           <div class="stat-label">进步率</div>
         </div>
         <div class="stat-card clickable" @click="data.weakest_dimension_details?.length && (showWeaknessModal = true)">
-          <div class="stat-icon">💡</div>
+          <div class="stat-icon"><BaseIcon name="lightbulb" :size="24" /></div>
           <div class="stat-value weakest">{{ data.weakest_dimension || '-' }}</div>
           <div class="stat-label">薄弱维度<span v-if="data.weakest_dimension_details?.length" class="hint">查看详情 ›</span></div>
         </div>
@@ -128,6 +128,7 @@
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { getAnalysis } from '../api/interview'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { useTheme } from '../composables/useTheme'
 import * as echarts from 'echarts/core'
 import { LineChart, BarChart, PieChart, RadarChart } from 'echarts/charts'

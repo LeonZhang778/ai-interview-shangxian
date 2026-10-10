@@ -10,7 +10,7 @@
       <span>{{ errorMessage }}</span>
       <div class="message-actions">
         <button type="button" class="message-retry" @click="loadData">重试</button>
-        <button type="button" class="message-close" aria-label="关闭错误提示" @click="errorMessage = ''">×</button>
+        <button type="button" class="message-close" aria-label="关闭错误提示" @click="errorMessage = ''"><BaseIcon name="x" :size="14" /></button>
       </div>
     </div>
     <div v-if="actionMessage" class="page-message success-message" role="status">
@@ -50,7 +50,7 @@
         <!-- 左侧：笔记本树 -->
         <aside class="sidebar">
           <div class="sidebar-header">
-            <h3>📒 笔记本</h3>
+            <h3><BaseIcon name="notebook" :size="16" /> 笔记本</h3>
             <button class="btn-add-nb" @click="showAddNotebook = true" title="新建笔记本">+</button>
           </div>
           <div class="notebook-tree" v-if="notebookTree.length > 0">
@@ -59,11 +59,11 @@
               :class="{ active: activeNotebookId === null }"
               @click="selectNotebook(null)"
             >
-              <span class="node-icon">📋</span>
+              <span class="node-icon"><BaseIcon name="clipboard" :size="15" /></span>
               <span class="node-name">全部笔记</span>
               <div class="all-notes-actions">
-                <button class="btn-export-all" :disabled="actionLoading" @click.stop="handleExportAll" title="导出全部笔记为 ZIP">⬇ MD</button>
-                <button class="btn-export-all btn-export-word" :disabled="actionLoading" @click.stop="handleExportAllDocx" title="导出全部笔记为 Word ZIP">⬇ DOCX</button>
+                <button class="btn-export-all" :disabled="actionLoading" @click.stop="handleExportAll" title="导出全部笔记为 ZIP"><BaseIcon name="download" :size="14" /> MD</button>
+                <button class="btn-export-all btn-export-word" :disabled="actionLoading" @click.stop="handleExportAllDocx" title="导出全部笔记为 Word ZIP"><BaseIcon name="download" :size="14" /> DOCX</button>
               </div>
             </div>
             <NotebookTreeNode
@@ -138,7 +138,7 @@
           <div v-if="loading" class="loading-state">加载中...</div>
 
           <div v-else-if="notes.length === 0" class="empty-state">
-            <div class="empty-icon">📝</div>
+            <div class="empty-icon"><BaseIcon name="file-text" :size="40" /></div>
             <p>还没有学习笔记，去创建第一篇吧</p>
             <router-link to="/learning-notes/edit" class="btn-browse">新建笔记</router-link>
           </div>
@@ -160,8 +160,8 @@
                   <span class="meta-type" :class="`type-${note.note_type}`">
                     {{ typeLabel(note.note_type) }}
                   </span>
-                  <span v-if="note.visibility === 'private'" class="meta-private">🔒 私密</span>
-                  <span v-if="note.visibility === 'public'" class="meta-public">🌐 公开</span>
+                  <span v-if="note.visibility === 'private'" class="meta-private"><BaseIcon name="lock" :size="13" /> 私密</span>
+                  <span v-if="note.visibility === 'public'" class="meta-public"><BaseIcon name="globe" :size="13" /> 公开</span>
                 </div>
                 <div class="card-tags" v-if="note.tags">
                   <span v-for="(tag, i) in note.tags.split(',').slice(0, 4)" :key="i" class="tag">{{ tag.trim() }}</span>
@@ -170,12 +170,12 @@
               </div>
               <div class="card-bottom">
                 <div class="card-stats">
-                  <span>👁 {{ note.view_count || 0 }}</span>
-                  <span>👍 {{ note.like_count || 0 }}</span>
+                  <span><BaseIcon name="eye" :size="14" /> {{ note.view_count || 0 }}</span>
+                  <span><BaseIcon name="thumbs-up" :size="14" /> {{ note.like_count || 0 }}</span>
                 </div>
                 <div class="card-actions">
-                  <button class="btn-export-note" @click.stop="handleExportNote(note.id)" title="导出为 Markdown">⬇ MD</button>
-                  <button class="btn-export-note btn-export-word" @click.stop="handleExportNoteDocx(note.id)" title="导出为 Word">⬇ DOCX</button>
+                  <button class="btn-export-note" @click.stop="handleExportNote(note.id)" title="导出为 Markdown"><BaseIcon name="download" :size="14" /> MD</button>
+                  <button class="btn-export-note btn-export-word" @click.stop="handleExportNoteDocx(note.id)" title="导出为 Word"><BaseIcon name="download" :size="14" /> DOCX</button>
                   <span class="card-time">{{ formatTime(note.updated_at || note.created_at) }}</span>
                 </div>
               </div>
@@ -241,7 +241,7 @@
           <div v-if="loading" class="loading-state">加载中...</div>
 
           <div v-else-if="notes.length === 0" class="empty-state">
-            <div class="empty-icon" aria-hidden="true">▤</div>
+            <div class="empty-icon" aria-hidden="true"><BaseIcon name="notebook" :size="40" /></div>
             <p>公开广场还没有笔记</p>
             <router-link v-if="!authStore.isLoggedIn" to="/login" class="btn-browse">登录后创建笔记</router-link>
           </div>
@@ -269,8 +269,8 @@
               </div>
               <div class="card-bottom">
                 <div class="card-stats">
-                  <span>👁 {{ note.view_count || 0 }}</span>
-                  <span>👍 {{ note.like_count || 0 }}</span>
+                  <span><BaseIcon name="eye" :size="14" /> {{ note.view_count || 0 }}</span>
+                  <span><BaseIcon name="thumbs-up" :size="14" /> {{ note.like_count || 0 }}</span>
                 </div>
                 <span class="card-time">{{ formatTime(note.created_at) }}</span>
               </div>
@@ -301,6 +301,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
 import NotebookTreeNode from '../components/NotebookTreeNode.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { useAuthStore } from '../stores/auth'
 import {
   getMyNotes, getPublicNotes, getNoteStats, searchNotes,
@@ -1228,6 +1229,7 @@ onMounted(async () => {
   .content-layout {
     flex-direction: column;
     gap: 14px;
+    align-items: stretch;
   }
   .sidebar {
     width: 100%;
@@ -1246,7 +1248,27 @@ onMounted(async () => {
   }
   .type-tabs,
   .status-tabs {
-    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .type-tabs {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .type-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .status-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .status-tabs::-webkit-scrollbar {
+    display: none;
   }
   .search-group {
     max-width: none;

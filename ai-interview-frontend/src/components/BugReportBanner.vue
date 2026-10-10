@@ -4,7 +4,7 @@
       <div v-if="expanded" class="bug-panel">
         <div class="bug-header">
           <span>意见反馈</span>
-          <button class="close-btn" @click="expanded = false">&times;</button>
+          <button class="close-btn" aria-label="关闭反馈面板" @click="expanded = false"><BaseIcon name="x" :size="16" /></button>
         </div>
         <div class="form-group">
           <label>反馈类型</label>
@@ -30,7 +30,7 @@
       </div>
     </transition>
     <button class="bug-toggle" @click="expanded = !expanded" title="意见反馈" aria-label="意见反馈">
-      ?
+      <BaseIcon name="bug" :size="18" />
     </button>
   </div>
 </template>
@@ -38,6 +38,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import api from '../api/request'
+import BaseIcon from './BaseIcon.vue'
 
 const expanded = ref(false)
 const submitting = ref(false)
@@ -234,8 +235,13 @@ async function submitFeedback() {
 
 @media (max-width: 640px) {
   .bug-report-wrapper {
-    bottom: 12px;
-    right: 12px;
+    bottom: 10px;
+    right: 10px;
+  }
+  .bug-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
   }
   .bug-panel {
     width: calc(100vw - 32px);

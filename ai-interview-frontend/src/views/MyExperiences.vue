@@ -10,7 +10,7 @@
       <div v-if="loading" class="loading-state">加载中...</div>
 
       <div v-else-if="items.length === 0" class="empty-state">
-        <div class="empty-icon">📝</div>
+        <div class="empty-icon"><BaseIcon name="file-text" :size="40" /></div>
         <p>你还没有投稿过面经</p>
         <router-link to="/experiences/submit" class="btn-submit-link">去投稿</router-link>
       </div>
@@ -51,6 +51,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { getMyExperiences } from '../api/experience'
 
 const items = ref([])
@@ -205,18 +206,18 @@ onMounted(loadData)
 }
 
 .status-published {
-  background: rgba(163, 163, 163, 0.14);
-  color: #A3A3A3;
+  background: var(--green-bg);
+  color: var(--state-success);
 }
 
 .status-pending {
-  background: rgba(128, 128, 128, 0.14);
-  color: #A3A3A3;
+  background: var(--amber-bg);
+  color: var(--state-warning);
 }
 
 .status-rejected {
-  background: rgba(128, 128, 128, 0.14);
-  color: #A3A3A3;
+  background: var(--red-bg);
+  color: var(--state-error);
 }
 
 .card-actions {

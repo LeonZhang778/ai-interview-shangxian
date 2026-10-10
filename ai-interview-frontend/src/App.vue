@@ -23,12 +23,12 @@
             <router-link to="/resume/upload">上传简历</router-link>
             <router-link to="/feedbacks" title="我的反馈">我的反馈</router-link>
             <router-link to="/notifications" class="nav-bell-link" title="消息通知">
-              <span class="bell-icon">🔔</span>
+              <span class="bell-icon"><BaseIcon name="bell" :size="16" /></span>
               <span v-if="unreadCount > 0" class="bell-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
             </router-link>
             <router-link to="/profile" class="nav-user-link">
               <img v-if="authStore.userAvatar && !avatarError" :src="authStore.userAvatar" class="nav-avatar" alt="avatar" @error="avatarError = true" />
-              <span v-else class="nav-avatar-placeholder">👤</span>
+              <span v-else class="nav-avatar-placeholder"><BaseIcon name="user" :size="16" /></span>
               <span>{{ authStore.userName || '个人中心' }}</span>
             </router-link>
             <ThemeToggle />
@@ -75,6 +75,7 @@ import { useTheme } from './composables/useTheme'
 import { useRouter, useRoute } from 'vue-router'
 import { getProfile } from './api/user'
 import { getUnreadCount } from './api/notification'
+import BaseIcon from './components/BaseIcon.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()

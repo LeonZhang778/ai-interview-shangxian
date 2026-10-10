@@ -9,7 +9,7 @@
     </div>
 
     <div v-else class="main-container">
-      <button class="back-btn" @click="goBack">← 返回</button>
+      <button class="back-btn" @click="goBack"><BaseIcon name="chevron-left" :size="16" /> 返回</button>
 
       <div class="note-layout">
         <!-- 正文 -->
@@ -22,7 +22,8 @@
           <span v-if="note.source === 'interview'" class="meta-source">面试回流</span>
           <span v-if="note.status === 'draft'" class="meta-draft">草稿</span>
           <span class="meta-visibility">
-            {{ note.visibility === 'private' ? '🔒 仅自己' : '🌐 公开' }}
+            <template v-if="note.visibility === 'private'"><BaseIcon name="lock" :size="13" /> 仅自己</template>
+            <template v-else><BaseIcon name="globe" :size="13" /> 公开</template>
           </span>
           <span class="meta-time">{{ formatTime(note.updated_at) }}</span>
         </div>
@@ -33,13 +34,13 @@
 
       <!-- 游客提示 -->
       <div v-if="!note.is_owner && note.visibility === 'public'" class="guest-notice">
-        🌐 公开笔记 · 无需登录即可阅读
+        <BaseIcon name="globe" :size="14" /> 公开笔记 · 无需登录即可阅读
       </div>
 
 <!-- 面试回流关联入口 -->
       <div v-if="note.interview_id && note.is_owner" class="interview-link">
         <router-link :to="`/interview/${note.interview_id}/report`" class="link-text">
-          📋 查看关联的 AI 面试报告 →
+          <BaseIcon name="clipboard" :size="14" /> 查看关联的 AI 面试报告 <BaseIcon name="arrow-right" :size="14" />
         </router-link>
       </div>
 
@@ -50,7 +51,7 @@
           <div v-if="summary || keyPoints.length" class="summary-card">
             <div v-if="summary" class="summary-text">{{ summary }}</div>
             <div v-if="keyPoints.length" class="key-points">
-              <div class="key-points-title">📌 要点速览</div>
+              <div class="key-points-title"><BaseIcon name="pin" :size="14" /> 要点速览</div>
               <ul>
                 <li v-for="(point, i) in keyPoints" :key="i">{{ point }}</li>
               </ul>
@@ -74,10 +75,10 @@
       <!-- 底部统计 -->
       <div class="note-footer">
         <div class="footer-stats">
-          <span>👁 {{ note.view_count || 0 }}</span>
-          <span>👍 {{ note.like_count || 0 }}</span>
-          <span>★ {{ note.collect_count || 0 }}</span>
-          <span>💬 {{ note.comment_count || 0 }}</span>
+          <span><BaseIcon name="eye" :size="14" /> {{ note.view_count || 0 }}</span>
+          <span><BaseIcon name="thumbs-up" :size="14" /> {{ note.like_count || 0 }}</span>
+          <span><BaseIcon name="star-fill" :size="14" /> {{ note.collect_count || 0 }}</span>
+          <span><BaseIcon name="message" :size="14" /> {{ note.comment_count || 0 }}</span>
         </div>
         <div v-if="note.is_owner" class="footer-actions">
           <button class="btn-edit" :disabled="flashcardLoading" @click="handleGenerateFlashcards">
@@ -87,8 +88,8 @@
           <button class="btn-export-word" :disabled="exportStatus === 'loading'" @click="handleExportWord">
             {{ exportStatus === 'loading' ? '导出中...' : '导出 Word' }}
           </button>
-          <button class="btn-edit" @click="goEdit">✏️ 编辑</button>
-          <button class="btn-delete" @click="handleDelete">🗑️ 删除</button>
+          <button class="btn-edit" @click="goEdit"><BaseIcon name="pencil" :size="14" /> 编辑</button>
+          <button class="btn-delete" @click="handleDelete"><BaseIcon name="trash" :size="14" /> 删除</button>
         </div>
       </div>
       <p v-if="flashcardMessage" class="action-tip">{{ flashcardMessage }}</p>
@@ -183,7 +184,7 @@
         </div>
         <!-- 目录侧栏 -->
         <aside v-if="tocList.length > 1" class="note-toc">
-          <div class="toc-title">📋 目录</div>
+          <div class="toc-title"><BaseIcon name="list" :size="14" /> 目录</div>
           <ul>
             <li
               v-for="item in tocList"
@@ -199,12 +200,12 @@
           class="toc-fab"
           @click="showTocDrawer = !showTocDrawer"
           aria-label="目录"
-        >📋</button>
+        ><BaseIcon name="list" :size="18" /></button>
         <transition name="toc-drawer">
           <div v-if="showTocDrawer && tocList.length > 1" class="toc-drawer">
             <div class="toc-drawer-header">
-              <span>📋 目录</span>
-              <button class="toc-drawer-close" @click="showTocDrawer = false">✕</button>
+              <span><BaseIcon name="list" :size="14" /> 目录</span>
+              <button class="toc-drawer-close" aria-label="关闭目录" @click="showTocDrawer = false"><BaseIcon name="x" :size="16" /></button>
             </div>
             <ul>
               <li
@@ -225,6 +226,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { Viewer } from '@bytemd/vue-next'
 import gfm from '@bytemd/plugin-gfm'
 import highlight from '@bytemd/plugin-highlight'

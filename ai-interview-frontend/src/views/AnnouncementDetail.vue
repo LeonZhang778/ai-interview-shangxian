@@ -3,7 +3,7 @@
   <div class="announcement-detail-page">
     <div class="container">
       <div class="page-header">
-        <router-link to="/announcements" class="back-link">&larr; 返回公告列表</router-link>
+        <router-link to="/announcements" class="back-link"><BaseIcon name="chevron-left" :size="16" /> 返回公告列表</router-link>
       </div>
 
       <div v-if="loading" class="loading">
@@ -12,7 +12,7 @@
       </div>
 
       <div v-else-if="!announcement" class="empty-state">
-        <div class="empty-icon">&#x1F615;</div>
+        <div class="empty-icon"><BaseIcon name="info" :size="40" /></div>
         <p>公告不存在或已过期</p>
       </div>
 
@@ -21,7 +21,7 @@
         <div class="card-inner">
           <div class="detail-header">
             <span class="tag" :class="`type-${announcement.type}`">{{ typeLabels[announcement.type] || '通知' }}</span>
-            <span v-if="announcement.is_pinned" class="pin-badge">&#x1F4CC; 置顶</span>
+            <span v-if="announcement.is_pinned" class="pin-badge"><BaseIcon name="pin" :size="13" /> 置顶</span>
           </div>
           <h1 class="detail-title">{{ announcement.title }}</h1>
           <div class="detail-meta">
@@ -40,6 +40,7 @@ import { useRoute } from 'vue-router'
 import { getAnnouncementDetail } from '../api/announcement'
 import { escapeHtml } from '../utils/html'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const route = useRoute()
 const announcement = ref(null)

@@ -2,7 +2,7 @@
   <StarryBackground />
   <div class="container">
     <div class="page-header">
-      <h1>📋 面试记录</h1>
+      <h1><BaseIcon name="clipboard" :size="22" /> 面试记录</h1>
       <router-link to="/resume/upload" class="btn-primary" style="display:inline-block;padding:10px 24px;color:white;border-radius:8px">
         + 开始新面试
       </router-link>
@@ -15,21 +15,21 @@
     <!-- 快捷入口 -->
     <div class="quick-entries">
       <router-link to="/learning-notes" class="quick-entry-card">
-        <span class="entry-icon">📚</span>
+        <span class="entry-icon"><BaseIcon name="notebook" :size="20" /></span>
         <div class="entry-info">
           <span class="entry-title">学习笔记</span>
           <span class="entry-desc">查看广场 / 创建笔记</span>
         </div>
       </router-link>
       <router-link to="/collections" class="quick-entry-card">
-        <span class="entry-icon">⭐</span>
+        <span class="entry-icon"><BaseIcon name="star" :size="20" /></span>
         <div class="entry-info">
           <span class="entry-title">我的收藏</span>
           <span class="entry-desc">整理收藏的面经</span>
         </div>
       </router-link>
       <router-link to="/experiences" class="quick-entry-card">
-        <span class="entry-icon">📚</span>
+        <span class="entry-icon"><BaseIcon name="newspaper" :size="20" /></span>
         <div class="entry-info">
           <span class="entry-title">面经广场</span>
           <span class="entry-desc">浏览真实面经</span>
@@ -40,7 +40,7 @@
     <div v-if="loading" class="loading">加载中...</div>
 
     <div v-else-if="interviews.length === 0" class="empty card">
-      <p style="font-size:48px;margin-bottom:12px">🎯</p>
+      <p style="font-size:48px;margin-bottom:12px"><BaseIcon name="target" :size="40" /></p>
       <p>还没有面试记录</p>
       <p style="color:var(--text-muted);font-size:14px;margin-top:8px">上传简历开始你的第一次 AI 模拟面试</p>
     </div>
@@ -78,6 +78,7 @@ import { ref, onMounted } from 'vue'
 import { getInterviews, deleteInterview } from '../api/interview'
 import { useAuthStore } from '../stores/auth'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const authStore = useAuthStore()
 

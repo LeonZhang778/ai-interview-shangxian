@@ -2,7 +2,7 @@
   <StarryBackground />
   <div class="note-edit-page">
     <div class="page-header">
-      <button class="back-btn" @click="goBack">← 返回</button>
+      <button class="back-btn" @click="goBack"><BaseIcon name="chevron-left" :size="16" /> 返回</button>
       <h1>{{ isEditMode ? '编辑笔记' : '新建笔记' }}</h1>
     </div>
 
@@ -43,12 +43,12 @@
                 class="option-tab"
                 :class="{ active: form.visibility === 'private' }"
                 @click="form.visibility = 'private'"
-              >🔒 仅自己</span>
+              ><BaseIcon name="lock" :size="13" /> 仅自己</span>
               <span
                 class="option-tab"
                 :class="{ active: form.visibility === 'public' }"
                 @click="form.visibility = 'public'"
-              >🌐 公开</span>
+              ><BaseIcon name="globe" :size="13" /> 公开</span>
             </div>
           </div>
         </div>
@@ -101,7 +101,7 @@
               @click="showTemplateDialog = true"
               :disabled="templateLoading"
             >
-              📋 {{ selectedTemplate ? '更换模板' : '选择模板' }}
+              <BaseIcon name="list" :size="14" /> {{ selectedTemplate ? '更换模板' : '选择模板' }}
             </button>
             <span v-if="selectedTemplate" class="template-applied">
               已应用模板
@@ -115,7 +115,7 @@
             <div class="modal-panel">
               <div class="modal-header">
                 <h3>选择笔记模板</h3>
-                <button class="modal-close" @click="showTemplateDialog = false">✕</button>
+                <button class="modal-close" aria-label="关闭模板选择" @click="showTemplateDialog = false"><BaseIcon name="x" :size="16" /></button>
               </div>
               <div class="modal-body">
                 <div v-if="templateLoading" class="loading-state">加载中...</div>
@@ -166,7 +166,7 @@
           <div v-if="tagsArray.length" class="tag-list">
             <span v-for="(tag, i) in tagsArray" :key="i" class="tag">
               {{ tag }}
-              <span class="tag-remove" @click="removeTag(i)">✕</span>
+              <span class="tag-remove" @click="removeTag(i)"><BaseIcon name="x" :size="12" /></span>
             </span>
           </div>
           <!-- AI 推荐标签 -->
@@ -189,7 +189,7 @@
           <label>
             内容 <span class="required">*</span>
             <span class="hint">支持 Markdown 语法</span>
-            <button type="button" class="btn-import" @click="fileInput?.click()">📄 导入 Markdown / 文本</button>
+            <button type="button" class="btn-import" @click="fileInput?.click()"><BaseIcon name="file" :size="14" /> 导入 Markdown / 文本</button>
             <input ref="fileInput" type="file" accept=".txt,.md,.text,.markdown" style="display:none" @change="handleFileImport" />
           </label>
           <div class="editor-wrapper" @click="handleEditorClick">
@@ -221,6 +221,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { Editor } from '@bytemd/vue-next'
 import gfm from '@bytemd/plugin-gfm'
 import highlight from '@bytemd/plugin-highlight'

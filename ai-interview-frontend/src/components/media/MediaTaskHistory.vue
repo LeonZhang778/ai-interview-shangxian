@@ -207,7 +207,7 @@
       <div class="preview-modal">
         <div class="preview-header">
           <p class="preview-title">{{ store.toolName(previewTask.tool_code || previewTask.tool_name) }} - 预览</p>
-          <button class="preview-close" type="button" @click="closePreview" aria-label="关闭预览">&times;</button>
+          <button class="preview-close" type="button" @click="closePreview" aria-label="关闭预览"><BaseIcon name="x" :size="16" /></button>
         </div>
         <div class="preview-body">
           <video
@@ -243,6 +243,7 @@ import { computed, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import { useAuthStore } from '../../stores/auth'
 import { getMediaTaskDownload } from '../../api/mediaTool'
+import BaseIcon from '../BaseIcon.vue'
 
 const store = useMediaStore()
 const authStore = useAuthStore()

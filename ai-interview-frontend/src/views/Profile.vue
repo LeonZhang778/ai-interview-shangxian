@@ -2,7 +2,7 @@
   <StarryBackground />
   <div class="container">
     <div v-if="authStore.isGuest" class="profile-page" style="text-align:center;padding:60px 20px">
-      <p style="font-size:48px;margin-bottom:16px">👤</p>
+      <p style="font-size:48px;margin-bottom:16px"><BaseIcon name="user" :size="40" /></p>
       <p style="font-size:16px;color:var(--text-primary);margin-bottom:8px">游客模式暂不支持个人中心</p>
       <p style="font-size:14px;color:var(--text-muted);margin-bottom:24px">注册账号后即可编辑个人资料</p>
       <router-link to="/register" class="btn-primary" style="display:inline-block;padding:10px 28px;color:white;border-radius:8px;font-size:14px;text-decoration:none">注册账号</router-link>
@@ -14,7 +14,7 @@
         <div class="avatar-wrapper" @click="$refs.avatarInput.click()">
           <img v-if="profile.avatar" :src="avatarUrl" class="avatar-img" alt="avatar" />
           <div v-else class="avatar-placeholder">{{ initials }}</div>
-          <div class="avatar-overlay">📷</div>
+          <div class="avatar-overlay"><BaseIcon name="camera" :size="24" /></div>
           <input ref="avatarInput" type="file" accept="image/*" @change="handleAvatarChange" hidden />
         </div>
         <div class="avatar-info">
@@ -61,7 +61,7 @@
           <label>所在城市</label>
           <input v-model="form.location" placeholder="例如：上海" />
         </div>
-        <p v-if="profileMsg" :class="profileMsg.startsWith('✅') ? 'success-msg' : 'error'">{{ profileMsg }}</p>
+        <p v-if="profileMsg" :class="profileMsg === '保存成功' ? 'success-msg' : 'error'">{{ profileMsg }}</p>
         <button class="btn-primary" style="width:100%;margin-top:8px" @click="handleSaveProfile" :disabled="saving">
           {{ saving ? '保存中...' : '保存信息' }}
         </button>
@@ -81,7 +81,7 @@
           <label>确认新密码</label>
           <input v-model="pwForm.confirm_password" type="password" placeholder="再次输入新密码" />
         </div>
-        <p v-if="pwMsg" :class="pwMsg.startsWith('✅') ? 'success-msg' : 'error'">{{ pwMsg }}</p>
+        <p v-if="pwMsg" :class="pwMsg === '密码修改成功' ? 'success-msg' : 'error'">{{ pwMsg }}</p>
         <button class="btn-primary" style="width:100%;margin-top:8px" @click="handleChangePassword" :disabled="changingPw">
           {{ changingPw ? '修改中...' : '修改密码' }}
         </button>
@@ -95,6 +95,7 @@ import { ref, computed, onMounted } from 'vue'
 import { getProfile, updateProfile, uploadAvatar, changePassword } from '../api/user'
 import { useAuthStore } from '../stores/auth'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const authStore = useAuthStore()
 
@@ -115,7 +116,7 @@ const avatarUrl = computed(() => {
 const initials = computed(() => {
   const f = profile.value.first_name || ''
   const l = profile.value.last_name || ''
-  return (l.charAt(0) + f.charAt(0)).toUpperCase() || '👤'
+  return (l.charAt(0) + f.charAt(0)).toUpperCase() || 'U'
 })
 
 onMounted(async () => {
@@ -153,7 +154,7 @@ async function handleSaveProfile() {
   try {
     await updateProfile(form.value)
     profile.value = { ...profile.value, ...form.value }
-    profileMsg.value = '✅ 保存成功'
+    profileMsg.value = '保存成功'
   } catch (e) {
     profileMsg.value = e.message
   } finally {
@@ -174,7 +175,7 @@ async function handleChangePassword() {
   changingPw.value = true
   try {
     await changePassword(pwForm.value.old_password, pwForm.value.new_password)
-    pwMsg.value = '✅ 密码修改成功'
+    pwMsg.value = '密码修改成功'
     pwForm.value = { old_password: '', new_password: '', confirm_password: '' }
   } catch (e) {
     pwMsg.value = e.message

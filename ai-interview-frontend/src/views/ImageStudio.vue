@@ -14,7 +14,7 @@
 
           <!-- 生图功能被后台关闭时的提示 -->
           <div v-if="!imageEnabled" class="feature-off-notice">
-            <span class="notice-icon">🚫</span>
+            <span class="notice-icon"><BaseIcon name="ban" :size="18" /></span>
             <span>该生图功能已关闭请稍后再试~</span>
           </div>
 
@@ -144,6 +144,7 @@ import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { generateImage, getImageTasks, getImageTask, deleteImageTask } from '../api/image'
 import { getSiteInfo } from '../api/config'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const form = reactive({
   prompt: '',

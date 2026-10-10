@@ -292,6 +292,7 @@ function handleRemoveFile(fileId) {
   color: var(--text-muted);
   font-size: 11px;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* 上传中 */

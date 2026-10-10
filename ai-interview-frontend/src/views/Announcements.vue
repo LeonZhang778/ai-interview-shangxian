@@ -4,7 +4,7 @@
     <div class="container">
       <div class="page-header">
         <h1>公告中心</h1>
-        <router-link to="/dashboard" class="back-link">&larr; 返回</router-link>
+        <router-link to="/dashboard" class="back-link"><BaseIcon name="chevron-left" :size="16" /> 返回</router-link>
       </div>
 
       <div v-if="loading" class="loading">
@@ -13,7 +13,7 @@
       </div>
 
       <div v-else-if="announcements.length === 0" class="empty-state">
-        <div class="empty-icon">&#x1F4ED;</div>
+        <div class="empty-icon"><BaseIcon name="inbox" :size="40" /></div>
         <p>暂无公告</p>
       </div>
 
@@ -28,13 +28,13 @@
           <div class="card-inner">
             <div class="item-header">
               <span class="tag" :class="`type-${item.type}`">{{ typeLabels[item.type] || '通知' }}</span>
-              <span v-if="item.is_pinned" class="pin-badge">&#x1F4CC; 置顶</span>
+              <span v-if="item.is_pinned" class="pin-badge"><BaseIcon name="pin" :size="13" /> 置顶</span>
             </div>
             <h3 class="item-title">{{ item.title }}</h3>
             <p class="item-preview">{{ stripMarkdown(item.content).slice(0, 100) }}{{ stripMarkdown(item.content).length > 100 ? '...' : '' }}</p>
             <div class="item-footer">
               <span class="item-date">{{ formatDate(item.published_at) }}</span>
-              <span class="read-more">查看详情 &rarr;</span>
+              <span class="read-more">查看详情 <BaseIcon name="arrow-right" :size="14" /></span>
             </div>
           </div>
         </div>
@@ -47,6 +47,7 @@
 import { ref, onMounted } from 'vue'
 import { getAnnouncements } from '../api/announcement'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 import { stripMarkdown } from '../utils/text'
 
 const announcements = ref([])

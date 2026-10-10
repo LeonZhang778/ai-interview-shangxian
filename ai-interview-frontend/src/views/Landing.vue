@@ -39,7 +39,7 @@
       <h2 class="section-title">核心功能</h2>
       <div class="feature-grid">
         <div class="feature-card" v-for="f in features" :key="f.title">
-          <span class="feature-icon">{{ f.icon }}</span>
+          <span class="feature-icon"><BaseIcon :name="f.icon" :size="24" /></span>
           <h3>{{ f.title }}</h3>
           <p>{{ f.desc }}</p>
         </div>
@@ -94,6 +94,7 @@ import { useAuthStore } from '../stores/auth'
 import { guestLogin } from '../api/auth'
 import { getSiteInfo } from '../api/config'
 import StarryBackground from '../components/StarryBackground.vue'
+import BaseIcon from '../components/BaseIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -117,14 +118,14 @@ onMounted(async () => {
 })
 
 const features = [
-  { icon: '📄', title: 'AI 简历解析', desc: '上传 PDF 简历，30 秒提取关键技能、经历和项目信息' },
-  { icon: '🎯', title: '智能出题', desc: '根据你的简历和目标岗位，AI 定制个性化面试题' },
-  { icon: '💬', title: '实时对话', desc: '像真人面试一样多轮对话，支持追问和深入探讨' },
-  { icon: '📊', title: '即时评分', desc: '每道题实时评分（1-10 分），给出具体改进建议' },
-  { icon: '📝', title: '综合报告', desc: '面试结束生成详细评估报告，含录用建议和提升方向' },
-  { icon: '📚', title: '学习笔记', desc: '沉淀面试知识点，支持公开分享，形成广场互助学习' },
-  { icon: '🎬', title: '媒体工具箱', desc: '支持视频转换、压缩、裁剪、GIF、合并、水印和区域遮挡' },
-  { icon: '🔄', title: '反复练习', desc: '不限次数练习，每次题目不同，持续提升面试技巧' }
+  { icon: 'file', title: 'AI 简历解析', desc: '上传 PDF 简历，30 秒提取关键技能、经历和项目信息' },
+  { icon: 'target', title: '智能出题', desc: '根据你的简历和目标岗位，AI 定制个性化面试题' },
+  { icon: 'message', title: '实时对话', desc: '像真人面试一样多轮对话，支持追问和深入探讨' },
+  { icon: 'chart', title: '即时评分', desc: '每道题实时评分（1-10 分），给出具体改进建议' },
+  { icon: 'file-text', title: '综合报告', desc: '面试结束生成详细评估报告，含录用建议和提升方向' },
+  { icon: 'notebook', title: '学习笔记', desc: '沉淀面试知识点，支持公开分享，形成广场互助学习' },
+  { icon: 'film', title: '媒体工具箱', desc: '支持视频转换、压缩、裁剪、GIF、合并、水印和区域遮挡' },
+  { icon: 'repeat', title: '反复练习', desc: '不限次数练习，每次题目不同，持续提升面试技巧' }
 ]
 
 const introItems = [
