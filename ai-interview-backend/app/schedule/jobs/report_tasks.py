@@ -5,9 +5,9 @@
 用户看到的是「面试结束、报告生成中」，而不是长时间不动的思考光标。
 """
 
-import asyncio
 import logging
 
+from app.core.async_runner import run_async
 from app.core.celery_app import celery_app
 from app.db.session import async_session
 from app.services.client.interview_report_service import interview_report_service
@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
     retry_kwargs={"max_retries": 2},
 )
 def generate_interview_report_task(self, interview_id: int):
-    return asyncio.run(_generate_report(interview_id))
+    # 经 run_async 跑在进程常驻事件循环上，避免逐任务开关循环导致
+    # DB/AI/Redis 单例连接池跨循环复用报错（同 resume_tasks 说明）。
+    return run_async(_generate_report(interview_id))
 
 
 async def _generate_report(interview_id: int):
