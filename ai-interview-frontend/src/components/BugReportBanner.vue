@@ -94,13 +94,23 @@ const panelStyle = computed(() => {
   const desiredLeft = pos.value.x + FAB_SIZE - width
   const maxLeft = Math.max(EDGE, window.innerWidth - width - EDGE)
   const left = Math.min(Math.max(desiredLeft, EDGE), maxLeft)
-  return { left: `${left - pos.value.x}px`, right: 'auto' }
+  // 竖向可用空间：面板向上展开时取按钮上方的距离，向下时取下方的距离
+  const maxHeight = panelOpenDown.value
+    ? window.innerHeight - (pos.value.y + FAB_SIZE + 10) - EDGE
+    : pos.value.y - 10 - EDGE
+  return {
+    left: `${left - pos.value.x}px`,
+    right: 'auto',
+    maxHeight: `${Math.max(200, maxHeight)}px`,
+  }
 })
 
-// 面板默认在按钮上方；靠近屏幕顶部时改为向下展开
+// 面板默认在按钮上方；上方放不下且下方空间更宽裕时改为向下展开
 const panelOpenDown = computed(() => {
   if (!pos.value) return false
-  return pos.value.y - 10 - PANEL_HEIGHT < EDGE
+  const above = pos.value.y - 10 - EDGE
+  const below = window.innerHeight - (pos.value.y + FAB_SIZE + 10) - EDGE
+  return above < PANEL_HEIGHT && below > above
 })
 
 function clampPosition(x, y) {
