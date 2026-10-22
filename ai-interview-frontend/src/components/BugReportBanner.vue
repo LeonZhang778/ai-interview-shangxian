@@ -1,7 +1,12 @@
 <template>
-  <div class="bug-report-wrapper">
+  <div
+    ref="wrapperEl"
+    class="bug-report-wrapper"
+    :class="{ 'open-down': panelOpenDown, dragging }"
+    :style="wrapperStyle"
+  >
     <transition name="fade">
-      <div v-if="expanded" class="bug-panel">
+      <div v-if="expanded" class="bug-panel" :style="panelStyle">
         <div class="bug-header">
           <span>意见反馈</span>
           <button class="close-btn" aria-label="关闭反馈面板" @click="expanded = false"><BaseIcon name="x" :size="16" /></button>
@@ -29,14 +34,24 @@
         <p class="bug-note">所有反馈都会被记录，帮助我们持续改进</p>
       </div>
     </transition>
-    <button class="bug-toggle" @click="expanded = !expanded" title="意见反馈" aria-label="意见反馈">
-      <BaseIcon name="bug" :size="18" />
+    <button
+      ref="toggleEl"
+      class="bug-toggle"
+      title="意见反馈（按住可拖动调整位置）"
+      aria-label="意见反馈，可拖动调整位置"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+      @click="onClick"
+    >
+      <BaseIcon name="snake" :size="22" />
     </button>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api/request'
 import BaseIcon from './BaseIcon.vue'
 
@@ -49,6 +64,136 @@ const form = reactive({
   content: '',
   contact: '',
   page_url: window.location.href,
+})
+
+/* ---------- 悬浮按钮拖拽定位 ---------- */
+const POSITION_KEY = 'ai-interview:feedback-fab-pos'
+const EDGE = 8              // 距屏幕边缘最小留白
+const DRAG_THRESHOLD = 4    // 移动超过 4px 才算拖拽，否则视为点击
+const FAB_SIZE = 48         // 与 .bug-toggle 尺寸保持一致
+const PANEL_WIDTH = 300     // 与 .bug-panel width 保持一致
+const PANEL_HEIGHT = 380    // 面板高度估算值，用于决定向上还是向下展开
+
+const wrapperEl = ref(null)
+const toggleEl = ref(null)
+const pos = ref(null)       // { x, y } 按钮左上角坐标；null 表示用 CSS 默认的右下角
+const dragging = ref(false)
+let dragState = null
+let lastDragEndAt = 0
+
+const wrapperStyle = computed(() => (
+  pos.value
+    ? { left: `${pos.value.x}px`, top: `${pos.value.y}px`, right: 'auto', bottom: 'auto' }
+    : {}
+))
+
+// 面板水平位置：默认与按钮右边缘对齐；靠近屏幕左/右侧时整体平移，保证不超出视口
+const panelStyle = computed(() => {
+  if (!pos.value) return {}
+  const width = Math.min(PANEL_WIDTH, window.innerWidth - EDGE * 2)
+  const desiredLeft = pos.value.x + FAB_SIZE - width
+  const maxLeft = Math.max(EDGE, window.innerWidth - width - EDGE)
+  const left = Math.min(Math.max(desiredLeft, EDGE), maxLeft)
+  return { left: `${left - pos.value.x}px`, right: 'auto' }
+})
+
+// 面板默认在按钮上方；靠近屏幕顶部时改为向下展开
+const panelOpenDown = computed(() => {
+  if (!pos.value) return false
+  return pos.value.y - 10 - PANEL_HEIGHT < EDGE
+})
+
+function clampPosition(x, y) {
+  const width = wrapperEl.value?.offsetWidth || FAB_SIZE
+  const height = wrapperEl.value?.offsetHeight || FAB_SIZE
+  const maxX = Math.max(EDGE, window.innerWidth - width - EDGE)
+  const maxY = Math.max(EDGE, window.innerHeight - height - EDGE)
+  return {
+    x: Math.min(Math.max(x, EDGE), maxX),
+    y: Math.min(Math.max(y, EDGE), maxY),
+  }
+}
+
+function savePosition() {
+  if (!pos.value) return
+  try {
+    localStorage.setItem(POSITION_KEY, JSON.stringify(pos.value))
+  } catch (e) {
+    // 隐私模式等场景无法写入存储，忽略即可
+  }
+}
+
+function loadPosition() {
+  try {
+    const raw = localStorage.getItem(POSITION_KEY)
+    if (!raw) return
+    const saved = JSON.parse(raw)
+    if (typeof saved?.x === 'number' && typeof saved?.y === 'number') {
+      pos.value = clampPosition(saved.x, saved.y)
+    }
+  } catch (e) {
+    // 存储内容损坏时回退到默认位置
+  }
+}
+
+function onPointerDown(event) {
+  if (event.button !== undefined && event.button !== 0) return
+  const rect = wrapperEl.value.getBoundingClientRect()
+  dragState = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    originX: rect.left,
+    originY: rect.top,
+    moved: false,
+  }
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+}
+
+function onPointerMove(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return
+  const dx = event.clientX - dragState.startX
+  const dy = event.clientY - dragState.startY
+  if (!dragState.moved) {
+    if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+    dragState.moved = true
+    dragging.value = true
+    expanded.value = false // 拖动时先收起面板，避免面板跟着晃
+  }
+  pos.value = clampPosition(dragState.originX + dx, dragState.originY + dy)
+  event.preventDefault()
+}
+
+function onPointerUp(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return
+  const moved = dragState.moved
+  dragState = null
+  dragging.value = false
+  if (moved) {
+    lastDragEndAt = Date.now()
+    savePosition()
+  }
+}
+
+function onClick() {
+  // 刚拖动结束时浏览器仍会补发一次 click，这里过滤掉，避免松手就弹出面板
+  if (Date.now() - lastDragEndAt < 300) return
+  expanded.value = !expanded.value
+}
+
+function onWindowResize() {
+  if (pos.value) {
+    pos.value = clampPosition(pos.value.x, pos.value.y)
+  }
+}
+
+onMounted(() => {
+  loadPosition()
+  window.addEventListener('resize', onWindowResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onWindowResize)
 })
 
 async function submitFeedback() {
@@ -80,23 +225,22 @@ async function submitFeedback() {
   bottom: 24px;
   right: 24px;
   z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
+  /* 只包裹按钮本体：面板用绝对定位浮在外面，拖动时按钮位置不会跳动 */
 }
 
 .bug-toggle {
   width: 48px;
   height: 48px;
+  padding: 0;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
   background: var(--accent-primary);
   color: var(--bg-base);
-  font-size: 22px;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none; /* 触屏拖动时不触发页面滚动 */
+  user-select: none;
   box-shadow: var(--shadow-sm);
-  transition: opacity 0.15s, background-color 0.15s;
+  transition: opacity 0.15s, background-color 0.15s, box-shadow 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,16 +250,37 @@ async function submitFeedback() {
   opacity: 0.85;
   box-shadow: var(--shadow-sm);
 }
+.bug-toggle:active,
+.bug-report-wrapper.dragging .bug-toggle {
+  cursor: grabbing;
+}
+.bug-toggle:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+.bug-report-wrapper.dragging .bug-toggle {
+  opacity: 0.9;
+}
 
 .bug-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
   box-shadow: var(--shadow-sm);
   width: 300px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   font-size: 13px;
   line-height: 1.6;
+}
+/* 按钮靠近屏幕顶部时，面板改为向下展开 */
+.bug-report-wrapper.open-down .bug-panel {
+  bottom: auto;
+  top: calc(100% + 10px);
 }
 
 .bug-header {

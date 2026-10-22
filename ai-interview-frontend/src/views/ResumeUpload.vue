@@ -446,4 +446,33 @@ async function handleStart() {
 .analysis-two-col li::before, .analysis-section li::before {
   content: '•'; position: absolute; left: 0; color: var(--text-muted);
 }
+
+/* ---- 移动端适配：长英文技能名/链接不换行会把卡片撑破 ---- */
+.parsed-info p,
+.analysis-summary,
+.analysis-section li,
+.analysis-two-col li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.tag {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.analysis-two-col > div {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  /* 24px → 16px，给内容多留 16px 宽度 */
+  .parsed-info,
+  .analysis-card {
+    padding: 16px;
+  }
+  /* 双栏在 375px 屏上每栏仅约 135px，改为单栏上下排列 */
+  .analysis-two-col {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
 </style>
