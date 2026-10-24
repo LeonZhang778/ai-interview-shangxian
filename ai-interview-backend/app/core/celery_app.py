@@ -1,5 +1,6 @@
 import logging
 from celery import Celery
+from celery.schedules import crontab
 from app.core.config import settings
 
 # 配置 Celery
@@ -13,6 +14,7 @@ backend=settings.CELERY_RESULT_BACKEND,
         'app.schedule.jobs.email_tasks',  # 邮件任务
         'app.schedule.jobs.image_task',   # 图片生成任务
         'app.schedule.jobs.media_tasks',  # 媒体工具任务
+        'app.schedule.jobs.media_cleanup',  # 媒体过期文件清理任务
         'app.schedule.jobs.resume_tasks',  # 简历异步解析任务
         'app.schedule.jobs.notification_tasks',  # 通知异步创建任务
         'app.schedule.jobs.report_tasks',  # 面试报告异步生成任务
@@ -29,6 +31,12 @@ celery_app.conf.beat_schedule = {
     'media-health-check': {
         'task': 'media.health_check',
         'schedule': 300.0,  # 每 5 分钟检查一次
+        'options': {'queue': 'media_tasks'},
+    },
+    'media-cleanup-expired': {
+        'task': 'media.cleanup_expired',
+        # 每天 03:40（beat 时区为 UTC，见下方 timezone 配置），避开 03:30 的数据库备份
+        'schedule': crontab(hour=3, minute=40),
         'options': {'queue': 'media_tasks'},
     },
 }

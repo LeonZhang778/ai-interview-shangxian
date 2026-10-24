@@ -6,6 +6,7 @@
 
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
@@ -181,6 +182,47 @@ class MediaFileRepository:
             )
         )
         return result.scalars().all()
+
+    @staticmethod
+    async def purge_file(db: AsyncSession, file_id: int) -> int:
+        """删除磁盘文件并写 deleted_at（保留审计记录，不物理删行）。
+
+        供清理任务与删除任务时回收磁盘使用，返回释放的字节数。
+        磁盘删除失败只记 warning 且不写 deleted_at（下轮继续重试），
+        避免「记录没了、文件还在」的永久泄漏；记录已不在时返回 0。
+        """
+        result = await db.execute(
+            select(MediaFile).where(MediaFile.id == file_id)
+        )
+        record = result.scalar_one_or_none()
+        if not record:
+            return 0
+
+        released = 0
+        path = record.storage_key
+        if path and os.path.isfile(path):
+            try:
+                released = os.path.getsize(path)
+                os.remove(path)
+            except OSError as e:
+                logger.warning("purge_file 删除磁盘文件失败 file_id=%s: %s", file_id, e)
+                return 0
+
+        if record.deleted_at is None:
+            record.deleted_at = datetime.now(timezone.utc)
+            await db.commit()
+        return released
+
+    @staticmethod
+    async def sum_user_usage(db: AsyncSession, user_id: int) -> int:
+        """统计用户当前有效文件（未软删）占用的字节合计（配额用）。"""
+        result = await db.execute(
+            select(func.coalesce(func.sum(MediaFile.size_bytes), 0)).where(
+                MediaFile.user_id == user_id,
+                MediaFile.deleted_at.is_(None),
+            )
+        )
+        return int(result.scalar() or 0)
 
 
 class MediaTaskRepository:
@@ -440,6 +482,9 @@ class MediaTaskRepository:
             raise NotFoundError(message="任务不存在")
         if task.status in ("pending", "processing"):
             raise APIException(code=10400, message="任务正在处理中，请先取消任务", status_code=400)
+        # 删除任务前回收其输出文件（只处理 output_file_id；输入文件可能被其他任务引用，不动）
+        if task.output_file_id:
+            await MediaFileRepository.purge_file(db, task.output_file_id)
         await db.delete(task)
         await db.commit()
         return True
@@ -460,6 +505,9 @@ class MediaTaskRepository:
         if active_tasks:
             raise APIException(code=10400, message="选中的任务中有正在处理的任务，请先取消后再删除", status_code=400)
         for task in tasks:
+            # 同 delete_task：只回收输出文件，不动输入文件
+            if task.output_file_id:
+                await MediaFileRepository.purge_file(db, task.output_file_id)
             await db.delete(task)
         await db.commit()
         return len(tasks)
