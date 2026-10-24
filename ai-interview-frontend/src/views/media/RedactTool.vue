@@ -132,7 +132,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import MediaFileDropZone from '../../components/media/MediaFileDropZone.vue'
 import MediaFilePreview from '../../components/media/MediaFilePreview.vue'
@@ -232,6 +232,10 @@ async function handleSubmit() {
 onMounted(() => {
   store.startPolling()
   store.bindVisibility()
+})
+
+onBeforeUnmount(() => {
+  store.stopPolling()
 })
 </script>
 

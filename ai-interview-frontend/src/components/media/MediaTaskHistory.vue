@@ -72,8 +72,19 @@
       </label>
     </div>
 
+    <!-- 错误态 -->
+    <div v-if="store.tasksError" class="task-error-state">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <p class="error-text">{{ store.tasksError }}</p>
+      <button class="action-btn" type="button" @click="handleRefresh">重试</button>
+    </div>
+
     <!-- 加载态 -->
-    <div v-if="store.tasksLoading && !store.tasks.length" class="task-loading">
+    <div v-else-if="store.tasksLoading && !store.tasks.length" class="task-loading">
       <div class="loading-spinner"></div>
       <p class="loading-text">加载中...</p>
     </div>
@@ -198,6 +209,11 @@
         <!-- 错误信息 -->
         <p v-if="task.status === 'failed' && task.error_message" class="task-error">
           {{ task.error_message }}
+        </p>
+
+        <!-- 轮询超时标记 -->
+        <p v-if="task.poll_timeout" class="task-poll-timeout">
+          轮询超时，请刷新重试
         </p>
       </div>
     </div>
@@ -444,6 +460,23 @@ function closePreview() {
   margin: 8px 0 0;
 }
 
+/* 错误态 */
+.task-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 0;
+  color: var(--red);
+}
+.task-error-state .error-text {
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 /* 任务列表 */
 .task-list {
   display: flex;
@@ -615,6 +648,42 @@ function closePreview() {
   border-radius: 5px;
   background: var(--red-bg);
   line-height: 1.4;
+}
+
+/* 轮询超时提示 */
+.task-poll-timeout {
+  color: var(--state-warning);
+  font-size: 11px;
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: rgba(163, 163, 163, .12);
+  line-height: 1.4;
+}
+
+/* 移动端断点 */
+@media (max-width: 640px) {
+  .task-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .task-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .task-card {
+    padding: 12px;
+  }
+  .task-card-top {
+    flex-wrap: wrap;
+  }
+  .task-card-actions {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+  }
+  .task-card-actions .task-btn {
+    min-width: 64px;
+  }
 }
 
 /* 预览弹窗 */

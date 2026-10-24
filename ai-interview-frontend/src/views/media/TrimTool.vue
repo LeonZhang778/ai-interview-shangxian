@@ -31,11 +31,13 @@
     />
 
     <div v-if="selectedFile" class="submit-section">
+      <p v-if="trimBlockError" class="error-message" role="alert">{{ trimBlockError }}</p>
+      <p v-else-if="trimWarn" class="error-message" role="alert">{{ trimWarn }}</p>
       <p v-if="store.errorMessage" class="error-message" role="alert">{{ store.errorMessage }}</p>
       <button
         class="submit-button"
         type="button"
-        :disabled="store.uploading"
+        :disabled="store.uploading || !!trimBlockError"
         @click="handleSubmit"
       >
         <span v-if="submitting" class="button-spinner"></span>
@@ -54,7 +56,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import MediaFileDropZone from '../../components/media/MediaFileDropZone.vue'
 import MediaFilePreview from '../../components/media/MediaFilePreview.vue'
@@ -91,6 +93,24 @@ const acceptTypes = computed(() => {
 
 const maxFileSize = computed(() => store.capabilities.max_file_size_mb || 500)
 
+// 截取时长必须大于 0 秒（阻断提交）
+const trimBlockError = computed(() => {
+  const duration = Number(form.duration) || 0
+  return duration <= 0 ? '截取时长必须大于 0 秒' : ''
+})
+
+// 截取范围超出素材时长时提示（拿不到素材时长则跳过）
+const trimWarn = computed(() => {
+  if (trimBlockError.value) return ''
+  const start = Number(form.start_time) || 0
+  const duration = Number(form.duration) || 0
+  const totalSec = selectedFile.value?.duration_ms ? selectedFile.value.duration_ms / 1000 : 0
+  if (totalSec > 0 && start + duration > totalSec) {
+    return `截取范围超出素材时长（共 ${totalSec.toFixed(1)} 秒），请缩短时长或提前开始时间`
+  }
+  return ''
+})
+
 function onFileSelected(file) {
   store.setFiles([file])
   form.target_format = 'mp4'
@@ -105,7 +125,7 @@ function onError(message) {
 }
 
 async function handleSubmit() {
-  if (!selectedFile.value || submitting.value) return
+  if (!selectedFile.value || submitting.value || trimBlockError.value) return
   submitting.value = true
   try {
     await store.submitTask({
@@ -133,6 +153,10 @@ async function handleSubmit() {
 onMounted(() => {
   store.startPolling()
   store.bindVisibility()
+})
+
+onBeforeUnmount(() => {
+  store.stopPolling()
 })
 </script>
 

@@ -25,8 +25,8 @@
       >
         <span class="file-index">{{ index + 1 }}</span>
         <div class="file-info">
-          <span class="file-name">{{ file.name || file.original_name || '未知文件' }}</span>
-          <span class="file-size">{{ store.formatBytes(file.size) }}</span>
+          <span class="file-name">{{ file.original_name || file.name || '未知文件' }}</span>
+          <span class="file-size">{{ store.formatBytes(file.size_bytes ?? file.size ?? 0) }}</span>
         </div>
         <div class="file-actions">
           <button
@@ -78,7 +78,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import MediaFileDropZone from '../../components/media/MediaFileDropZone.vue'
 import MediaTaskHistory from '../../components/media/MediaTaskHistory.vue'
@@ -141,6 +141,10 @@ async function handleSubmit() {
 onMounted(() => {
   store.startPolling()
   store.bindVisibility()
+})
+
+onBeforeUnmount(() => {
+  store.stopPolling()
 })
 </script>
 

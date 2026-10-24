@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useMediaStore } from '../../stores/media'
 import MediaFileDropZone from '../../components/media/MediaFileDropZone.vue'
 import MediaFilePreview from '../../components/media/MediaFilePreview.vue'
@@ -94,7 +94,7 @@ const allowedExtensions = computed(() => {
 
 const acceptTypes = computed(() => {
   const formats = store.capabilities.formats || []
-  return formats.map(f => `.${f}`).join(',') || 'video/*,audio/*'
+  return formats.map(f => `.${f}`).join(',') || '.mp4,.mov,.mkv,.webm,.avi,.flv,.mp3,.wav,.m4a,.aac,.flac,.ogg'
 })
 
 const maxFileSize = computed(() => store.capabilities.max_file_size_mb || 500)
@@ -141,6 +141,10 @@ async function handleSubmit() {
 onMounted(() => {
   store.startPolling()
   store.bindVisibility()
+})
+
+onBeforeUnmount(() => {
+  store.stopPolling()
 })
 </script>
 

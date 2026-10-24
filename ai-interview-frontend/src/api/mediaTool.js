@@ -16,7 +16,8 @@ export function uploadMediaFile(file, onProgress) {
         onProgress(Math.round((e.loaded / e.total) * 100))
       }
     },
-    timeout: 120000
+    // 后端上限 500MB，慢网下 120s 必超时
+    timeout: 300000
   })
 }
 

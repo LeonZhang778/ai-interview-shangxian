@@ -24,6 +24,11 @@
       </router-link>
     </nav>
 
+    <!-- 能力提示条（功能关闭 / FFmpeg 不可用） -->
+    <div v-if="capabilitiesNotice" class="capabilities-notice" role="alert">
+      {{ capabilitiesNotice }}
+    </div>
+
 <main class="workspace-card">
       <router-view />
     </main>
@@ -38,6 +43,7 @@
 </template>
 
 <script setup>
+import { computed, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMediaStore } from '../stores/media'
 import MediaToast from '../components/media/MediaToast.vue'
@@ -46,6 +52,13 @@ import BaseIcon from '../components/BaseIcon.vue'
 
 const store = useMediaStore()
 const route = useRoute()
+
+const capabilitiesNotice = computed(() => {
+  const caps = store.capabilities || {}
+  if (caps.enabled === false) return '媒体工具暂未开放，请联系管理员开启'
+  if (caps.ffmpeg_available === false) return '媒体处理服务暂不可用，任务可能无法完成'
+  return ''
+})
 
 const tools = [
   { code: 'convert', path: '/media-tools/convert', name: '格式转换', icon: 'convert', color: '#2563EB', description: '转换视频或音频格式' },
@@ -63,6 +76,10 @@ store.loadCapabilities()
 store.loadTasks()
 store.startPolling()
 store.bindVisibility()
+
+onBeforeUnmount(() => {
+  store.stopPolling()
+})
 </script>
 
 <style scoped>
@@ -83,7 +100,13 @@ store.bindVisibility()
 .tool-chip-body small { color: var(--text-muted); font-size: 10px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-card { padding: 28px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: var(--shadow-sm); }
 .files-section { margin-top: 24px; padding: 24px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: var(--shadow-sm); }
+.capabilities-notice { margin-bottom: 18px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-default); background: rgba(163, 163, 163, .12); color: var(--state-warning); font-size: 13px; line-height: 1.6; }
 @media (max-width: 900px) { .tool-chip { flex: 1 1 140px; max-width: none; } }
+@media (max-width: 640px) {
+  .media-header { flex-wrap: wrap; gap: 8px; }
+  .back-link { min-height: 36px; display: inline-flex; align-items: center; }
+  .tool-switcher { gap: 8px; }
+}
 @media (max-width: 600px) { .media-page { padding: 30px 16px 52px; } .media-header { display: block; } .back-link { display: inline-block; margin-top: 18px; } .tool-switcher { gap: 8px; } .tool-chip { flex: 1 1 calc(50% - 8px); padding: 10px 12px; min-height: 44px; } .workspace-card { padding: 18px; border-radius: 8px; } }
 @media (max-width: 600px) { .media-header h1 { font-size: 30px; } }
 </style>

@@ -43,8 +43,19 @@
       </button>
     </div>
 
+    <!-- 错误态 -->
+    <div v-if="store.filesError" class="files-error-state">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <p class="error-text">{{ store.filesError }}</p>
+      <button class="action-btn" type="button" @click="loadFiles">重试</button>
+    </div>
+
     <!-- 加载态 -->
-    <div v-if="loading && !files.length" class="files-loading">
+    <div v-else-if="loading && !files.length" class="files-loading">
       <div class="loading-spinner"></div>
       <p class="loading-text">加载中...</p>
     </div>
@@ -83,7 +94,7 @@
         <div class="file-card-info">
           <p class="file-card-name" :title="file.original_name">{{ file.original_name }}</p>
           <div class="file-card-meta">
-            <span>{{ formatBytes(file.size_bytes) }}</span>
+            <span class="file-size-cell">{{ formatBytes(file.size_bytes) }}</span>
             <span v-if="file.duration_ms">{{ formatDuration(file.duration_ms) }}</span>
             <span>{{ file.source_format?.toUpperCase() }}</span>
           </div>
@@ -174,21 +185,23 @@ async function loadFiles() {
     const result = await listMediaFiles(params)
     files.value = result.items || []
     total.value = result.total || 0
-  } catch {
-    // 静默
+    store.filesError = ''
+  } catch (error) {
+    store.filesError = store.mapError(error)
   } finally {
     loading.value = false
   }
 }
 
 async function handleDelete(file) {
+  if (!window.confirm('删除后该文件不可恢复，引用它的任务将无法重试。确定删除？')) return
   try {
     await deleteMediaFile(file.id)
     files.value = files.value.filter(f => f.id !== file.id)
     total.value = Math.max(0, total.value - 1)
     store.addToast('文件已删除', 'success')
   } catch (error) {
-    store.addToast(error.message || '删除失败', 'error')
+    store.addToast(store.mapError(error), 'error')
   }
 }
 
@@ -299,6 +312,23 @@ onMounted(() => {
   margin: 8px 0 0;
 }
 
+/* 错误态 */
+.files-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 0;
+  color: var(--red);
+}
+.files-error-state .error-text {
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 /* 文件列表 */
 .files-list {
   display: flex;
@@ -387,6 +417,36 @@ onMounted(() => {
 .page-info {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+/* 移动端断点 */
+@media (max-width: 640px) {
+  .file-card {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .file-card-info {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .file-card-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file-card-meta {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .file-card-meta .file-size-cell {
+    width: 72px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .file-card-actions {
+    flex-shrink: 0;
+  }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }

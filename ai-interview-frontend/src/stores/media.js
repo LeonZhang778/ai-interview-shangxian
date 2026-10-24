@@ -18,18 +18,17 @@ import {
   listMediaTasks
 } from '../api/mediaTool'
 
-// ─── 错误码映射（后端 code → 中文提示） ───
+// ─── 错误码映射（按后端真实语义：code → 中文提示） ───
 const ERROR_MAP = {
-  10401: '参数错误，请检查输入',
-  10402: '文件格式不支持',
-  10403: '文件大小超限',
+  10400: '媒体工具暂未开放',
+  10401: '参数有误或该格式不支持',
+  10402: '文件超过大小限制，请压缩后再试',
+  10403: '文件无法识别，请确认文件未损坏',
   10404: '文件不存在或无权访问',
   10405: '任务不存在或无权访问',
-  10406: '相同任务正在处理中，请稍后',
-  10407: '媒体文件无法识别',
-  10408: '功能未开放',
-  10409: '文件数量不符合要求',
-  10410: '参数超出允许范围',
+  10406: '相同任务正在处理，请稍后',
+  10408: '该功能暂未开放',
+  42901: '操作过于频繁，请稍后再试',
 }
 
 function mapError(error) {
@@ -49,11 +48,17 @@ export const useMediaStore = defineStore('media', () => {
   const uploading = ref(false)
   const uploadProgress = ref(0)
   const errorMessage = ref('')
+  const filesError = ref('')      // 文件列表加载失败信息（空 = 无错误）
 
   // ─── 任务状态 ───
   const tasks = ref([])
   const tasksLoading = ref(false)
+  const tasksError = ref('')      // 任务列表加载失败信息（空 = 无错误）
   let pollTimer = null
+  let polling = false
+  let pollRounds = 0
+  let pollFailStreak = 0
+  const pollTimedOut = ref(false) // 轮询达到上限后置 true，等待用户刷新
 
   // ─── Toast 消息队列 ───
   const toasts = ref([])
@@ -173,8 +178,14 @@ export const useMediaStore = defineStore('media', () => {
     try {
       const data = await listMediaTasks({ page: 1, size: 12 })
       tasks.value = data.items || []
-    } catch {
-      // 静默失败
+      tasksError.value = ''
+      // 手动刷新会清掉"轮询超时"标记并恢复轮询
+      clearPollTimeout()
+      if (activeTasks.value.length) {
+        startPolling()
+      }
+    } catch (error) {
+      tasksError.value = mapError(error)
     } finally {
       tasksLoading.value = false
     }
@@ -194,6 +205,7 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   async function cancelTask(taskId) {
+    if (!window.confirm('取消后已处理的进度会丢失。确定取消？')) return
     try {
       await cancelMediaTask(taskId)
       const task = tasks.value.find(t => t.id === taskId)
@@ -244,6 +256,7 @@ async function retryTask(taskId) {
   }
 
   async function deleteTask(taskId) {
+    if (!window.confirm('删除后该任务记录不可恢复，已生成的结果文件将无法再下载。确定删除？')) return
     try {
       await deleteMediaTask(taskId)
       tasks.value = tasks.value.filter(t => t.id !== taskId)
@@ -259,6 +272,7 @@ async function retryTask(taskId) {
       addToast('没有可删除的任务', 'info')
       return
     }
+    if (!window.confirm('将清空全部已完成任务记录（不影响已下载文件）。确定？')) return
     try {
       await deleteMediaTasks(deletable.map(t => t.id))
       const ids = new Set(deletable.map(t => t.id))
@@ -295,23 +309,91 @@ async function retryTask(taskId) {
   }
 
   // ─── 轮询 ───
+  // 最多轮询 150 次（2s 间隔约 5 分钟），连续失败 3 次后退避到 5s
+  const POLL_INTERVAL_MS = 2000
+  const POLL_INTERVAL_BACKOFF_MS = 5000
+  const POLL_MAX_ROUNDS = 150
+  const POLL_FAIL_BACKOFF_THRESHOLD = 3
+
+  function isActiveStatus(status) {
+    return ['queued', 'pending', 'processing'].includes(status)
+  }
+
+  function clearPollTimeout() {
+    pollTimedOut.value = false
+    tasks.value.forEach(t => {
+      if (t.poll_timeout) t.poll_timeout = false
+    })
+  }
+
+  function markPollTimeout() {
+    pollTimedOut.value = true
+    tasks.value.forEach(t => {
+      if (isActiveStatus(t.status)) t.poll_timeout = true
+    })
+  }
+
+  function currentPollDelay() {
+    return pollFailStreak >= POLL_FAIL_BACKOFF_THRESHOLD
+      ? POLL_INTERVAL_BACKOFF_MS
+      : POLL_INTERVAL_MS
+  }
+
   function startPolling() {
-    if (pollTimer) return
-    pollTimer = window.setInterval(async () => {
-      // 页面隐藏时不轮询
-      if (document.hidden) return
-      if (!activeTasks.value.length) return
-      await Promise.all(activeTasks.value.map(async task => {
-        await refreshTask(task.id)
-      }))
-    }, 2000)
+    if (polling) return
+    polling = true
+    pollRounds = 0
+    pollFailStreak = 0
+    bindVisibility()
+    schedulePoll(POLL_INTERVAL_MS)
+  }
+
+  function schedulePoll(delay) {
+    pollTimer = window.setTimeout(runPollRound, delay)
+  }
+
+  async function runPollRound() {
+    pollTimer = null
+    if (!polling) return
+    // 页面隐藏时不发请求，保持调度
+    if (document.hidden) {
+      schedulePoll(currentPollDelay())
+      return
+    }
+    const active = [...activeTasks.value]
+    if (!active.length) {
+      stopPolling()
+      return
+    }
+    pollRounds++
+    if (pollRounds > POLL_MAX_ROUNDS) {
+      markPollTimeout()
+      addToast('轮询超时，请刷新重试', 'warning')
+      stopPolling()
+      return
+    }
+    const results = await Promise.all(active.map(task => refreshTask(task.id)))
+    // 等待期间被停止（如离开页面）则不再续期
+    if (!polling) return
+    const failedCount = results.filter(r => !r).length
+    pollFailStreak = failedCount > 0 ? pollFailStreak + 1 : 0
+    // 任务进入 completed/failed/cancelled 立即停止，不等下一轮
+    if (!activeTasks.value.length) {
+      stopPolling()
+      return
+    }
+    schedulePoll(currentPollDelay())
   }
 
   function stopPolling() {
+    polling = false
     if (pollTimer) {
-      window.clearInterval(pollTimer)
+      window.clearTimeout(pollTimer)
       pollTimer = null
     }
+    pollRounds = 0
+    pollFailStreak = 0
+    unbindVisibility()
   }
 
   // ─── 可见性变化监听 ───
@@ -387,8 +469,8 @@ async function retryTask(taskId) {
   return {
     // 状态
     capabilities, capabilitiesLoading,
-    files, uploading, uploadProgress, errorMessage,
-    tasks, tasksLoading,
+    files, uploading, uploadProgress, errorMessage, filesError,
+    tasks, tasksLoading, tasksError, pollTimedOut,
     toasts,
     // 计算
     selectedFile, hasFiles, activeTasks,

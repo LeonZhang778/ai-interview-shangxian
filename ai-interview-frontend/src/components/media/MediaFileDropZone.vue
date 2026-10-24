@@ -93,8 +93,18 @@
 import { ref, computed } from 'vue'
 import { useMediaStore } from '../../stores/media'
 
+// 后端允许的上传扩展名（对齐 format_config.EXTENSION_MEDIA_KIND）
+const DEFAULT_ACCEPT = '.mp4,.mov,.mkv,.webm,.avi,.flv,.mp3,.wav,.m4a,.aac,.flac,.ogg,.wma,.opus,.gif,.png,.jpg,.jpeg,.webp'
+
+// 扩展名 → 媒体类型（MIME 双校验用）
+const EXT_MEDIA_KIND = {
+  mp4: 'video', mov: 'video', mkv: 'video', webm: 'video', avi: 'video', flv: 'video',
+  mp3: 'audio', wav: 'audio', m4a: 'audio', aac: 'audio', flac: 'audio', ogg: 'audio', wma: 'audio', opus: 'audio',
+  gif: 'image', png: 'image', jpg: 'image', jpeg: 'image', webp: 'image',
+}
+
 const props = defineProps({
-  accept: { type: String, default: 'video/*,audio/*' },
+  accept: { type: String, default: DEFAULT_ACCEPT },
   multiple: { type: Boolean, default: false },
   maxSizeMb: { type: Number, default: 500 }
 })
@@ -134,18 +144,45 @@ function onDragLeave() {
 function validateFile(file) {
   const maxBytes = props.maxSizeMb * 1024 * 1024
   if (file.size > maxBytes) {
-    emit('error', `文件大小超过 ${props.maxSizeMb}MB 限制`)
+    emit('error', `文件超过大小限制（最大 ${props.maxSizeMb}MB），请压缩后再试`)
     return false
   }
-  const allowedExtensions = props.accept
+
+  // accept 支持扩展名列表（.mp4,.mov）与 MIME 通配（video/*）两种写法
+  const acceptItems = props.accept
     .split(',')
     .map(item => item.trim().toLowerCase())
-    .filter(item => item.startsWith('.'))
+    .filter(Boolean)
+  const allowedExtensions = acceptItems.filter(item => item.startsWith('.'))
+  const mimePatterns = acceptItems.filter(item => item.includes('/') && !item.startsWith('.'))
+
+  const lowerName = (file.name || '').toLowerCase()
+  const ext = lowerName.includes('.') ? lowerName.split('.').pop() : ''
+  const mime = (file.type || '').toLowerCase()
+
   if (allowedExtensions.length) {
-    const lowerName = file.name.toLowerCase()
-    const matched = allowedExtensions.some(ext => lowerName.endsWith(ext))
+    const matched = allowedExtensions.some(item => lowerName.endsWith(item))
     if (!matched) {
-      emit('error', `文件格式不支持，请选择 ${allowedExtensions.join('、')} 文件`)
+      emit('error', `文件格式不支持，请选择 ${allowedExtensions.map(item => item.slice(1)).join('、')} 文件`)
+      return false
+    }
+  } else if (mimePatterns.length && mime) {
+    const matchedMime = mimePatterns.some(pattern =>
+      pattern.endsWith('/*') ? mime.startsWith(pattern.slice(0, -1)) : mime === pattern
+    )
+    if (!matchedMime) {
+      emit('error', '文件格式不支持')
+      return false
+    }
+  }
+
+  // 扩展名 + MIME 双校验：MIME 为空时只看扩展名，避免误杀
+  if (mime) {
+    const mimeKind = mime.split('/')[0]
+    const extKind = EXT_MEDIA_KIND[ext]
+    const kindOk = ['video', 'audio', 'image'].includes(mimeKind) && (!extKind || extKind === mimeKind)
+    if (!kindOk) {
+      emit('error', '文件格式不支持，文件类型与扩展名不符')
       return false
     }
   }

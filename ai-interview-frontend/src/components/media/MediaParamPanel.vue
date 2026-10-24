@@ -243,8 +243,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useMediaStore } from '../../stores/media'
+
+// 视频容器格式（音频输入时应从目标格式中过滤掉）
+const VIDEO_CONTAINER_FORMATS = new Set([
+  'mp4', 'mov', 'mkv', 'webm', 'avi', 'flv', 'wmv', 'm4v', 'mpg', 'mpeg', '3gp', 'ts', 'ogv', 'vob'
+])
 
 const props = defineProps({
   form: { type: Object, required: true },
@@ -259,12 +264,23 @@ const store = useMediaStore()
 const showAdvanced = ref(false)
 
 const formatOptions = computed(() => {
-  if (props.capabilities?.formats) {
-    return props.capabilities.formats
+  const formats = props.capabilities?.formats?.length
+    ? props.capabilities.formats
+    : ['mp4', 'mov', 'mkv', 'webm', 'avi', 'gif', 'mp3', 'wav', 'aac', 'ogg']
+  // gif 必须走 GIF 工具，convert 下拉不允许（后端会 400）
+  let options = formats.filter(fmt => fmt !== 'gif')
+  if (props.isAudioFile) {
+    options = options.filter(fmt => !VIDEO_CONTAINER_FORMATS.has(fmt))
   }
-  const defaults = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'gif', 'mp3', 'wav', 'aac', 'ogg']
-  return defaults
+  return options
 })
+
+// 当前目标格式被过滤掉时，自动回落到第一个可用选项
+watch(formatOptions, options => {
+  if (options.length && !options.includes(props.form.target_format)) {
+    updateForm('target_format', options[0])
+  }
+}, { immediate: true })
 
 function updateForm(key, value) {
   const updated = { ...props.form, [key]: value }
@@ -354,5 +370,19 @@ function updateForm(key, value) {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border-default);
+}
+
+/* 移动端：标签与控件上下排列 */
+@media (max-width: 640px) {
+  .param-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+  .param-select,
+  .param-input {
+    width: 100%;
+  }
 }
 </style>
