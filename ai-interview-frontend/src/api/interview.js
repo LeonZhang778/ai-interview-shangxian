@@ -67,6 +67,10 @@ export function getReport(interviewId) {
   return api.get(`/interviews/${interviewId}/report`)
 }
 
+export function getGapAnalysis(interviewId) {
+  return api.get(`/interviews/${interviewId}/gap-analysis`)
+}
+
 // 报告由后台生成：生成失败或长时间未就绪时，用户可主动要求重新生成。
 // 后端带 30 秒节流，重复点击不会造成任务风暴。
 export function regenerateReport(interviewId) {

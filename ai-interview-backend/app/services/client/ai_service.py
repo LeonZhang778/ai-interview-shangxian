@@ -17,6 +17,7 @@ from app.prompts.interview import (
     INTERN_LEVEL_HINT,
     NORMAL_LEVEL_HINT,
     GENERATE_QUESTIONS_PROMPT,
+    JOB_GAP_ANALYSIS_PROMPT,
     INTERN_POSITION_HINT,
     NORMAL_POSITION_HINT,
     GENERATE_QUESTIONS_FROM_EXPERIENCE_PROMPT,
@@ -442,11 +443,31 @@ class AIService:
         return AIService._extract_json(result)
 
     @staticmethod
+    async def analyze_job_gap(
+        parsed_resume: dict, target_position: str, job_description: str
+    ) -> dict:
+        """比较岗位描述和简历，返回可用于出题及报告的结构化差距分析。"""
+        messages = [
+            {"role": "system", "content": JOB_GAP_ANALYSIS_PROMPT["system"]},
+            {
+                "role": "user",
+                "content": JOB_GAP_ANALYSIS_PROMPT["user"].format(
+                    target_position=target_position,
+                    job_description=job_description,
+                    resume_json=json.dumps(parsed_resume or {}, ensure_ascii=False),
+                ),
+            },
+        ]
+        result = await AIService._chat(messages, temperature=0.2, provider="qwen")
+        return AIService._extract_json(result)
+
+    @staticmethod
     async def generate_questions(
         parsed_resume: dict,
         target_position: str,
         difficulty: str,
-        count: int
+        count: int,
+        gap_analysis: Optional[dict] = None,
     ) -> list:
         """根据简历和目标岗位生成面试题目，带 LLM 缓存"""
         from app.services.common.redis import redis_client
@@ -462,7 +483,18 @@ class AIService:
         position_hint = INTERN_POSITION_HINT if is_intern else NORMAL_POSITION_HINT
 
         # 检查缓存
-        cache_key = f"questions:{target_position}:{difficulty}:{count}:{json.dumps(parsed_resume, ensure_ascii=False)[:200]}"
+        cache_key = json.dumps(
+            {
+                "version": 2,
+                "target_position": target_position,
+                "difficulty": difficulty,
+                "count": count,
+                "resume": parsed_resume or {},
+                "gap_analysis": gap_analysis or {},
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
         cached = await redis_client.get_llm_cache("questions", cache_key)
         if cached:
             return cached
@@ -474,6 +506,11 @@ class AIService:
                     target_position=target_position,
                     difficulty_desc=difficulty_desc,
                     position_hint=position_hint,
+                    gap_hint=(
+                        "请优先验证岗位差距分析中 priority=high 的必备技能，"
+                        "并追问简历证据不足的部分。"
+                        if gap_analysis else "没有岗位描述差距分析，请按简历和岗位名称正常出题。"
+                    ),
                 ),
             },
             {
@@ -482,6 +519,7 @@ class AIService:
                     resume_json=json.dumps(parsed_resume, ensure_ascii=False),
                     target_position=target_position,
                     count=count,
+                    gap_analysis=json.dumps(gap_analysis or {}, ensure_ascii=False),
                 ),
             },
         ]

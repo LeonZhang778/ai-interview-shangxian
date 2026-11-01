@@ -12,6 +12,11 @@ class Interview(BaseModel):
     resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=True)
     experience_id = Column(Integer, ForeignKey("experiences.id"), nullable=True)
     target_position = Column(String(255), nullable=True)
+    job_description = Column(Text, nullable=True)
+    gap_analysis = Column(JSONB, nullable=True)
+    gap_analysis_status = Column(
+        String(20), nullable=False, default="not_requested", server_default="not_requested"
+    )
     difficulty = Column(String(20), default="medium")  # easy/medium/hard 面试难度
     total_questions = Column(Integer, default=5)
     status = Column(String(20), default="in_progress", server_default="in_progress")  # in_progress/completed 面试状态

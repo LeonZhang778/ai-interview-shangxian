@@ -6,6 +6,7 @@ from ..base import BaseSchema
 class InterviewStart(BaseSchema):
     resume_id: int
     target_position: str = "Python后端开发工程师"
+    job_description: Optional[str] = Field(default=None, max_length=20000)
     difficulty: Literal["easy", "medium", "hard"] = "medium"
     total_questions: int = Field(default=5, ge=3, le=10)
 
@@ -15,6 +16,8 @@ class InterviewStartResponse(BaseSchema):
     first_question: str
     question_index: int
     total_questions: int
+    gap_analysis_status: str = "not_requested"
+    gap_analysis: Optional[Dict[str, Any]] = None
 
 
 class AnswerSubmit(BaseSchema):

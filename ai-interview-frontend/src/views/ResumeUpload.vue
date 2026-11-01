@@ -19,6 +19,20 @@
           <input ref="positionInput" v-model="targetPosition" placeholder="请输入目标岗位，例如：Python后端开发工程师"
             :class="{ 'input-error': showPositionError }" @input="showPositionError = false" />
         </div>
+        <div class="form-group job-description-group">
+          <label for="job-description">岗位描述 <span class="optional-label">可选</span></label>
+          <textarea
+            id="job-description"
+            v-model="jobDescription"
+            rows="5"
+            maxlength="20000"
+            placeholder="粘贴目标公司的真实 JD，AI 会据此分析岗位要求和你的准备差距"
+          ></textarea>
+          <div class="field-hint">
+            <span>支持职责、必备技能和加分项</span>
+            <span>{{ jobDescription.length }}/20000</span>
+          </div>
+        </div>
         <p v-if="error" class="error">{{ error }}</p>
         <button class="btn-primary" style="width:100%" @click="handleUpload" :disabled="!file || uploading">
           {{ uploading ? '上传中...' : '上传并解析简历' }}
@@ -153,6 +167,7 @@ const router = useRouter()
 const step = ref(1)
 const file = ref(null)
 const targetPosition = ref('')
+const jobDescription = ref('')
 const positionInput = ref(null)
 const showPositionError = ref(false)
 const difficulty = ref('medium')
@@ -360,6 +375,7 @@ async function handleStart() {
     const data = await startInterview({
       resume_id: resumeId.value,
       target_position: targetPosition.value,
+      job_description: jobDescription.value.trim() || null,
       difficulty: difficulty.value,
       total_questions: totalQuestions.value
     })
@@ -391,6 +407,9 @@ async function handleStart() {
 .error { color: var(--red); font-size: 13px; margin-bottom: 12px; }
 .form-group input.input-error { border-color: var(--red); }
 .form-group input.input-error:focus { border-color: var(--red); box-shadow: var(--shadow-sm); }
+.job-description-group textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.optional-label { color: var(--text-muted); font-size: 12px; font-weight: 400; }
+.field-hint { display:flex; justify-content:space-between; gap:12px; margin-top:5px; color:var(--text-muted); font-size:12px; }
 .parsed-info p { font-size: 14px; margin-bottom: 6px; line-height: 1.6; color: var(--text-secondary); }
 
 .parsing-stage { text-align: center; padding: 30px 0; }

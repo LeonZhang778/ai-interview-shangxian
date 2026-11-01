@@ -53,6 +53,31 @@
         <p style="font-size:14px;line-height:1.8;color:var(--text-secondary)">{{ report.summary }}</p>
       </div>
 
+      <div class="card gap-report-card" style="margin-top:16px" v-if="report.skill_coverage?.length || data.gap_analysis?.resume_gaps?.length">
+        <div class="gap-report-heading">
+          <div>
+            <h3 style="margin-bottom:4px;color:var(--accent-light)">岗位匹配与准备差距</h3>
+            <p class="gap-report-hint">结合岗位要求、简历证据和本场面试表现</p>
+          </div>
+          <span v-if="data.gap_analysis?.overall_match_score" class="match-score">{{ data.gap_analysis.overall_match_score }}/100</span>
+        </div>
+        <div v-if="report.skill_coverage?.length" class="coverage-list">
+          <div v-for="item in report.skill_coverage" :key="`${item.requirement_type}-${item.skill}`" class="coverage-item">
+            <div class="coverage-label">
+              <span>{{ item.skill }}</span>
+              <span :class="['coverage-status', `status-${item.resume_status}`]">{{ coverageStatus(item.resume_status) }}</span>
+            </div>
+            <div class="coverage-bar"><div class="coverage-fill" :style="{ width: `${coveragePercent(item)}%` }"></div></div>
+            <p v-if="item.recommendation" class="coverage-recommendation">{{ item.recommendation }}</p>
+          </div>
+        </div>
+        <ul v-if="data.gap_analysis?.resume_gaps?.length" class="gap-report-list">
+          <li v-for="gap in data.gap_analysis.resume_gaps.slice(0, 5)" :key="`${gap.skill}-${gap.reason}`">
+            <strong>{{ gap.skill }}</strong><span>{{ gap.practice_action || gap.reason }}</span>
+          </li>
+        </ul>
+      </div>
+
       <!-- 优势 & 不足 -->
       <div class="two-col" style="margin-top:16px">
         <div class="card" v-if="report.strengths?.length">
@@ -217,6 +242,15 @@ const exportStatus = ref('idle')
 const exportMessage = ref('')
 const exportMessageType = ref('')
 const recommendNotes = ref([])
+
+function coverageStatus(status) {
+  return { matched: '简历已覆盖', partial: '证据不完整', missing: '简历未发现', unknown: '待确认' }[status] || '待确认'
+}
+
+function coveragePercent(item) {
+  if (typeof item.interview_score === 'number') return Math.max(8, Math.min(100, item.interview_score * 10))
+  return { matched: 72, partial: 45, missing: 18, unknown: 30 }[item.resume_status] || 30
+}
 
 // 报告就绪状态：报告已改为后台生成，进到本页时可能还在生成中。
 // 未就绪时不再渲染空报告，而是显示状态并轮询，直到 ready 或 failed。
@@ -530,6 +564,21 @@ async function handleExportDocx() {
   color: var(--text-muted);
   margin-top: 4px;
 }
+.gap-report-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.gap-report-hint { margin:0; color:var(--text-muted); font-size:12px; }
+.match-score { flex-shrink:0; color:var(--accent-light); font-size:18px; font-weight:700; }
+.coverage-list { display:flex; flex-direction:column; gap:14px; margin-top:16px; }
+.coverage-label { display:flex; justify-content:space-between; gap:10px; font-size:13px; color:var(--text-secondary); }
+.coverage-status { font-size:12px; color:var(--text-muted); }
+.coverage-status.status-matched { color:var(--state-success); }
+.coverage-status.status-partial { color:var(--state-warning); }
+.coverage-status.status-missing { color:var(--state-error); }
+.coverage-bar { height:7px; margin-top:6px; border-radius:4px; background:var(--bg-hover); overflow:hidden; }
+.coverage-fill { height:100%; border-radius:inherit; background:var(--accent-primary); transition:width .4s ease; }
+.coverage-recommendation { margin:5px 0 0; color:var(--text-muted); font-size:12px; line-height:1.6; }
+.gap-report-list { list-style:none; padding:0; margin:16px 0 0; }
+.gap-report-list li { display:flex; gap:8px; font-size:13px; line-height:1.7; padding-top:7px; color:var(--text-secondary); }
+.gap-report-list li strong { flex:0 0 auto; color:var(--text-primary); }
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;

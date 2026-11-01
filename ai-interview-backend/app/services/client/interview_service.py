@@ -10,6 +10,11 @@ from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
 from app.services.client.interview_report_service import interview_report_service
+from app.services.client.interview_gap_service import (
+    empty_gap_analysis,
+    interview_gap_service,
+    normalize_job_description,
+)
 from app.db.session import transaction
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
 from app.utils.utils import safe_parse_json
@@ -91,7 +96,8 @@ class InterviewService:
         resume_id: int,
         target_position: str,
         difficulty: str,
-        total_questions: int
+        total_questions: int,
+        job_description: str | None = None,
     ) -> Dict:
         """开始新的面试会话"""
         # 验证简历是否存在且已解析
@@ -112,12 +118,20 @@ class InterviewService:
         # 并发上限：放在 AI 出题之前，避免超限请求白花一次 LLM 调用
         await InterviewService._assert_concurrent_limit(db, user_id)
 
+        normalized_job_description = normalize_job_description(job_description)
+        gap_analysis_status, gap_analysis = await interview_gap_service.analyze(
+            parsed_resume=parsed_resume,
+            target_position=target_position,
+            job_description=normalized_job_description,
+        )
+
         # 通过 AI 生成面试题目
         questions = await AIService.generate_questions(
             parsed_resume=parsed_resume,
             target_position=target_position,
             difficulty=difficulty,
-            count=total_questions
+            count=total_questions,
+            gap_analysis=gap_analysis,
         )
 
         # 先校验题目形状，再建记录：顺序反了会产生孤儿面试
@@ -128,6 +142,9 @@ class InterviewService:
             user_id=user_id,
             resume_id=resume_id,
             target_position=target_position,
+            job_description=normalized_job_description or None,
+            gap_analysis=gap_analysis,
+            gap_analysis_status=gap_analysis_status,
             difficulty=difficulty,
             total_questions=total_questions,
             current_question_index=0,
@@ -140,7 +157,30 @@ class InterviewService:
             "interview_id": interview.id,
             "first_question": first_question,
             "question_index": 0,
-            "total_questions": total_questions
+            "total_questions": total_questions,
+            "gap_analysis_status": gap_analysis_status,
+            "gap_analysis": gap_analysis,
+        }
+
+    @staticmethod
+    async def get_gap_analysis(
+        db: AsyncSession, user_id: int, interview_id: int
+    ) -> Dict[str, Any]:
+        """读取当前用户面试的岗位差距分析。"""
+        result = await db.execute(
+            select(Interview).where(
+                Interview.id == interview_id,
+                Interview.user_id == user_id,
+            )
+        )
+        interview = result.scalar_one_or_none()
+        if not interview:
+            raise NotFoundError(message="面试记录不存在")
+        return {
+            "interview_id": interview.id,
+            "status": interview.gap_analysis_status or "not_requested",
+            "has_job_description": bool(interview.job_description),
+            "analysis": interview.gap_analysis or empty_gap_analysis(),
         }
 
     @staticmethod
@@ -353,6 +393,8 @@ class InterviewService:
             "total_questions": total_questions,
             "report_status": report_status,
             "report": report,
+            "gap_analysis_status": interview.gap_analysis_status or "not_requested",
+            "gap_analysis": interview.gap_analysis,
         }
 
     @staticmethod
@@ -464,6 +506,8 @@ class InterviewService:
             # 前端据此在结束态显示“报告生成中”并轮询，而不是直接跳进一个空白报告页。
             "report_status": interview.report_status or "ready",
             "current_question_index": interview.current_question_index,
+            "gap_analysis_status": interview.gap_analysis_status or "not_requested",
+            "gap_analysis": interview.gap_analysis,
         }
 
     @staticmethod

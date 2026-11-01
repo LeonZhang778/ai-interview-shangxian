@@ -20,6 +20,7 @@ DEFAULTS = [
     ("register_enabled", "true", "是否开放注册"),
     ("guest_enabled", "true", "是否允许游客模式"),
     ("image_generation_enabled", "true", "AI 生图功能开关"),
+    ("job_gap_analysis_enabled", "true", "岗位描述与简历差距分析开关"),
 ]
 
 

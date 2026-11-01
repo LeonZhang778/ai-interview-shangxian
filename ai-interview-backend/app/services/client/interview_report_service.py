@@ -43,6 +43,44 @@ MANUAL_MIN_INTERVAL_SECONDS = 30
 
 class InterviewReportService:
 
+    @staticmethod
+    def build_skill_coverage(interview: Interview, qa_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """把岗位技能、简历证据和面试题得分合并成稳定的报告数据。"""
+        analysis = interview.gap_analysis or {}
+        skills = []
+        for requirement_type, key in (("required", "required_skills"), ("preferred", "preferred_skills")):
+            for item in analysis.get(key, []) if isinstance(analysis, dict) else []:
+                if isinstance(item, dict) and item.get("name"):
+                    skills.append((requirement_type, item))
+
+        questions = interview.questions_data if isinstance(interview.questions_data, list) else []
+        coverage = []
+        for requirement_type, skill in skills:
+            name = str(skill["name"])
+            indices = [
+                index for index, question in enumerate(questions)
+                if isinstance(question, dict) and str(question.get("target_skill", "")).strip().lower() == name.lower()
+            ]
+            scores = [
+                qa_data[index]["score"]
+                for index in indices
+                if index < len(qa_data) and qa_data[index].get("score") is not None
+            ]
+            gaps = [
+                item for item in analysis.get("resume_gaps", [])
+                if isinstance(item, dict) and str(item.get("skill", "")).lower() == name.lower()
+            ] if isinstance(analysis, dict) else []
+            coverage.append({
+                "skill": name,
+                "requirement_type": requirement_type,
+                "resume_status": skill.get("resume_status", "unknown"),
+                "interview_score": round(sum(scores) / len(scores), 1) if scores else None,
+                "question_indices": indices,
+                "evidence": (skill.get("evidence") or [""])[0],
+                "recommendation": (gaps[0].get("practice_action", "") if gaps else ""),
+            })
+        return coverage
+
     # 把模块级常量同时挂到类上，调用方（interview_service）可以按
     # `interview_report_service.MANUAL_MIN_INTERVAL_SECONDS` 这样引用，
     # 不必额外 import 模块级名字；两者是同一个值。
@@ -225,10 +263,27 @@ class InterviewReportService:
             target_position=interview.target_position,
             questions_and_scores=qa_data,
         )
-        report["question_scores"] = [
-            {"question": item["question"], "score": item["score"], "feedback": item.get("feedback", "")}
-            for item in qa_data
-        ]
+        report["question_scores"] = []
+        for index, item in enumerate(qa_data):
+            question_score = {
+                "question": item["question"],
+                "score": item["score"],
+                "feedback": item.get("feedback", ""),
+            }
+            if (
+                isinstance(interview.questions_data, list)
+                and index < len(interview.questions_data)
+                and isinstance(interview.questions_data[index], dict)
+                and interview.questions_data[index].get("target_skill")
+            ):
+                question_score["target_skill"] = interview.questions_data[index]["target_skill"]
+            report["question_scores"].append(question_score)
+        report["skill_coverage"] = InterviewReportService.build_skill_coverage(interview, qa_data)
+        report["gap_summary"] = [
+            item.get("practice_action") or item.get("reason") or item.get("skill")
+            for item in (interview.gap_analysis or {}).get("resume_gaps", [])
+            if isinstance(item, dict)
+        ][:8]
 
         interview.report = json.dumps(report, ensure_ascii=False)
         interview.report_status = STATUS_READY

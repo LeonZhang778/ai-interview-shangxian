@@ -76,8 +76,24 @@ async def start_interview(
         user_id=current_user.id,
         resume_id=data.resume_id,
         target_position=data.target_position,
+        job_description=data.job_description,
         difficulty=data.difficulty,
         total_questions=data.total_questions
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.get("/{interview_id}/gap-analysis")
+async def get_gap_analysis(
+    interview_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取岗位描述与简历差距分析。"""
+    result = await interview_service.get_gap_analysis(
+        db=db,
+        user_id=current_user.id,
+        interview_id=interview_id,
     )
     return ApiResponse.success(data=result)
 

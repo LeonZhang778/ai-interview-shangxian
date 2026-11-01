@@ -39,6 +39,32 @@
       <router-link to="/dashboard" class="btn-secondary" style="padding:4px 12px;font-size:12px;border-radius:6px;display:inline-block">退出</router-link>
     </div>
 
+    <details v-if="!preparing && gapAnalysisStatus !== 'not_requested' && gapAnalysisStatus !== 'disabled'" class="gap-panel">
+      <summary>岗位要求 / 准备差距</summary>
+      <div v-if="gapAnalysisStatus === 'failed'" class="gap-fallback">
+        岗位分析暂时不可用，本场已使用通用岗位题目继续面试。
+      </div>
+      <div v-else-if="gapAnalysis" class="gap-content">
+        <div class="gap-score">岗位匹配度 <strong>{{ gapAnalysis.overall_match_score || 0 }}</strong><span>/100</span></div>
+        <div v-if="gapAnalysis.required_skills?.length" class="gap-section">
+          <h4>必备技能</h4>
+          <div class="gap-tags">
+            <span v-for="skill in gapAnalysis.required_skills" :key="`required-${skill.name}`" :class="['gap-tag', `status-${skill.resume_status}`]">
+              {{ skill.name }} · {{ skillStatus(skill.resume_status) }}
+            </span>
+          </div>
+        </div>
+        <div v-if="gapAnalysis.resume_gaps?.length" class="gap-section">
+          <h4>优先准备</h4>
+          <ul class="gap-list">
+            <li v-for="gap in gapAnalysis.resume_gaps.slice(0, 4)" :key="`${gap.skill}-${gap.reason}`">
+              <strong>{{ gap.skill }}</strong><span>{{ gap.practice_action || gap.reason }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
     <!-- 聊天区域 -->
     <div class="chat-area" ref="chatArea" v-if="!preparing">
       <template v-for="(msg, i) in messages" :key="msg.key ?? i">
@@ -180,6 +206,8 @@ const streamingText = ref('')
 // 默认 true 是为了让「进行中的面试」不受影响（那些面试根本不会走到结束态）。
 const reportReady = ref(true)
 const reportFailed = ref(false)
+const gapAnalysisStatus = ref('not_requested')
+const gapAnalysis = ref(null)
 
 const REPORT_POLL_INTERVAL_MS = 3000
 // 最多轮询约 2 分钟。超时不报错也不硬等，直接放行到报告页 —— 那边同样有轮询与重试，
@@ -201,6 +229,10 @@ function applyReportStatus(status) {
     reportReady.value = status === 'ready'
   }
   if (reportReady.value) stopReportPolling()
+}
+
+function skillStatus(status) {
+  return { matched: '已覆盖', partial: '部分覆盖', missing: '未发现证据', unknown: '待确认' }[status] || '待确认'
 }
 
 function startReportPolling() {
@@ -285,6 +317,8 @@ async function loadMessages() {
   const indices = msgList.map(m => m.question_index).filter(i => i != null)
   if (indices.length) currentIndex.value = Math.max(...indices)
   if (data.total_questions) totalQuestions.value = data.total_questions
+  gapAnalysisStatus.value = data.gap_analysis_status || 'not_requested'
+  gapAnalysis.value = data.gap_analysis || null
   // 以后端状态为准恢复“面试已结束”态：
   // 覆盖三种会丢失 done 事件的场景——① 最后一题的 SSE 流被中途掐断；
   // ② 用户在结束后刷新页面；③ 结束后从历史记录重新进入。
@@ -473,6 +507,31 @@ async function handleSubmit() {
   font-size: 14px; font-weight: 600; backdrop-filter: none;
 }
 .progress { color: var(--text-muted); font-weight: 400; }
+
+.gap-panel {
+  margin: 10px 16px 0;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.gap-panel summary { cursor:pointer; padding:10px 12px; font-size:13px; font-weight:600; color:var(--text-primary); }
+.gap-content { padding:0 12px 12px; }
+.gap-score { font-size:12px; color:var(--text-muted); margin-bottom:8px; }
+.gap-score strong { color:var(--accent-light); font-size:17px; margin-left:6px; }
+.gap-score span { margin-left:2px; }
+.gap-section { margin-top:10px; }
+.gap-section h4 { font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+.gap-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.gap-tag { padding:4px 7px; border-radius:5px; font-size:12px; border:1px solid var(--border-default); }
+.status-matched { color:var(--state-success); }
+.status-partial { color:var(--state-warning); }
+.status-missing { color:var(--state-error); }
+.gap-list { list-style:none; padding:0; margin:0; }
+.gap-list li { display:flex; gap:8px; font-size:12px; line-height:1.6; margin-top:5px; }
+.gap-list li strong { flex:0 0 auto; color:var(--text-primary); }
+.gap-list li span { min-width:0; }
+.gap-fallback { padding:0 12px 12px; color:var(--text-muted); font-size:12px; }
 
 /* 聊天 */
 .chat-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
