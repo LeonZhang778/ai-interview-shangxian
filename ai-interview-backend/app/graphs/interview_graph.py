@@ -89,6 +89,8 @@ class InterviewState(TypedDict):
     target_position: str
     resume_id: int | None
     experience_id: int | None
+    scoring_rubric: dict
+    question_metadata: dict
 
     # 评估结果（由 evaluate 填充）
     evaluation: dict

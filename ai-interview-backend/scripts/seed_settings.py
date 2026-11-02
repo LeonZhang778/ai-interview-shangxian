@@ -4,8 +4,10 @@ Usage (inside docker container):
     python scripts/seed_settings.py
 """
 import asyncio
+import json
 from app.db.base import get_session_local
 from app.models.setting import SystemSetting
+from app.services.client.evaluation_service import DEFAULT_RUBRIC
 from sqlalchemy import select
 
 DEFAULTS = [
@@ -21,6 +23,7 @@ DEFAULTS = [
     ("guest_enabled", "true", "是否允许游客模式"),
     ("image_generation_enabled", "true", "AI 生图功能开关"),
     ("job_gap_analysis_enabled", "true", "岗位描述与简历差距分析开关"),
+    ("interview_scoring_rubric", json.dumps(DEFAULT_RUBRIC, ensure_ascii=False), "面试评分 Rubric JSON"),
 ]
 
 

@@ -580,12 +580,28 @@ class AIService:
         chat_history: list,
         next_question: Optional[str] = None,
         history_summary: Optional[str] = None,
+        rubric: Optional[dict] = None,
+        question_metadata: Optional[dict] = None,
     ) -> dict:
         """评估候选人的回答，返回评分和反馈，带 LLM 缓存"""
         from app.services.common.redis import redis_client
+        from app.services.client.evaluation_service import evaluation_service
+
+        rubric = rubric or await evaluation_service.get_current_rubric()
+        question_metadata = question_metadata or {}
 
         # 检查缓存
-        cache_key = f"evaluate:{question}:{answer}"
+        cache_key = json.dumps(
+            {
+                "version": 2,
+                "rubric_version": rubric.get("version"),
+                "question": question,
+                "question_metadata": question_metadata,
+                "answer": answer,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
         cached = await redis_client.get_llm_cache("evaluate", cache_key)
         if cached:
             return cached
@@ -598,6 +614,8 @@ class AIService:
             {
                 "role": "user",
                 "content": EVALUATE_PROMPT["user"].format(
+                    rubric_json=json.dumps(rubric, ensure_ascii=False),
+                    question_metadata=json.dumps(question_metadata, ensure_ascii=False),
                     resume_context=json.dumps(resume_context, ensure_ascii=False),
                     history_text=history_text,
                     question=question,
@@ -640,7 +658,9 @@ class AIService:
         question: str,
         answer: str,
         resume_context: dict,
-        chat_history: list
+        chat_history: list,
+        rubric: Optional[dict] = None,
+        question_metadata: Optional[dict] = None,
     ) -> dict:
         """评估回答（带三级容错：正常调用 → 预判断降级 → 兜底分数）"""
 
@@ -651,6 +671,8 @@ class AIService:
                 answer=answer,
                 resume_context=resume_context,
                 chat_history=chat_history,
+                rubric=rubric,
+                question_metadata=question_metadata,
             )
             return result
         except Exception as e:
@@ -666,8 +688,14 @@ class AIService:
         resume_context: dict,
         chat_history: list,
         history_summary: Optional[str] = None,
+        rubric: Optional[dict] = None,
+        question_metadata: Optional[dict] = None,
     ):
         """流式版本：评估回答并逐块输出评语，最后输出 JSON 评分"""
+        from app.services.client.evaluation_service import evaluation_service
+
+        rubric = rubric or await evaluation_service.get_current_rubric()
+        question_metadata = question_metadata or {}
         history_text = AIService._format_history(chat_history)
         if history_summary:
             history_text = f"[历史摘要]\n{history_summary}\n\n[近期对话]\n{history_text}"
@@ -676,6 +704,8 @@ class AIService:
             {
                 "role": "user",
                 "content": EVALUATE_STREAM_PROMPT["user"].format(
+                    rubric_json=json.dumps(rubric, ensure_ascii=False),
+                    question_metadata=json.dumps(question_metadata, ensure_ascii=False),
                     resume_context=json.dumps(resume_context, ensure_ascii=False),
                     history_text=history_text,
                     question=question,
@@ -685,6 +715,31 @@ class AIService:
         ]
         async for chunk in AIService._chat_stream(messages, temperature=0.1, provider="qwen"):
             yield chunk
+
+    @staticmethod
+    def extract_structured_evaluation(text: str) -> tuple[str, dict]:
+        """提取 marker 后的结构化评估 JSON，兼容少数未输出 marker 的模型响应。"""
+        marker = "__EVALUATION_JSON__"
+        if marker in text:
+            feedback, payload = text.split(marker, 1)
+            parsed = AIService._extract_json(payload)
+            if not isinstance(parsed, dict):
+                raise ValueError("结构化评估结果必须是 JSON 对象")
+            return feedback.strip(), parsed
+
+        decoder = json.JSONDecoder()
+        for index, char in enumerate(text):
+            if char != "{":
+                continue
+            try:
+                parsed, _ = decoder.raw_decode(text, index)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict) and "dimension_scores" in parsed:
+                return text[:index].strip(), parsed
+            if isinstance(parsed, dict) and "score" in parsed:
+                return text[:index].strip(), parsed
+        raise ValueError("模型响应缺少 __EVALUATION_JSON__ 或结构化评分对象")
 
     @staticmethod
     async def generate_report(

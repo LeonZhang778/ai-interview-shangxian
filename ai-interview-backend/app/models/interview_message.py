@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DECIMAL, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -13,6 +14,7 @@ class InterviewMessage(BaseModel):
     question_index = Column(Integer, nullable=True)
     score = Column(DECIMAL(3, 1), nullable=True)
     feedback = Column(Text, nullable=True)
+    score_details = Column(JSONB, nullable=True)
 
     # 每场面试的每一题同一角色只允许一条记录。
     # 幂等此前只靠应用层「先查后写」，并发下两个请求可能同时查不到，于是同题被写两次、

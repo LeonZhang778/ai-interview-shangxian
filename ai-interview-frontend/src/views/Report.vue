@@ -78,6 +78,17 @@
         </ul>
       </div>
 
+      <div class="card" style="margin-top:16px" v-if="Object.keys(report.dimension_scores || {}).length">
+        <h3 style="margin-bottom:12px;color:var(--accent-light)">结构化维度评分</h3>
+        <div v-for="(score, key) in report.dimension_scores" :key="key" class="report-dimension-row">
+          <div class="coverage-label"><span>{{ dimensionLabel(key) }}</span><strong>{{ score }}/10</strong></div>
+          <div class="coverage-bar"><div class="coverage-fill" :style="{ width: `${Math.max(0, Math.min(100, score * 10))}%` }"></div></div>
+          <p v-if="report.dimension_details?.[key]?.improvement_actions?.length" class="coverage-recommendation">
+            {{ report.dimension_details[key].improvement_actions.join('；') }}
+          </p>
+        </div>
+      </div>
+
       <!-- 优势 & 不足 -->
       <div class="two-col" style="margin-top:16px">
         <div class="card" v-if="report.strengths?.length">
@@ -116,6 +127,19 @@
           <div class="q-bar">
             <div class="q-bar-fill" :style="{ width: (q.score * 10) + '%', background: q.score >= 7 ? 'var(--state-success)' : q.score >= 5 ? 'var(--state-warning)' : 'var(--state-error)' }"></div>
           </div>
+          <details v-if="q.evaluation?.dimension_scores?.length" class="report-evaluation-details">
+            <summary>查看评分依据</summary>
+            <div v-for="dimension in q.evaluation.dimension_scores" :key="`${i}-${dimension.key}`" class="report-evaluation-dimension">
+              <div class="coverage-label"><span>{{ dimension.name || dimension.key }}</span><strong>{{ dimension.score }}/{{ dimension.max_score || 10 }}</strong></div>
+              <blockquote v-for="evidence in dimension.evidence" :key="`${i}-${dimension.key}-${evidence.start}`">“{{ evidence.quote }}”</blockquote>
+              <p v-if="dimension.missing_evidence?.length" class="coverage-recommendation">
+                未覆盖：{{ dimension.missing_evidence.map(item => item.description).join('；') }}
+              </p>
+              <p v-if="dimension.improvement_actions?.length" class="coverage-recommendation">
+                建议：{{ dimension.improvement_actions.join('；') }}
+              </p>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -245,6 +269,15 @@ const recommendNotes = ref([])
 
 function coverageStatus(status) {
   return { matched: '简历已覆盖', partial: '证据不完整', missing: '简历未发现', unknown: '待确认' }[status] || '待确认'
+}
+
+function dimensionLabel(key) {
+  return {
+    technical_accuracy: '技术准确性',
+    reasoning: '分析与推理',
+    evidence: '项目证据',
+    communication: '表达与结构'
+  }[key] || key
 }
 
 function coveragePercent(item) {
@@ -576,6 +609,11 @@ async function handleExportDocx() {
 .coverage-bar { height:7px; margin-top:6px; border-radius:4px; background:var(--bg-hover); overflow:hidden; }
 .coverage-fill { height:100%; border-radius:inherit; background:var(--accent-primary); transition:width .4s ease; }
 .coverage-recommendation { margin:5px 0 0; color:var(--text-muted); font-size:12px; line-height:1.6; }
+.report-dimension-row { margin-top:14px; }
+.report-evaluation-details { margin-top:8px; padding-top:8px; border-top:1px solid var(--border-default); font-size:12px; }
+.report-evaluation-details summary { cursor:pointer; color:var(--accent-light); }
+.report-evaluation-dimension { margin-top:10px; padding-top:8px; border-top:1px solid var(--border-default); }
+.report-evaluation-dimension blockquote { margin:5px 0; padding:5px 8px; border-left:2px solid var(--accent-primary); color:var(--text-secondary); line-height:1.6; }
 .gap-report-list { list-style:none; padding:0; margin:16px 0 0; }
 .gap-report-list li { display:flex; gap:8px; font-size:13px; line-height:1.7; padding-top:7px; color:var(--text-secondary); }
 .gap-report-list li strong { flex:0 0 auto; color:var(--text-primary); }

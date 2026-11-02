@@ -99,6 +99,27 @@
           <div class="bubble feedback-bubble">
             <div class="bubble-content" v-html="renderContent(msg.feedback)"></div>
             <div v-if="msg.score" class="bubble-score"><BaseIcon name="star-fill" :size="14" /> {{ msg.score }}/10</div>
+            <details v-if="msg.evaluation?.dimension_scores?.length" class="evaluation-details">
+              <summary>查看评分依据</summary>
+              <div v-for="dimension in msg.evaluation.dimension_scores" :key="dimension.key" class="evaluation-dimension">
+                <div class="evaluation-dimension-header">
+                  <span>{{ dimension.name || dimension.key }}</span>
+                  <strong>{{ dimension.score }}/{{ dimension.max_score || 10 }}</strong>
+                </div>
+                <p v-if="dimension.evidence?.length" class="evaluation-label">回答原句</p>
+                <blockquote v-for="evidence in dimension.evidence" :key="`${dimension.key}-${evidence.start}-${evidence.end}`">
+                  “{{ evidence.quote }}”
+                </blockquote>
+                <p v-if="dimension.missing_evidence?.length" class="evaluation-label">未覆盖证据</p>
+                <ul v-if="dimension.missing_evidence?.length">
+                  <li v-for="missing in dimension.missing_evidence" :key="missing.criterion_key">{{ missing.description }}</li>
+                </ul>
+                <p v-if="dimension.improvement_actions?.length" class="evaluation-label">改进建议</p>
+                <ul v-if="dimension.improvement_actions?.length">
+                  <li v-for="action in dimension.improvement_actions" :key="action">{{ action }}</li>
+                </ul>
+              </div>
+            </details>
           </div>
         </div>
       </template>
@@ -293,7 +314,7 @@ const userInitial = computed(() => {
 function renderContent(text) {
   if (!text) return ''
   // 实时过滤AI返回的JSON评分数据，避免流式输出时闪现（在原始文本上匹配，转义后就匹配不到了）
-  const cleaned = text
+  const cleaned = text.split('__EVALUATION_JSON__')[0]
     .replace(/```json\s*\{[\s\S]*?\}\s*```/g, '')
     .replace(/\{[^{}]*"score"\s*:\s*[\d.]+[^{}]*\}/g, '')
     .trim()
@@ -312,7 +333,8 @@ async function loadMessages() {
   // key 优先用后端消息 id（稳定），本地新推的消息用临时 key，避免重排时内容跳动
   messages.value = msgList.map(m => ({
     key: m.id != null ? `db-${m.id}` : undefined,
-    role: m.role, content: m.content, score: m.score, feedback: m.feedback, question_index: m.question_index
+    role: m.role, content: m.content, score: m.score, feedback: m.feedback,
+    evaluation: m.evaluation || {}, question_index: m.question_index
   }))
   const indices = msgList.map(m => m.question_index).filter(i => i != null)
   if (indices.length) currentIndex.value = Math.max(...indices)
@@ -389,6 +411,7 @@ async function applyDone(data, rawStreamText, myAnswer) {
       content: myAnswer,
       score: data.score,
       feedback: data.feedback || '',
+        evaluation: data.evaluation || {},
       question_index: data.question_index
     })
   }
@@ -575,6 +598,15 @@ async function handleSubmit() {
   background: rgba(128, 128, 128, 0.06);
 }
 .feedback-message .ai-avatar { filter: none; }
+.evaluation-details { margin-top:10px; border-top:1px solid var(--border-default); padding-top:8px; font-size:12px; }
+.evaluation-details summary { cursor:pointer; color:var(--accent-light); }
+.evaluation-dimension { margin-top:10px; padding-top:8px; border-top:1px solid var(--border-default); }
+.evaluation-dimension-header { display:flex; justify-content:space-between; gap:8px; color:var(--text-secondary); }
+.evaluation-dimension-header strong { color:var(--text-primary); }
+.evaluation-label { margin:7px 0 4px; color:var(--text-muted); font-size:11px; }
+.evaluation-details blockquote { margin:4px 0; padding:5px 8px; border-left:2px solid var(--accent-primary); color:var(--text-secondary); line-height:1.5; }
+.evaluation-details ul { margin:3px 0 0; padding-left:18px; color:var(--text-muted); }
+.evaluation-details li { line-height:1.5; }
 
 /* 输入 */
 .input-area { padding: 16px 20px; background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; gap: 12px; align-items: flex-end; backdrop-filter: none; }

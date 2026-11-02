@@ -31,6 +31,14 @@
         <p style="font-size:14px;line-height:1.8;color:var(--text-secondary)">{{ report.summary }}</p>
       </div>
 
+      <div class="card" style="margin-top:16px" v-if="Object.keys(report.dimension_scores || {}).length">
+        <h3 style="margin-bottom:12px;color:var(--accent-light)">结构化维度评分</h3>
+        <div v-for="(score, key) in report.dimension_scores" :key="key" class="shared-dimension-row">
+          <div class="shared-dimension-label"><span>{{ dimensionLabel(key) }}</span><strong>{{ score }}/10</strong></div>
+          <div class="shared-dimension-bar"><div :style="{ width: `${Math.max(0, Math.min(100, score * 10))}%` }"></div></div>
+        </div>
+      </div>
+
       <!-- 优势 & 不足 -->
       <div class="two-col" style="margin-top:16px">
         <div class="card" v-if="report.strengths?.length">
@@ -104,6 +112,15 @@ const data = ref(null)
 const report = ref(null)
 const loading = ref(true)
 
+function dimensionLabel(key) {
+  return {
+    technical_accuracy: '技术准确性',
+    reasoning: '分析与推理',
+    evidence: '项目证据',
+    communication: '表达与结构'
+  }[key] || key
+}
+
 onMounted(async () => {
   try {
     const res = await getSharedReport(shareToken)
@@ -175,6 +192,11 @@ onMounted(async () => {
   color: var(--accent-purple);
   margin-bottom: 4px;
 }
+.shared-dimension-row { margin-top:12px; }
+.shared-dimension-label { display:flex; justify-content:space-between; gap:8px; font-size:13px; color:var(--text-secondary); }
+.shared-dimension-label strong { color:var(--text-primary); }
+.shared-dimension-bar { height:7px; margin-top:6px; border-radius:4px; background:var(--bg-hover); overflow:hidden; }
+.shared-dimension-bar div { height:100%; border-radius:inherit; background:var(--accent-primary); }
 .hire-rec {
   font-size: 14px;
   color: var(--text-muted);

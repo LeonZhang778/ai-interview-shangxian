@@ -219,6 +219,8 @@ class InterviewReportService:
                 "score": float(message.score),
                 "feedback": message.feedback or "",
             }
+            if message.score_details:
+                answers_by_index[int(message.question_index)]["evaluation"] = message.score_details
 
         questions = interview.questions_data or []
         if not isinstance(questions, list):
@@ -230,14 +232,15 @@ class InterviewReportService:
                 question.get("question", str(question)) if isinstance(question, dict) else str(question)
             )
             answered = answers_by_index.get(index)
-            qa_data.append(
-                {
-                    "question": question_text,
-                    "answer": answered["answer"] if answered else "未回答",
-                    "score": answered["score"] if answered else 0,
-                    "feedback": answered["feedback"] if answered else "",
-                }
-            )
+            qa_item = {
+                "question": question_text,
+                "answer": answered["answer"] if answered else "未回答",
+                "score": answered["score"] if answered else 0,
+                "feedback": answered["feedback"] if answered else "",
+            }
+            if answered and answered.get("evaluation"):
+                qa_item["evaluation"] = answered["evaluation"]
+            qa_data.append(qa_item)
         return qa_data
 
     @staticmethod
@@ -270,6 +273,9 @@ class InterviewReportService:
                 "score": item["score"],
                 "feedback": item.get("feedback", ""),
             }
+            if isinstance(item.get("evaluation"), dict) and item["evaluation"].get("dimension_scores"):
+                question_score["answer"] = item.get("answer", "")
+                question_score["evaluation"] = item["evaluation"]
             if (
                 isinstance(interview.questions_data, list)
                 and index < len(interview.questions_data)
@@ -284,6 +290,48 @@ class InterviewReportService:
             for item in (interview.gap_analysis or {}).get("resume_gaps", [])
             if isinstance(item, dict)
         ][:8]
+
+        structured_evaluations = [
+            item.get("evaluation")
+            for item in qa_data
+            if isinstance(item.get("evaluation"), dict)
+            and item["evaluation"].get("dimension_scores")
+            and not item["evaluation"].get("fallback")
+        ]
+        if structured_evaluations:
+            dimension_values: Dict[str, List[float]] = {}
+            dimension_details: Dict[str, Dict[str, Any]] = {}
+            for evaluation in structured_evaluations:
+                for dimension in evaluation.get("dimension_scores", []):
+                    key = dimension.get("key")
+                    if not key:
+                        continue
+                    dimension_values.setdefault(key, []).append(float(dimension.get("score", 0)))
+                    detail = dimension_details.setdefault(
+                        key,
+                        {"evidence": [], "missing_evidence": [], "improvement_actions": [], "evidence_coverage": []},
+                    )
+                    detail["evidence"].extend(dimension.get("evidence", []))
+                    detail["missing_evidence"].extend(dimension.get("missing_evidence", []))
+                    detail["improvement_actions"].extend(dimension.get("improvement_actions", []))
+                if evaluation.get("evidence_coverage") is not None:
+                    for detail in dimension_details.values():
+                        detail["evidence_coverage"].append(float(evaluation["evidence_coverage"]))
+            report["dimension_scores"] = {
+                key: round(sum(values) / len(values), 1)
+                for key, values in dimension_values.items()
+                if values
+            }
+            for key, detail in dimension_details.items():
+                detail["evidence"] = detail["evidence"][:20]
+                detail["missing_evidence"] = detail["missing_evidence"][:20]
+                detail["improvement_actions"] = list(dict.fromkeys(detail["improvement_actions"]))[:10]
+                detail["evidence_coverage"] = (
+                    round(sum(detail["evidence_coverage"]) / len(detail["evidence_coverage"]), 2)
+                    if detail["evidence_coverage"] else 0
+                )
+            report["dimension_details"] = dimension_details
+            report["rubric_version"] = interview.scoring_rubric_version or structured_evaluations[0].get("rubric_version")
 
         interview.report = json.dumps(report, ensure_ascii=False)
         interview.report_status = STATUS_READY

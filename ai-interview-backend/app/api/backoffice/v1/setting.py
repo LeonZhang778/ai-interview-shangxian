@@ -9,6 +9,8 @@ from app.models.admin import Admin
 from app.models.setting import SystemSetting
 from app.schemas.response import ApiResponse
 from app.services.common.setting_service import invalidate_settings_cache
+from app.exceptions.http_exceptions import ValidationError
+from app.services.client.evaluation_service import EvaluationService, InvalidRubricError
 
 router = APIRouter()
 
@@ -20,6 +22,15 @@ class SettingItem(BaseModel):
 
 class SettingsBatchUpdate(BaseModel):
     settings: List[SettingItem]
+
+
+def _validate_setting(item: SettingItem) -> None:
+    if item.key != "interview_scoring_rubric":
+        return
+    try:
+        EvaluationService.validate_rubric(item.value or "")
+    except InvalidRubricError as exc:
+        raise ValidationError(message=f"评分 Rubric 无效：{exc}") from exc
 
 
 @router.get("")
@@ -52,6 +63,7 @@ async def batch_update_settings(
 ):
     """批量更新设置"""
     for item in body.settings:
+        _validate_setting(item)
         result = await db.execute(
             select(SystemSetting).where(SystemSetting.key == item.key)
         )
@@ -74,6 +86,7 @@ async def update_single_setting(
     current_admin: Admin = Depends(get_current_admin)
 ):
     """更新单个设置"""
+    _validate_setting(body)
     result = await db.execute(
         select(SystemSetting).where(SystemSetting.key == key)
     )

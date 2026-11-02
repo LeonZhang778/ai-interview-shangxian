@@ -9,6 +9,7 @@ from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
+from app.services.client.evaluation_service import evaluation_service
 from app.services.client.interview_report_service import interview_report_service
 from app.services.client.interview_gap_service import (
     empty_gap_analysis,
@@ -119,6 +120,7 @@ class InterviewService:
         await InterviewService._assert_concurrent_limit(db, user_id)
 
         normalized_job_description = normalize_job_description(job_description)
+        scoring_rubric = await evaluation_service.get_current_rubric()
         gap_analysis_status, gap_analysis = await interview_gap_service.analyze(
             parsed_resume=parsed_resume,
             target_position=target_position,
@@ -145,6 +147,8 @@ class InterviewService:
             job_description=normalized_job_description or None,
             gap_analysis=gap_analysis,
             gap_analysis_status=gap_analysis_status,
+            scoring_rubric_version=scoring_rubric["version"],
+            scoring_rubric=scoring_rubric,
             difficulty=difficulty,
             total_questions=total_questions,
             current_question_index=0,
@@ -226,6 +230,8 @@ class InterviewService:
             "target_position": "",
             "resume_id": None,
             "experience_id": None,
+            "scoring_rubric": {},
+            "question_metadata": {},
             # 以下字段由 evaluate / generate_next 节点填充
             "evaluation": {},
             "score": 0.0,
@@ -292,6 +298,8 @@ class InterviewService:
                 "target_position": "",
                 "resume_id": None,
                 "experience_id": None,
+                "scoring_rubric": {},
+                "question_metadata": {},
                 "evaluation": {},
                 "score": 0.0,
                 "feedback": "",
@@ -490,8 +498,9 @@ class InterviewService:
                     "role": m.role,
                     "content": m.content,
                     "question_index": m.question_index,
-                    "score": float(m.score) if m.score else None,
+                    "score": float(m.score) if m.score is not None else None,
                     "feedback": m.feedback,
+                    "evaluation": m.score_details or {},
                     "created_at": m.created_at.isoformat() if m.created_at else None
                 }
                 for m in messages
@@ -676,6 +685,7 @@ class InterviewService:
 
         # 并发上限：同样放在 AI 出题之前
         await InterviewService._assert_concurrent_limit(db, user_id)
+        scoring_rubric = await evaluation_service.get_current_rubric()
 
         # 通过 AI 生成面试题
         questions = await AIService.generate_questions_from_experience(
@@ -699,6 +709,8 @@ class InterviewService:
             total_questions=len(questions),
             current_question_index=0,
             questions_data=questions,
+            scoring_rubric_version=scoring_rubric["version"],
+            scoring_rubric=scoring_rubric,
             status="in_progress"
         )
         await InterviewService._persist_new_interview(db, interview, first_question)

@@ -17,6 +17,7 @@ from app.models.interview import Interview
 from app.models.interview_message import InterviewMessage
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
+from app.services.client.evaluation_service import DEFAULT_RUBRIC, evaluation_service
 from app.services.client.interview_report_service import interview_report_service
 from app.utils.utils import safe_parse_json
 
@@ -108,6 +109,12 @@ async def load_context_node(state: dict, runtime=None) -> dict:
     if current_question is None:
         return {"error": "面试题目数据异常，请重新开始面试"}
 
+    question_item = questions[current_index]
+    question_metadata = question_item if isinstance(question_item, dict) else {}
+    # 新面试在创建时已锁定 Rubric；历史面试没有快照时使用内置 legacy 兼容版本，
+    # 避免每道题重新查询 system_settings，也避免旧面试因配置库暂时不可达而阻塞。
+    scoring_rubric = interview.scoring_rubric or evaluation_service.validate_rubric(DEFAULT_RUBRIC)
+
     return {
         "current_question": current_question,
         "parsed_resume": parsed_resume,
@@ -118,6 +125,8 @@ async def load_context_node(state: dict, runtime=None) -> dict:
         "target_position": interview.target_position,
         "resume_id": resume_id,
         "experience_id": experience_id,
+        "scoring_rubric": scoring_rubric,
+        "question_metadata": question_metadata,
     }
 
 
@@ -127,9 +136,6 @@ async def load_context_node(state: dict, runtime=None) -> dict:
 
 async def evaluate_node(state: dict, runtime=None) -> dict:
     """评估候选人回答，带三级容错 + 流式输出"""
-    import asyncio
-    import re
-
     # 如果上游已出错，短路跳过
     if state.get("error"):
         return {"score": 0.0, "feedback": "", "evaluation": {}}
@@ -139,62 +145,86 @@ async def evaluate_node(state: dict, runtime=None) -> dict:
     parsed_resume = state["parsed_resume"]
     chat_history = state["chat_history"]
     chunk_queue = _runtime_value(state, runtime, "chunk_queue")  # 可选：用于流式输出
+    rubric = state.get("scoring_rubric") or evaluation_service.validate_rubric(DEFAULT_RUBRIC)
+    question_metadata = state.get("question_metadata") or {}
 
-    # 评分语义统一交给 AI 按提示词判断：坦诚跳过给 4-5 / 2-3 分等分档规则
-    # 已写入 EVALUATE_STREAM_SYSTEM。此处刻意不做关键词预判——正常技术回答里的
-    # “不会 / 跳过 / 不清楚”会被子串匹配误判成坦诚跳过，直接给 4 分且完全不调用 AI。
-
-    # Level 1: 尝试流式 AI 评估
+    # Level 1: 尝试流式结构化 AI 评估。marker 后的 JSON 不推给前端。
     last_error = None
     try:
         full_text = ""
+        pending = ""
+        marker = "__EVALUATION_JSON__"
+        marker_seen = False
         async for chunk in AIService.evaluate_answer_stream(
             question=current_question,
             answer=answer,
             resume_context=parsed_resume,
             chat_history=chat_history,
             history_summary=state.get("history_summary"),
+            rubric=rubric,
+            question_metadata=question_metadata,
         ):
             full_text += chunk
-            # 实时把 LLM token 推到队列，供外层 SSE 流式输出
             if chunk_queue:
-                await chunk_queue.put(chunk)
+                pending += chunk
+                if not marker_seen and marker in pending:
+                    prefix, pending = pending.split(marker, 1)
+                    if prefix:
+                        await chunk_queue.put(prefix)
+                    marker_seen = True
+                elif not marker_seen and len(pending) > len(marker) + 4:
+                    safe_length = len(pending) - len(marker) - 4
+                    await chunk_queue.put(pending[:safe_length])
+                    pending = pending[safe_length:]
 
-        # 从流式文本中提取评分
-        feedback = full_text.strip()
-        json_match = re.search(r'\{[^}]*"score"\s*:\s*([\d.]+)[^}]*\}', full_text)
-        score = 5.0
-        if json_match:
-            try:
-                score = float(json_match.group(1))
-                feedback = re.sub(r'```json\s*\{[^}]*\}\s*```', '', feedback).strip()
-                feedback = re.sub(r'\{[^}]*"score"[^}]*\}', '', feedback).strip()
-            except (ValueError, IndexError):
-                pass
-
-        score = AIService.post_process_score(score, answer)
+        feedback_text, raw_evaluation = AIService.extract_structured_evaluation(full_text)
+        if "dimension_scores" in raw_evaluation:
+            evaluation = evaluation_service.validate_model_output(
+                raw_evaluation,
+                rubric=rubric,
+                answer=answer,
+                category=question_metadata.get("category"),
+            )
+        elif "score" in raw_evaluation:
+            evaluation = evaluation_service.from_legacy_score(
+                raw_evaluation["score"],
+                rubric=rubric,
+                category=question_metadata.get("category"),
+                feedback=feedback_text,
+            )
+        else:
+            raise ValueError("结构化评分缺少 dimension_scores")
+        if chunk_queue and not marker_seen and feedback_text:
+            await chunk_queue.put(feedback_text)
         return {
-            "evaluation": {"score": score, "feedback": feedback, "follow_up": False},
-            "score": score,
-            "feedback": feedback,
+            "evaluation": evaluation,
+            "score": evaluation["score"],
+            "feedback": evaluation["feedback"] or feedback_text,
         }
     except Exception as e:
         last_error = str(e)
-        logger.warning(f"[evaluate_node] AI 评估失败: {e}")
+        logger.warning("[evaluate_node] 结构化 AI 评估失败: %s", e)
 
     # Level 2-3: 共享降级逻辑
     fallback_result = AIService._fallback_evaluate(answer)
+    fallback_evaluation = evaluation_service.fallback(
+        rubric=rubric,
+        answer=answer,
+        category=question_metadata.get("category"),
+        feedback=fallback_result["feedback"],
+        fallback_level=fallback_result.get("fallback_level", 3),
+        skip_type=fallback_result.get("skip_type"),
+        score_override=fallback_result.get("score"),
+    )
+    interview_metrics.increment("evaluation_fallback_total")
+    interview_metrics.increment(
+        f"evaluation_fallback_level_{fallback_result.get('fallback_level', 3)}"
+    )
     if chunk_queue:
         await chunk_queue.put(fallback_result["feedback"])
     return {
-        "evaluation": {
-            "score": fallback_result["score"],
-            "feedback": fallback_result["feedback"],
-            "follow_up": False,
-            "fallback": True,
-            "error": last_error,
-        },
-        "score": fallback_result["score"],
+        "evaluation": {**fallback_evaluation, "error": last_error},
+        "score": fallback_evaluation["score"],
         "feedback": fallback_result["feedback"],
         "skip_type": fallback_result.get("skip_type"),
     }
@@ -245,6 +275,7 @@ async def save_results_node(state: dict, runtime=None) -> dict:
     is_finished = state["is_finished"]
     score = state["score"]
     feedback = state["feedback"]
+    score_details = state.get("evaluation") or None
     questions = state["questions"]
     answer = state["answer"]
 
@@ -260,6 +291,7 @@ async def save_results_node(state: dict, runtime=None) -> dict:
     idem_result = await db.execute(idem_query)
     existing = idem_result.scalar_one_or_none()
     if existing:
+        interview_metrics.increment("idempotent_submission_total")
         logger.warning(
             f"[save_results] 幂等跳过：第 {current_index} 题已存在评分，"
             f"避免重复写入（score={existing.score}）"
@@ -268,6 +300,7 @@ async def save_results_node(state: dict, runtime=None) -> dict:
             "result": {
                 "score": float(existing.score) if existing.score is not None else 0.0,
                 "feedback": existing.feedback or "",
+                "evaluation": existing.score_details or {},
                 "question_index": current_index,
                 "is_finished": is_finished,
                 "next_question": state.get("next_question"),
@@ -288,6 +321,7 @@ async def save_results_node(state: dict, runtime=None) -> dict:
         questions=questions,
     )
     if duplicate_result:
+        interview_metrics.increment("idempotent_submission_total")
         return {"result": duplicate_result, "overall_score": duplicate_result.get("overall_score", 0.0)}
 
     if interview.current_question_index != current_index:
@@ -309,6 +343,7 @@ async def save_results_node(state: dict, runtime=None) -> dict:
         question_index=current_index,
         score=Decimal(str(score)),
         feedback=feedback,
+        score_details=score_details,
     )
     db.add(candidate_msg)
 
@@ -383,10 +418,12 @@ async def save_results_node(state: dict, runtime=None) -> dict:
             "[save_results] 并发重复提交被唯一约束拦下，按幂等返回："
             f"interview_id={interview_id} index={current_index}"
         )
+        interview_metrics.increment("idempotent_submission_total")
         return {
             "result": {
                 "score": float(existing.score) if existing.score is not None else 0.0,
                 "feedback": existing.feedback or "",
+                "evaluation": existing.score_details or {},
                 "question_index": current_index,
                 "is_finished": is_finished,
                 "next_question": state.get("next_question"),
@@ -422,6 +459,7 @@ async def save_results_node(state: dict, runtime=None) -> dict:
     result = {
         "score": score,
         "feedback": feedback,
+        "evaluation": score_details or {},
         "question_index": current_index,
         "is_finished": is_finished,
         "next_question": state.get("next_question"),
@@ -477,6 +515,7 @@ async def _get_existing_answer_result(
     duplicate = {
         "score": float(message.score) if message.score is not None else 0.0,
         "feedback": message.feedback or "",
+        "evaluation": message.score_details or {},
         "question_index": question_index,
         "is_finished": is_finished,
         "next_question": None if is_finished else _get_question_text(questions, current_index),
