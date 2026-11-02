@@ -19,6 +19,7 @@ from app.models.resume import Resume
 from app.services.client.ai_service import AIService
 from app.services.client.evaluation_service import DEFAULT_RUBRIC, evaluation_service
 from app.services.client.interview_report_service import interview_report_service
+from app.services.common.interview_metrics import interview_metrics
 from app.utils.utils import safe_parse_json
 
 logger = logging.getLogger(__name__)
