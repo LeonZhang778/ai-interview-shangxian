@@ -477,6 +477,9 @@ jobs:
               exit 1
             fi
 
+            echo "Seeding missing system settings..."
+            docker exec ai-interview-app python scripts/seed_settings.py
+
             echo "Checking direct app health after migrations..."
             direct_health_status=$(docker exec ai-interview-app python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8006/api/v1/config/health', timeout=5).status)")
             test "$direct_health_status" = 200
