@@ -228,26 +228,39 @@ class AIService:
 
     @staticmethod
     async def _call_model_stream(
-        messages: list, temperature: float, model: str, provider: str = "default"
+        messages: list,
+        temperature: float,
+        model: str,
+        provider: str = "default",
+        *,
+        max_tokens: int = 4096,
+        reasoning_effort: Optional[str] = None,
     ):
         """底层流式模型调用，供主/备模型复用。
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
+            max_tokens: 输出上限。评分要输出「评语 + 每个维度的结构化 JSON」，
+                4096 在推理模型上会被 reasoning 与长 JSON 撑爆，导致 __EVALUATION_JSON__
+                之后的 JSON 缺失、评分回落兜底
+            reasoning_effort: 透传 low/high/max
         """
         active_client, _ = _resolve_provider(provider)
         connect_timeout = getattr(settings, "AI_STREAM_CONNECT_TIMEOUT", 20)
         idle_timeout = getattr(settings, "AI_STREAM_IDLE_TIMEOUT", 30)
+        stream_kwargs: dict = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        if reasoning_effort:
+            stream_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
         try:
             # 建连超时：只覆盖“拿到响应对象”这一步
             stream = await asyncio.wait_for(
-                active_client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=4096,
-                    stream=True,
-                ),
+                active_client.chat.completions.create(**stream_kwargs),
                 timeout=connect_timeout,
             )
             # 空闲超时：等待每个后续 chunk，若超过 idle_timeout 没有新 token 则判定流已死。
@@ -303,24 +316,31 @@ class AIService:
             raise
 
     @staticmethod
-    async def _chat_stream(messages: list, temperature: float = 0.7, provider: str = "default"):
+    async def _chat_stream(
+        messages: list, temperature: float = 0.7, provider: str = "default", **kwargs
+    ):
         """流式对话补全调用：按 provider 选通道，主模型失败自动降级到备用模型（动态路由 / 模型降级）。
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
+            **kwargs: 透传给 _call_model_stream（max_tokens / reasoning_effort）
         """
         _, active_model = _resolve_provider(provider)
         fallback = getattr(settings, "AI_MODEL_FALLBACK", "")
         use_fallback = bool(fallback) and fallback != active_model
         try:
-            async for chunk in AIService._call_model_stream(messages, temperature, active_model, provider):
+            async for chunk in AIService._call_model_stream(
+                messages, temperature, active_model, provider, **kwargs
+            ):
                 yield chunk
         except Exception as e:
             if use_fallback:
                 logger.warning(
                     f"[模型降级-stream] 主模型 {active_model} 失败，切换备用模型 {fallback}: {e}"
                 )
-                async for chunk in AIService._call_model_stream(messages, temperature, fallback, provider):
+                async for chunk in AIService._call_model_stream(
+                    messages, temperature, fallback, provider, **kwargs
+                ):
                     yield chunk
             else:
                 raise
@@ -775,7 +795,12 @@ class AIService:
                 ),
             },
         ]
-        async for chunk in AIService._chat_stream(messages, temperature=0.1, provider="qwen"):
+        # 评分要同时输出「自然语言评语 + 各维度结构化 JSON」。4096 在推理模型上
+        # 会被 reasoning 和长 JSON 撑爆，__EVALUATION_JSON__ 之后的内容缺失，
+        # 评分静默回落兜底 5.0（线上实测：评语正常但 done 是「评估服务暂时不可用」）。
+        async for chunk in AIService._chat_stream(
+            messages, temperature=0.1, provider="qwen", max_tokens=8192
+        ):
             yield chunk
 
     @staticmethod
