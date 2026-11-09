@@ -174,7 +174,7 @@ class AIService:
         model: str,
         provider: str = "default",
         *,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
         reasoning_effort: Optional[str] = None,
         response_format: Optional[dict] = None,
         timeout: Optional[float] = None,
@@ -183,8 +183,9 @@ class AIService:
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
-            max_tokens: 输出上限。推理模型会把额度消耗在 reasoning 上，过小会导致
-                content 为空（DeepSeek-V4 默认 effort=high 时实测如此，只剩 reasoning_content）
+            max_tokens: 输出上限。默认 8192 而非 4096：推理模型会先消耗 reasoning
+                额度，评分/差距分析这类「自然语言 + 结构化 JSON」的输出很容易在 4096
+                处被截断，表现为 JSON 缺失并静默回落兜底（线上已复现）
             reasoning_effort: 透传 low/high/max，降低推理模型耗时
             response_format: 透传给上游，如 {"type": "json_object"} 强约束返回对象
             timeout: 单次调用超时秒数，默认取 settings.AI_TIMEOUT
@@ -233,16 +234,15 @@ class AIService:
         model: str,
         provider: str = "default",
         *,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
         reasoning_effort: Optional[str] = None,
     ):
         """底层流式模型调用，供主/备模型复用。
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
-            max_tokens: 输出上限。评分要输出「评语 + 每个维度的结构化 JSON」，
-                4096 在推理模型上会被 reasoning 与长 JSON 撑爆，导致 __EVALUATION_JSON__
-                之后的 JSON 缺失、评分回落兜底
+            max_tokens: 输出上限。默认 8192 而非 4096：评分要输出「评语 + 每个维度的
+                结构化 JSON」，推理模型上 4096 会在 __EVALUATION_JSON__ 之后被截断
             reasoning_effort: 透传 low/high/max
         """
         active_client, _ = _resolve_provider(provider)
