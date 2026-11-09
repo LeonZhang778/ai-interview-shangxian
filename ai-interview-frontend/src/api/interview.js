@@ -2,7 +2,10 @@ import api from './request'
 import { downloadBinary } from './download'
 
 export function startInterview(data) {
-  return api.post('/interviews/start', data)
+  // 出题前还有一次岗位差距分析，DeepSeek 推理模型实测单次 30-40s，
+  // 默认 60s 会在服务端返回前先超时，前端只看到「题目生成失败」。
+  // 放宽到 120s，与简历上传接口保持一致。
+  return api.post('/interviews/start', data, { timeout: 120000 })
 }
 
 export async function submitAnswerStream(interviewId, answer, onChunk, onDone) {

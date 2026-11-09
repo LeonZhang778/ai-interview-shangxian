@@ -9,6 +9,7 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
     retry_if_exception_type,
+    retry_if_not_exception_type,
     before_sleep_log,
 )
 from app.prompts.interview import (
@@ -157,30 +158,53 @@ class AIService:
 
     @staticmethod
     @retry(
-        retry=retry_if_exception_type((ConnectionError, TimeoutError, Exception)),
+        # 超时不重试：单次已等满 timeout，再重试只会把总耗时成倍放大。
+        # 实测 DeepSeek-V4 推理模型一次岗位差距分析约 27-38s，重试 3 次把
+        # /interviews/start 拖到 105s，前端 60s 先超时并显示「题目生成失败」。
+        retry=retry_if_exception_type(Exception)
+        & retry_if_not_exception_type((TimeoutError, asyncio.TimeoutError)),
         stop=stop_after_attempt(settings.AI_MAX_RETRIES),
         wait=wait_exponential(min=settings.AI_RETRY_MIN_WAIT, max=settings.AI_RETRY_MAX_WAIT),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
     async def _call_model(
-        messages: list, temperature: float, model: str, provider: str = "default"
+        messages: list,
+        temperature: float,
+        model: str,
+        provider: str = "default",
+        *,
+        max_tokens: int = 4096,
+        reasoning_effort: Optional[str] = None,
+        response_format: Optional[dict] = None,
+        timeout: Optional[float] = None,
     ) -> str:
         """底层单次模型调用（含超时与空响应处理），供主/备模型复用。
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
+            max_tokens: 输出上限。推理模型会把额度消耗在 reasoning 上，过小会导致
+                content 为空（DeepSeek-V4 默认 effort=high 时实测如此，只剩 reasoning_content）
+            reasoning_effort: 透传 low/high/max，降低推理模型耗时
+            response_format: 透传给上游，如 {"type": "json_object"} 强约束返回对象
+            timeout: 单次调用超时秒数，默认取 settings.AI_TIMEOUT
         """
         active_client, _ = _resolve_provider(provider)
+        request_kwargs: dict = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if response_format:
+            request_kwargs["response_format"] = response_format
+        if reasoning_effort:
+            # 用 extra_body 透传，不依赖 openai SDK 对 reasoning_effort 的版本支持
+            request_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
         try:
             response = await asyncio.wait_for(
-                active_client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=4096,
-                ),
-                timeout=settings.AI_TIMEOUT,
+                active_client.chat.completions.create(**request_kwargs),
+                timeout=timeout or settings.AI_TIMEOUT,
             )
             msg = response.choices[0].message
             content = msg.content
@@ -196,7 +220,7 @@ class AIService:
             logger.info(f"AI 响应前 200 字: {result[:200]}")
             return result
         except asyncio.TimeoutError:
-            logger.error(f"AI API 调用超时 ({settings.AI_TIMEOUT}s) model={model}")
+            logger.error(f"AI API 调用超时 ({timeout or settings.AI_TIMEOUT}s) model={model}")
             raise TimeoutError("AI API 调用超时")
         except Exception as e:
             logger.error(f"AI API 调用失败 model={model}: {e}")
@@ -251,23 +275,31 @@ class AIService:
             raise
 
     @staticmethod
-    async def _chat(messages: list, temperature: float = 0.7, provider: str = "default") -> str:
+    async def _chat(
+        messages: list, temperature: float = 0.7, provider: str = "default", **kwargs
+    ) -> str:
         """基础对话补全调用：按 provider 选通道，主模型失败自动降级到备用模型
         （动态路由 / 模型降级，与三级容错呼应）。
 
         Args:
             provider: "qwen" 走千问通道，其它值走默认通道
+            **kwargs: 透传给 _call_model（max_tokens / reasoning_effort /
+                response_format / timeout），主备两次调用使用同一组参数
         """
         _, active_model = _resolve_provider(provider)
         try:
-            return await AIService._call_model(messages, temperature, active_model, provider)
+            return await AIService._call_model(
+                messages, temperature, active_model, provider, **kwargs
+            )
         except Exception as e:
             fallback = getattr(settings, "AI_MODEL_FALLBACK", "")
             if fallback and fallback != active_model:
                 logger.warning(
                     f"[模型降级] 主模型 {active_model} 失败，切换备用模型 {fallback}: {e}"
                 )
-                return await AIService._call_model(messages, temperature, fallback, provider)
+                return await AIService._call_model(
+                    messages, temperature, fallback, provider, **kwargs
+                )
             raise
 
     @staticmethod
@@ -461,7 +493,18 @@ class AIService:
                 ),
             },
         ]
-        result = await AIService._chat(messages, temperature=0.2, provider="qwen")
+        # DeepSeek-V4 默认 effort=high 时会把 4096 tokens 全用在 reasoning 上，
+        # 导致 content 为空、只剩 reasoning_content（思考过程），解析出的结构不可用；
+        # 单次耗时也贴着 30s 超时线。这里降 effort、提高输出上限、强约束 JSON 对象。
+        result = await AIService._chat(
+            messages,
+            temperature=0.2,
+            provider="qwen",
+            max_tokens=8192,
+            reasoning_effort="low",
+            response_format={"type": "json_object"},
+            timeout=max(settings.AI_TIMEOUT, 60),
+        )
         return AIService._extract_json(result)
 
     @staticmethod
@@ -526,7 +569,11 @@ class AIService:
                 ),
             },
         ]
-        result = await AIService._chat(messages, temperature=0.7, provider="qwen")
+        # 出题契约必须是裸 JSON 数组，不能加 response_format=json_object；
+        # 仅提高输出上限，避免推理模型把额度烧在 reasoning 上导致 content 为空。
+        result = await AIService._chat(
+            messages, temperature=0.7, provider="qwen", max_tokens=8192
+        )
         questions = AIService._extract_json(result)
 
         # 写入缓存（TTL 1 小时）
