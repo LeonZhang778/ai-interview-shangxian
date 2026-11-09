@@ -312,19 +312,94 @@ class EvaluationService:
         }
 
     @staticmethod
+    def _normalize_model_output(value: Any, rubric_map: Dict[str, Any]) -> Any:
+        """把模型常见的不规范输出补成 schema 可接受的形状。
+
+        DeepSeek 等模型经常把 evidence 写成纯字符串数组（只给原文摘录），
+        而 schema 要求 EvidenceItem 对象。不归一化时 model_validate 直接抛错，
+        整条评分回落兜底 5.0 —— 线上表现为「评语正常但分数是评估服务不可用」，
+        本地按 evaluate_node 真实链路已复现。
+        """
+        if not isinstance(value, dict):
+            return value
+        data = dict(value)
+        dimensions = data.get("dimension_scores")
+        if not isinstance(dimensions, list):
+            return data
+
+        normalized = []
+        for item in dimensions:
+            if not isinstance(item, dict):
+                normalized.append(item)
+                continue
+            dimension = dict(item)
+            key = str(dimension.get("key") or "").strip()
+            rubric_dimension = rubric_map.get(key) or {}
+            criteria_keys = [
+                str(criterion.get("key") or "").strip()
+                for criterion in (rubric_dimension.get("required_evidence") or [])
+            ]
+            criteria_keys = [c for c in criteria_keys if c]
+            default_criterion = criteria_keys[0] if criteria_keys else (key or "unknown")
+
+            for field in ("missing_criteria", "improvement_actions"):
+                raw = dimension.get(field)
+                if isinstance(raw, str):
+                    dimension[field] = [raw] if raw.strip() else []
+
+            evidence = dimension.get("evidence")
+            if isinstance(evidence, str):
+                evidence = [evidence]
+            if isinstance(evidence, list):
+                fixed = []
+                for index, entry in enumerate(evidence[:10]):
+                    criterion = (
+                        criteria_keys[index] if index < len(criteria_keys) else default_criterion
+                    )
+                    if isinstance(entry, str):
+                        quote = entry.strip()
+                        if not quote:
+                            continue
+                        fixed.append(
+                            {
+                                "criterion_key": criterion,
+                                "quote": quote[:500],
+                                "claim": "",
+                                "support": "direct",
+                            }
+                        )
+                    elif isinstance(entry, dict):
+                        obj = dict(entry)
+                        if not str(obj.get("criterion_key") or "").strip():
+                            obj["criterion_key"] = criterion
+                        quote = str(obj.get("quote") or "").strip()
+                        if not quote:
+                            continue
+                        obj["quote"] = quote[:500]
+                        if obj.get("support") not in ("direct", "partial", "inferred"):
+                            obj["support"] = "direct"
+                        fixed.append(obj)
+                dimension["evidence"] = fixed
+            normalized.append(dimension)
+
+        data["dimension_scores"] = normalized
+        return data
+
+    @staticmethod
     def validate_model_output(
         value: Any,
         rubric: Dict[str, Any],
         answer: str,
         category: Optional[str],
     ) -> Dict[str, Any]:
+        dimensions = EvaluationService.applicable_dimensions(rubric, category)
+        rubric_map = {item["key"]: item for item in dimensions}
+        normalized = EvaluationService._normalize_model_output(value, rubric_map)
         try:
-            parsed = StructuredEvaluationOutput.model_validate(value)
+            parsed = StructuredEvaluationOutput.model_validate(normalized)
         except PydanticValidationError as exc:
             raise InvalidEvaluationError("结构化评分字段校验失败") from exc
 
-        dimensions = EvaluationService.applicable_dimensions(rubric, category)
-        rubric_map = {item["key"]: item for item in dimensions}
         all_rubric_keys = {item["key"] for item in rubric["dimensions"]}
         model_map = {}
         for item in parsed.dimension_scores:
