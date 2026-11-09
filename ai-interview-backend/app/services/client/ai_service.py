@@ -29,8 +29,9 @@ from app.prompts.interview import (
 logger = logging.getLogger(__name__)
 
 # 使用 OpenAI 兼容 API
-# - client：默认通道（中转站 Grok），供学习笔记摘要 / 标签 / 闪卡使用
-# - qwen_client：千问 DashScope 通道，供简历解析 / 模拟面试使用
+# - client：默认通道（现为 DeepSeek），供全部业务调用
+# - qwen_client：历史千问 DashScope 槽位，已停用。AI_QWEN_API_KEY 留空时
+#   所有 provider="qwen" 的调用自动落回默认通道，无需改调用点。
 client = AsyncOpenAI(
     api_key=settings.AI_API_KEY,
     base_url=settings.AI_BASE_URL
@@ -47,9 +48,10 @@ def _resolve_provider(provider: str):
     按通道名解析出 (client, model)。
 
     千问通道未配置 key 时降级到默认通道，避免整块功能不可用。
+    当前生产已将 AI_QWEN_API_KEY 置空，历史 provider="qwen" 调用统一走默认通道。
 
     Args:
-        provider: "qwen" 走千问通道，其它值走默认通道
+        provider: "qwen" 走历史千问槽位，其它值走默认通道
 
     Returns:
         (AsyncOpenAI 客户端, 模型名称)
@@ -57,7 +59,8 @@ def _resolve_provider(provider: str):
     if provider == "qwen":
         if settings.AI_QWEN_API_KEY:
             return qwen_client, settings.AI_QWEN_MODEL
-        logger.warning("AI_QWEN_API_KEY 未配置，千问通道降级到默认通道")
+        # 预期行为（千问通道已停用），用 debug 避免每道题刷一条 warning
+        logger.debug("AI_QWEN_API_KEY 未配置，改用默认通道")
     return client, settings.AI_MODEL
 
 
@@ -647,11 +650,23 @@ class AIService:
                 "honest_skip": "AI 暂时不可用，已使用基础评分。坦诚说会不会被重罚。",
                 "partial_attempt": "AI 暂时不可用，已使用基础评分。",
             }.get(skip_type, "AI 暂时不可用，已使用基础评分。")
-            return {"score": score, "feedback": feedback, "follow_up": False, "skip_type": skip_type}
+            return {
+                "score": score,
+                "feedback": feedback,
+                "follow_up": False,
+                "skip_type": skip_type,
+                "fallback_level": 2,
+            }
 
         # Level 3: 兜底
         logger.warning("[Level 3] 所有评估方案失败，使用兜底分数")
-        return {"score": 5.0, "feedback": "评估服务暂时不可用，请稍后查看详细反馈。", "follow_up": False, "skip_type": None}
+        return {
+            "score": 5.0,
+            "feedback": "评估服务暂时不可用，请稍后查看详细反馈。",
+            "follow_up": False,
+            "skip_type": None,
+            "fallback_level": 3,
+        }
 
     @staticmethod
     async def evaluate_answer_with_fallback(
