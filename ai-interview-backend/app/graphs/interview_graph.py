@@ -219,7 +219,7 @@ async def interview_graph_stream(
         graph_result = await graph_task
     except Exception as e:
         logger.error(f"[graph] 图执行异常，转为 error 事件返回: {e}", exc_info=True)
-        yield {"type": "error", "content": f"评估中断，请重试：{e}"}
+        yield {"type": "error", "content": "评估服务暂时不可用，请稍后重试。"}
         return
 
     result = graph_result.get("result", {}) or {}

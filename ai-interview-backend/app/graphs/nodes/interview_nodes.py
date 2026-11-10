@@ -149,6 +149,30 @@ async def evaluate_node(state: dict, runtime=None) -> dict:
     rubric = state.get("scoring_rubric") or evaluation_service.validate_rubric(DEFAULT_RUBRIC)
     question_metadata = state.get("question_metadata") or {}
 
+    pre_score = AIService.pre_score(answer)
+    if pre_score is not None:
+        score, skip_type = pre_score
+        feedback = AIService.pre_score_feedback(skip_type)
+        evaluation = evaluation_service.fallback(
+            rubric=rubric,
+            answer=answer,
+            category=question_metadata.get("category"),
+            feedback=feedback,
+            fallback_level=0,
+            skip_type=skip_type,
+            score_override=score,
+        )
+        interview_metrics.increment("evaluation_pre_score_total")
+        interview_metrics.increment(f"evaluation_pre_score_{skip_type}")
+        if chunk_queue:
+            await chunk_queue.put(feedback)
+        return {
+            "evaluation": evaluation,
+            "score": evaluation["score"],
+            "feedback": feedback,
+            "skip_type": skip_type,
+        }
+
     # Level 1: 尝试流式结构化 AI 评估。marker 后的 JSON 不推给前端。
     last_error = None
     try:

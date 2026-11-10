@@ -155,7 +155,8 @@ def test_evaluate_node_long_answer_with_skip_keyword_still_calls_ai(monkeypatch)
     }))
 
     assert called is True
-    assert result["score"] == 8.5
+    assert result["score"] <= 4.0
+    assert all(item["evidence"] == [] for item in result["evaluation"]["dimension_scores"])
 
 
 def test_pre_score_keyword_match_only_applies_to_short_answers():
@@ -168,6 +169,27 @@ def test_pre_score_keyword_match_only_applies_to_short_answers():
 
     assert AIService.pre_score("不会") == (3.0, "honest_skip")
     assert AIService.pre_score("") == (1.0, "empty")
+    assert AIService.pre_score("你好！") == (1.0, "empty_talk")
+
+
+def test_evaluate_node_pre_scores_greeting_without_calling_ai(monkeypatch):
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("纯问候语应在模型调用前确定性评分")
+        yield ""
+
+    monkeypatch.setattr(AIService, "evaluate_answer_stream", forbidden)
+
+    result = asyncio.run(evaluate_node({
+        "answer": "你好",
+        "current_question": "请介绍一下自己",
+        "parsed_resume": {},
+        "chat_history": [],
+        "chunk_queue": None,
+    }))
+
+    assert result["score"] == 1.0
+    assert result["skip_type"] == "empty_talk"
+    assert "空泛" in result["feedback"]
 
 
 def test_fallback_evaluate_does_not_misjudge_long_answers():

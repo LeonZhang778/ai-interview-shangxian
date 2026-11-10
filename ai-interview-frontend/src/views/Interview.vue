@@ -336,9 +336,18 @@ async function loadMessages() {
     role: m.role, content: m.content, score: m.score, feedback: m.feedback,
     evaluation: m.evaluation || {}, question_index: m.question_index
   }))
-  const indices = msgList.map(m => m.question_index).filter(i => i != null)
-  if (indices.length) currentIndex.value = Math.max(...indices)
   if (data.total_questions) totalQuestions.value = data.total_questions
+  if (data.status === 'completed') {
+    currentIndex.value = Math.max(0, totalQuestions.value - 1)
+  } else if (Number.isInteger(data.current_question_index)) {
+    currentIndex.value = Math.min(
+      Math.max(0, data.current_question_index),
+      Math.max(0, totalQuestions.value - 1)
+    )
+  } else {
+    const indices = msgList.map(m => m.question_index).filter(i => i != null)
+    if (indices.length) currentIndex.value = Math.min(Math.max(...indices), totalQuestions.value - 1)
+  }
   gapAnalysisStatus.value = data.gap_analysis_status || 'not_requested'
   gapAnalysis.value = data.gap_analysis || null
   // 以后端状态为准恢复“面试已结束”态：

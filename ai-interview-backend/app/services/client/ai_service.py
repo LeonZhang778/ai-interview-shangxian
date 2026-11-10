@@ -71,7 +71,7 @@ class AIService:
     # 诚实跳过的关键词（坦诚说不会，应该给机会）
     HONEST_SKIP_KEYWORDS = ["不知道", "不会", "不清楚", "不太了解", "不太清楚", "没学过", "没接触过", "不记得", "跳过"]
     # 胡说八道的关键词（空洞回答）
-    EMPTY_TALK_KEYWORDS = ["嗯", "对", "是的", "好的", "知道了"]
+    EMPTY_TALK_KEYWORDS = ["嗯", "对", "是的", "好的", "知道了", "你好", "您好", "hello", "hi"]
     # 关键词预判只对短回答生效。超过此长度一律视为「正常作答」，不再做关键词判定。
     # 因为「不会 / 跳过 / 不清楚」在正常技术表述里极其常见
     #（如"session 不会长期持有连接""跳过已过期的 key"），对长回答做子串匹配会误判。
@@ -100,8 +100,9 @@ class AIService:
         if len(text) > AIService.MAX_SKIP_KEYWORD_LEN:
             return None
 
-        # 空洞回答（只有"嗯"、"对"等）→ 1 分
-        if text in AIService.EMPTY_TALK_KEYWORDS:
+        # 纯问候或空洞应答没有回答内容，按低分处理，不交给模型自由判断。
+        empty_talk = text.strip("，。！？!?、. ").casefold()
+        if empty_talk in AIService.EMPTY_TALK_KEYWORDS:
             return (1.0, "empty_talk")
 
         # 诚实跳过：只有"不知道"没有其他内容 → 3 分（给机会，不重罚）

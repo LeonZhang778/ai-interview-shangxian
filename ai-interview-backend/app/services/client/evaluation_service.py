@@ -284,6 +284,8 @@ class EvaluationService:
                 {"criterion_key": item["key"], "description": item["description"]}
                 for item in dimension.get("required_evidence", [])
             ]
+            if missing:
+                bounded = min(bounded, max(rubric["scale"]["min_score"], min(dimension["max_score"], 4.0)))
             result_dimensions.append(
                 {
                     "key": dimension["key"],
@@ -292,7 +294,7 @@ class EvaluationService:
                     "max_score": dimension["max_score"],
                     "weight": dimension["weight"],
                     "weighted_score": 0,
-                    "rationale": "旧版评分响应未提供结构化证据",
+                    "rationale": "旧版评分响应未提供结构化证据，分数按低置信度封顶",
                     "evidence": [],
                     "missing_evidence": missing,
                     "improvement_actions": [],
@@ -445,6 +447,13 @@ class EvaluationService:
                         "verified": True,
                     }
                 )
+            rationale = model_dimension.rationale[:1000]
+            if criteria_map and not verified:
+                score = max(
+                    float(rubric["scale"]["min_score"]),
+                    min(score, max(float(rubric["scale"]["min_score"]), min(max_score, 4.0))),
+                )
+                rationale = (rationale + " 未提供可核验证据，本维度分数封顶为 4 分。")[:1000]
             total_criteria += len(criteria_map)
             verified_criteria += len(seen_criteria)
             missing = [
@@ -460,7 +469,7 @@ class EvaluationService:
                     "max_score": max_score,
                     "weight": rubric_dimension["weight"],
                     "weighted_score": 0,
-                    "rationale": model_dimension.rationale[:1000],
+                    "rationale": rationale,
                     "evidence": verified,
                     "missing_evidence": missing,
                     "improvement_actions": [str(x)[:500] for x in model_dimension.improvement_actions][:10],

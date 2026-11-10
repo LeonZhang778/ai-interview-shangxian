@@ -86,6 +86,38 @@ def test_invalid_quote_becomes_missing_evidence():
     assert result["dimension_scores"][0]["missing_evidence"]
 
 
+def test_unverified_evidence_caps_dimension_score():
+    rubric = _rubric()
+    raw = {
+        "confidence": 0.9,
+        "dimension_scores": [
+            {
+                "key": dimension["key"],
+                "score": 9,
+                "rationale": "候选人表现优秀。",
+                "evidence": [],
+            }
+            for dimension in rubric["dimensions"]
+        ],
+    }
+
+    result = EvaluationService.validate_model_output(raw, rubric, "你好", "technical")
+
+    assert result["score"] <= 4.0
+    assert all(item["score"] <= 4.0 for item in result["dimension_scores"])
+    assert all("封顶" in item["rationale"] for item in result["dimension_scores"])
+
+
+def test_legacy_score_without_evidence_is_capped():
+    result = EvaluationService.from_legacy_score(
+        9, _rubric(), "technical", "旧格式评语"
+    )
+
+    assert result["score"] <= 4.0
+    assert all(item["score"] <= 4.0 for item in result["dimension_scores"])
+    assert all("封顶" in item["rationale"] for item in result["dimension_scores"])
+
+
 def test_out_of_range_score_is_rejected():
     rubric = _rubric()
     raw = {

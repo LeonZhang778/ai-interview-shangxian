@@ -29,21 +29,30 @@ from app.graphs.interview_graph import interview_graph, interview_graph_stream
 class InterviewService:
 
     @staticmethod
-    def _first_question_text(questions: Any) -> str:
-        """校验 AI 出题结果并取出首题文本。
-
-        AI 偶尔会返回空数组、纯字符串或 {"questions": [...]} 这类非预期形状。
-        以前是建完面试记录（已 commit）之后才取 questions[0]["question"]，
-        异常发生在落库之后 —— 于是留下一条没有问题、永远无法继续的 in_progress 面试，
-        它占着并发额度，用户只能自己去列表里删掉。现在改成在建记录之前就失败。
-        """
+    def _normalize_questions(
+        questions: Any, expected_count: int | None = None
+    ) -> List[Dict[str, Any]]:
+        """校验题目列表，并按面试约定统一题目数量。"""
         if not isinstance(questions, list) or not questions:
             raise ValidationError(message="题目生成失败，请重试")
-        first = questions[0]
-        text = first.get("question") if isinstance(first, dict) else first
-        if not isinstance(text, str) or not text.strip():
+
+        if expected_count is not None and len(questions) < expected_count:
             raise ValidationError(message="题目生成失败，请重试")
-        return text
+
+        normalized = []
+        selected = questions[:expected_count] if expected_count is not None else questions
+        for index, item in enumerate(selected):
+            if isinstance(item, dict):
+                question = item.get("question")
+                normalized_item = dict(item)
+            else:
+                question = item
+                normalized_item = {"index": index}
+            if not isinstance(question, str) or not question.strip():
+                raise ValidationError(message="题目生成失败，请重试")
+            normalized_item["question"] = question.strip()
+            normalized.append(normalized_item)
+        return normalized
 
     @staticmethod
     async def _persist_new_interview(
@@ -136,8 +145,9 @@ class InterviewService:
             gap_analysis=gap_analysis,
         )
 
-        # 先校验题目形状，再建记录：顺序反了会产生孤儿面试
-        first_question = InterviewService._first_question_text(questions)
+        # 先校验所有题目并统一数量，再建记录，避免坏题卡住流程或题数不一致。
+        questions = InterviewService._normalize_questions(questions, total_questions)
+        first_question = questions[0]["question"]
 
         # 创建面试记录（与首题消息同事务落库）
         interview = Interview(
@@ -150,7 +160,7 @@ class InterviewService:
             scoring_rubric_version=scoring_rubric["version"],
             scoring_rubric=scoring_rubric,
             difficulty=difficulty,
-            total_questions=total_questions,
+            total_questions=len(questions),
             current_question_index=0,
             questions_data=questions,
             status="in_progress"
@@ -161,7 +171,7 @@ class InterviewService:
             "interview_id": interview.id,
             "first_question": first_question,
             "question_index": 0,
-            "total_questions": total_questions,
+            "total_questions": len(questions),
             "gap_analysis_status": gap_analysis_status,
             "gap_analysis": gap_analysis,
         }
@@ -313,7 +323,7 @@ class InterviewService:
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.error(f"[submit_answer_stream] 流式执行异常: {e}", exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'content': f'评估服务异常，请重试：{e}'}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'content': '评估服务暂时不可用，请稍后重试。'}, ensure_ascii=False)}\n\n"
 
     @staticmethod
     async def _get_duplicate_submission_result(
@@ -696,8 +706,9 @@ class InterviewService:
             count=question_count
         )
 
-        # 先校验题目形状，再建记录（total_questions 也依赖它是非空列表）
-        first_question = InterviewService._first_question_text(questions)
+        # 先校验所有题目，再建记录（total_questions 依赖最终列表长度）。
+        questions = InterviewService._normalize_questions(questions)
+        first_question = questions[0]["question"]
 
         # 创建面试记录（与首题消息同事务落库）
         interview = Interview(
