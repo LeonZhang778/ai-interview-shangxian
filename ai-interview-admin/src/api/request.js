@@ -28,8 +28,9 @@ api.interceptors.response.use(
     return Promise.reject(new Error(data.message || '请求失败'))
   },
   async err => {
-    const originalRequest = err.config
-    if (err.response?.status === 401 && !originalRequest._retry) {
+    const originalRequest = err.config || {}
+    const isRefreshRequest = originalRequest.url?.includes('/auth/refresh')
+    if (err.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
       const authStore = useAuthStore()
       if (!authStore.refreshToken) {
         authStore.logout()

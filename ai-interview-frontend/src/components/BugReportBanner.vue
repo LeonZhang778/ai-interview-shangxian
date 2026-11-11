@@ -45,7 +45,7 @@
       @pointercancel="onPointerUp"
       @click="onClick"
     >
-      <BaseIcon name="snake" :size="22" />
+      <img src="/feedback-mascot.png" alt="智面反馈" draggable="false" />
     </button>
   </div>
 </template>
@@ -53,7 +53,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api/request'
-import BaseIcon from './BaseIcon.vue'
 
 const expanded = ref(false)
 const submitting = ref(false)
@@ -243,9 +242,8 @@ async function submitFeedback() {
   height: 48px;
   padding: 0;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--accent-primary);
-  color: var(--bg-base);
+  border: 1px solid var(--accent-primary);
+  background: #FFFFFF;
   cursor: grab;
   touch-action: none; /* 触屏拖动时不触发页面滚动 */
   user-select: none;
@@ -254,6 +252,13 @@ async function submitFeedback() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.bug-toggle img {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  pointer-events: none;
 }
 .bug-toggle:hover {
   transform: none;
@@ -416,8 +421,8 @@ async function submitFeedback() {
   .bug-toggle {
     width: 40px;
     height: 40px;
-    font-size: 18px;
   }
+  .bug-toggle img { width: 28px; height: 28px; }
   .bug-panel {
     width: calc(100vw - 32px);
     max-width: 300px;

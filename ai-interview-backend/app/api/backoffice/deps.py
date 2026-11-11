@@ -17,7 +17,7 @@ async def get_current_admin(
     payload = AuthBase.verify_token(token, scope="backoffice")
     if not payload:
         raise HTTPException(
-            status_code=403,
+            status_code=401,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -26,5 +26,5 @@ async def get_current_admin(
     result = await db.execute(admin_query)
     admin = result.scalar_one_or_none()
     if admin is None or not admin.is_active:
-        raise HTTPException(status_code=403, detail="Inactive admin")
+        raise HTTPException(status_code=401, detail="Inactive admin")
     return admin

@@ -160,7 +160,7 @@ async function logout() { await authStore.logout(); router.push('/login') }
 .sidebar-footer {
   font-size: 12px;
   color: var(--admin-text-sidebar);
-  border-top: 1px solid #262626;
+  border-top: 1px solid var(--admin-border);
   padding-top: 16px;
   position: relative;
 }
