@@ -14,11 +14,14 @@
 - VLM OCR 仅在配置 AI_OCR_ENABLED=True 且环境具备渲染器（PyMuPDF 或 pdf2image）
   与多模态模型（AI_VISION_MODEL）时启用，否则自动降级为清晰错误提示。
 """
+import hashlib
+import io
 import logging
 import os
 import re
 
 logger = logging.getLogger(__name__)
+MAX_DOCX_IMAGE_PIXELS = 20_000_000
 
 # ---- 阈值常量（集中配置，便于调参）----
 COLUMN_GAP_RATIO = 0.16        # 横向连续空白带宽度 > 页面宽度 16% 视为分栏分隔
@@ -188,26 +191,37 @@ def parse_pdf(file_path: str) -> "ParsedDocument":
     from app.core.config import settings
 
     doc = ParsedDocument(source_type="pdf")
+    min_chars = getattr(settings, "DOC_PARSER_MIN_TEXT_CHARS", 30)
     with pdfplumber.open(file_path) as pdf:
         doc.page_count = len(pdf.pages)
         parts = []
         for pi, page in enumerate(pdf.pages, start=1):
-            if page.images:
+            page_has_images = bool(page.images)
+            if page_has_images:
                 doc.has_images = True
             page_text, headings = _extract_page_text(page)
+            page_tables = _extract_page_tables(page)
+            page_content = "\n".join([page_text, *page_tables]).strip()
+            doc.page_texts.append(
+                "\n".join(
+                    [*(f"[表格 P{pi}]\n{table}" for table in page_tables), page_text]
+                ).strip()
+            )
+            if page_has_images and len(page_content) < min_chars:
+                doc.scanned_pages.append(pi)
             for h in headings:
                 doc.sections.append({**h, "page": pi})
-            for t in _extract_page_tables(page):
+            for t in page_tables:
                 doc.tables.append({"page": pi, "markdown": t})
                 parts.append(f"\n[表格 P{pi}]\n" + t)
             if page_text:
                 parts.append(f"\n[第 {pi} 页]\n" + page_text)
         doc.text = "\n".join(parts).strip()
 
-    min_chars = getattr(settings, "DOC_PARSER_MIN_TEXT_CHARS", 30)
-    if doc.has_images and len(doc.text) < min_chars:
-        doc.is_scanned = True
-        doc.warnings.append("检测到扫描件/图片型 PDF，纯文本抽取为空，建议开启 OCR / 多模态解析")
+    doc.is_scanned = bool(doc.scanned_pages)
+    if doc.is_scanned:
+        page_list = ", ".join(str(page) for page in doc.scanned_pages)
+        doc.warnings.append(f"检测到图片文字较少的页面（{page_list}），建议开启 OCR / 多模态解析")
     if not doc.text and not doc.tables:
         doc.warnings.append("未抽取到任何文本或表格")
     return doc
@@ -218,6 +232,13 @@ def parse_docx(file_path: str) -> "ParsedDocument":
 
     doc = ParsedDocument(source_type="docx")
     d = Document(file_path)
+    doc.image_payloads = _extract_docx_images(d)
+    doc.has_images = bool(doc.image_payloads)
+    doc.image_count = len(doc.image_payloads)
+    if doc.has_images:
+        doc.warnings.append(
+            f"DOCX 含 {doc.image_count} 张内嵌图片；图片文字仅在启用多模态 OCR 时提取"
+        )
     parts = []
     for p in d.paragraphs:
         t = p.text.strip()
@@ -233,6 +254,44 @@ def parse_docx(file_path: str) -> "ParsedDocument":
             doc.text += f"\n[表格]\n{md}"
     doc.page_count = 1
     return doc
+
+
+def _extract_docx_images(document) -> list[tuple[str, bytes]]:
+    """Extract unique embedded raster images from the body, headers, and footers."""
+    parts = [document.part]
+    for section in document.sections:
+        parts.extend(
+            [
+                section.header.part,
+                section.first_page_header.part,
+                section.even_page_header.part,
+                section.footer.part,
+                section.first_page_footer.part,
+                section.even_page_footer.part,
+            ]
+        )
+
+    images = []
+    seen_parts = set()
+    seen_images = set()
+    while parts:
+        part = parts.pop()
+        if id(part) in seen_parts:
+            continue
+        seen_parts.add(id(part))
+        for relationship in part.rels.values():
+            if relationship.is_external:
+                continue
+            target = relationship.target_part
+            if relationship.reltype.endswith("/image"):
+                image_bytes = target.blob
+                digest = hashlib.sha256(image_bytes).digest()
+                if digest not in seen_images:
+                    seen_images.add(digest)
+                    images.append((target.content_type, image_bytes))
+            elif hasattr(target, "rels"):
+                parts.append(target)
+    return images
 
 
 def parse_text(file_path: str) -> "ParsedDocument":
@@ -255,46 +314,135 @@ def parse_document(file_path: str, file_name: str) -> "ParsedDocument":
     raise ValueError(f"不支持的文件类型：{ext}（当前支持 PDF / DOCX / TXT / MD）")
 
 
-def _render_pdf_pages(file_path: str) -> list:
+def _png_bytes(image) -> bytes:
+    with io.BytesIO() as output:
+        image.save(output, format="PNG")
+        return output.getvalue()
+
+
+def _render_pdf_pages(file_path: str, page_numbers: list[int] | None = None) -> list[bytes]:
     """
-    把 PDF 每页渲染为 PNG 字节。优先 PyMuPDF(fitz)，其次 pdf2image。
-    两者均未安装则返回空列表（由调用方降级）。
+    把指定 PDF 页面渲染为 PNG 字节。优先 PyMuPDF(fitz)，其次 pdf2image。
+    page_numbers 使用从 1 开始的页码；未指定时渲染全部页面。
     """
+    selected_pages = sorted(set(page_numbers)) if page_numbers is not None else None
+    if selected_pages == []:
+        return []
+
     try:
         import fitz  # PyMuPDF
-        pdf = fitz.open(file_path)
-        return [page.get_pixmap(dpi=150).tobytes("png") for page in pdf]
+        with fitz.open(file_path) as pdf:
+            indexes = range(len(pdf)) if selected_pages is None else (page - 1 for page in selected_pages)
+            return [pdf[index].get_pixmap(dpi=150).tobytes("png") for index in indexes]
     except ImportError:
         pass
+    except Exception as exc:
+        logger.warning("[doc-parse] PyMuPDF 渲染失败，尝试 pdf2image: %s", exc)
+
     try:
         from pdf2image import convert_from_path
-        imgs = convert_from_path(file_path, dpi=150)
-        return [img.tobytes("png") for img in imgs]
     except ImportError:
         logger.warning("[doc-parse] 未安装 PyMuPDF/fitz 或 pdf2image，无法渲染 PDF 页面做 VLM OCR")
         return []
 
+    try:
+        if selected_pages is None:
+            images = convert_from_path(file_path, dpi=150)
+        else:
+            images = []
+            for page_number in selected_pages:
+                page_images = convert_from_path(
+                    file_path,
+                    dpi=150,
+                    first_page=page_number,
+                    last_page=page_number,
+                )
+                if page_images:
+                    images.append(page_images[0])
+        encoded = []
+        for image in images:
+            try:
+                encoded.append(_png_bytes(image))
+            finally:
+                image.close()
+        return encoded
+    except Exception as exc:
+        logger.warning("[doc-parse] pdf2image 渲染失败: %s", exc)
+        return []
 
-async def ocr_pdf_with_vlm(file_path: str, vision_model: str | None = None) -> str | None:
+
+async def ocr_pdf_with_vlm(
+    file_path: str,
+    vision_model: str | None = None,
+    page_numbers: list[int] | None = None,
+) -> dict[int, str] | None:
     """
-    扫描件兜底：将 PDF 每页渲染为图片并调用多模态模型识别。
+    扫描件兜底：将指定页面渲染为图片并调用多模态模型识别。
     需环境安装 PyMuPDF/pdf2image 且配置 AI_VISION_MODEL；任一缺失则降级返回 None。
     """
     if not vision_model:
         return None
-    images = _render_pdf_pages(file_path)
+    selected_pages = sorted(set(page_numbers)) if page_numbers is not None else None
+    images = _render_pdf_pages(file_path, selected_pages)
     if not images:
         return None
 
+    selected_pages = selected_pages or list(range(1, len(images) + 1))
+    if len(images) != len(selected_pages):
+        logger.warning("[doc-parse] OCR 页面渲染数量与请求数量不匹配")
+        return None
+
     from app.services.client.ai_service import AIService
-    texts = []
-    for idx, img_bytes in enumerate(images, 1):
+    texts = {}
+    for page_number, img_bytes in zip(selected_pages, images):
         try:
-            txt = await AIService.ocr_image(img_bytes, vision_model)
-            texts.append(f"[第 {idx} 页]\n{txt}")
+            txt = (await AIService.ocr_image(img_bytes, vision_model)).strip()
+            if not txt:
+                logger.warning("[doc-parse] VLM OCR 第 %s 页未识别到文字", page_number)
+                return None
+            texts[page_number] = txt
         except Exception as e:
-            logger.warning(f"[doc-parse] VLM OCR 第 {idx} 页失败: {e}")
-    return "\n".join(texts) if texts else None
+            logger.warning(f"[doc-parse] VLM OCR 第 {page_number} 页失败: {e}")
+            return None
+    return texts or None
+
+
+async def ocr_docx_images_with_vlm(
+    image_payloads: list[tuple[str, bytes]], vision_model: str | None = None
+) -> str | None:
+    """OCR unique embedded DOCX images and return only images with recognized text."""
+    if not vision_model or not image_payloads:
+        return None
+
+    try:
+        from PIL import Image
+    except ImportError:
+        logger.warning("[doc-parse] 未安装 Pillow，无法 OCR DOCX 内嵌图片")
+        return None
+
+    from app.services.client.ai_service import AIService
+
+    results = []
+    for index, (content_type, image_bytes) in enumerate(image_payloads, start=1):
+        try:
+            with Image.open(io.BytesIO(image_bytes)) as image:
+                if image.width * image.height > MAX_DOCX_IMAGE_PIXELS:
+                    logger.warning("[doc-parse] DOCX 内嵌图片 %s 尺寸过大，跳过 OCR", index)
+                    continue
+                rgb_image = image.convert("RGB")
+                try:
+                    png_bytes = _png_bytes(rgb_image)
+                finally:
+                    rgb_image.close()
+            text = (await AIService.ocr_image(png_bytes, vision_model)).strip()
+            if text:
+                results.append(f"[DOCX 图片 OCR 补充 {index}，{content_type}]\n{text}")
+            else:
+                logger.info("[doc-parse] DOCX 内嵌图片 %s 未识别到文字", index)
+        except Exception as exc:
+            logger.warning("[doc-parse] DOCX 内嵌图片 %s OCR 失败: %s", index, exc)
+
+    return "\n\n".join(results) if results else None
 
 
 class ParsedDocument:
@@ -304,9 +452,13 @@ class ParsedDocument:
         self.text = ""
         self.tables = []          # [{"page": int, "markdown": str}]
         self.sections = []        # [{"title": str, "level": int, "page": int}]
+        self.page_texts = []      # PDF 原生文本和表格内容，按页保存供 OCR 补回原位置
         self.page_count = 0
         self.has_images = False
+        self.image_count = 0
+        self.image_payloads = []
         self.is_scanned = False
+        self.scanned_pages = []
         self.warnings = []
         self.source_type = source_type
 
@@ -317,7 +469,9 @@ class ParsedDocument:
             "sections": self.sections,
             "page_count": self.page_count,
             "has_images": self.has_images,
+            "image_count": self.image_count,
             "is_scanned": self.is_scanned,
+            "scanned_pages": self.scanned_pages,
             "warnings": self.warnings,
             "source_type": self.source_type,
         }

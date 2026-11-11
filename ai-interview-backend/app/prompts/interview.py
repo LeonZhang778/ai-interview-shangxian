@@ -6,6 +6,8 @@
 
 # === 简历解析 ===
 
+RESUME_PARSE_PROMPT_VERSION = 1
+
 RESUME_PARSE_SYSTEM = (
     "你是一个专业的简历分析师。请解析简历内容，提取结构化信息。"
     "必须返回纯JSON格式（不要markdown代码块），包含以下字段：\n"

@@ -1,6 +1,7 @@
+import asyncio
+import hashlib
 import json
 import logging
-import asyncio
 from typing import Dict, List, Optional
 from openai import AsyncOpenAI
 from app.core.config import settings
@@ -25,6 +26,7 @@ from app.prompts.interview import (
     EVALUATE_PROMPT,
     EVALUATE_STREAM_PROMPT,
     REPORT_PROMPT,
+    RESUME_PARSE_PROMPT_VERSION,
 )
 
 logger = logging.getLogger(__name__)
@@ -422,22 +424,38 @@ class AIService:
     async def parse_resume(resume_text: str) -> dict:
         """解析简历文本，提取结构化信息（姓名、学历、技能、经历等），带 LLM 缓存"""
         from app.services.common.redis import redis_client
+        from app.schemas.client.parsed_resume import ParsedResume
 
-        # 检查缓存
-        cache_key = f"parse:{resume_text[:500]}"
-        cached = await redis_client.get_llm_cache("parse", cache_key)
+        # Hash the complete input together with model/prompt versions to avoid
+        # serving a different resume's result when their first 500 characters match.
+        _, model_name = _resolve_provider("qwen")
+        uses_qwen_credentials = bool(settings.AI_QWEN_API_KEY)
+        cache_input = json.dumps(
+            {
+                "version": RESUME_PARSE_PROMPT_VERSION,
+                "provider": "qwen" if uses_qwen_credentials else "default",
+                "model": model_name,
+                "fallback_model": getattr(settings, "AI_MODEL_FALLBACK", ""),
+                "base_url": settings.AI_QWEN_BASE_URL if uses_qwen_credentials else settings.AI_BASE_URL,
+                "temperature": 0.3,
+                "resume_sha256": hashlib.sha256(resume_text.encode("utf-8")).hexdigest(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        cached = await redis_client.get_llm_cache("parse", cache_input)
         if cached:
-            return cached
+            return ParsedResume.model_validate(cached).model_dump()
 
         messages = [
             {"role": "system", "content": RESUME_PARSE_PROMPT["system"]},
             {"role": "user", "content": RESUME_PARSE_PROMPT["user"].format(resume_text=resume_text)},
         ]
         result = await AIService._chat(messages, temperature=0.3, provider="qwen")
-        parsed = AIService._extract_json(result)
+        parsed = ParsedResume.model_validate(AIService._extract_json(result)).model_dump()
 
         # 写入缓存（TTL 1 小时）
-        await redis_client.set_llm_cache("parse", cache_key, parsed, ttl=3600)
+        await redis_client.set_llm_cache("parse", cache_input, parsed, ttl=3600)
         return parsed
 
     @staticmethod

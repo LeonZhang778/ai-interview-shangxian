@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.resume import Resume
 from app.services.client.ai_service import AIService
-from app.services.client.document_parser import parse_document, ocr_pdf_with_vlm
+from app.services.client.document_parser import (
+    ocr_docx_images_with_vlm,
+    ocr_pdf_with_vlm,
+    parse_document,
+)
 from app.core.config import settings
 from app.exceptions.http_exceptions import NotFoundError, ValidationError
 from app.utils.file_names import safe_uuid_filename
@@ -96,15 +100,46 @@ class ResumeService:
             if doc.is_scanned:
                 if getattr(settings, "AI_OCR_ENABLED", False) and getattr(settings, "AI_VISION_MODEL", ""):
                     logger.info("[resume-parse] 检测到扫描件，尝试多模态 OCR 兜底")
-                    ocr_text = await ocr_pdf_with_vlm(file_path, settings.AI_VISION_MODEL)
-                    if ocr_text and ocr_text.strip():
-                        doc.text = ocr_text.strip()
+                    ocr_pages = await ocr_pdf_with_vlm(
+                        file_path,
+                        settings.AI_VISION_MODEL,
+                        page_numbers=doc.scanned_pages,
+                    )
+                    if ocr_pages and all(page in ocr_pages for page in doc.scanned_pages):
+                        page_parts = []
+                        for page_number, native_text in enumerate(doc.page_texts, start=1):
+                            content = native_text.strip()
+                            ocr_text = ocr_pages.get(page_number, "").strip()
+                            if ocr_text:
+                                content = "\n\n".join(
+                                    part for part in (content, f"[OCR 补充]\n{ocr_text}") if part
+                                )
+                            if content:
+                                page_parts.append(f"[第 {page_number} 页]\n{content}")
+                        doc.text = "\n\n".join(page_parts)
                         doc.is_scanned = False
+                        doc.scanned_pages = []
                         logger.info("[resume-parse] 多模态 OCR 兜底成功")
                 if doc.is_scanned or not doc.text.strip():
                     raise ValidationError(
-                        message="检测到扫描件/图片型简历，当前无法提取文字。请上传文本型 PDF、Word 或 TXT，"
-                                "或在服务端安装 PyMuPDF/pdf2image 并配置 AI_VISION_MODEL 以启用 OCR"
+                        message="扫描页面 OCR 未完成。请上传可复制文字的 PDF、DOCX、TXT 或 MD；"
+                                "如需 OCR，请确认服务端已安装 PDF 渲染器并启用视觉模型配置"
+                    )
+
+            if doc.source_type == "docx" and doc.image_payloads:
+                if getattr(settings, "AI_OCR_ENABLED", False) and getattr(settings, "AI_VISION_MODEL", ""):
+                    image_ocr_text = await ocr_docx_images_with_vlm(
+                        doc.image_payloads,
+                        settings.AI_VISION_MODEL,
+                    )
+                    if image_ocr_text:
+                        doc.text = "\n\n".join(
+                            part for part in (doc.text.strip(), image_ocr_text.strip()) if part
+                        )
+                else:
+                    logger.warning(
+                        "[resume-parse] DOCX 包含 %s 张内嵌图片，OCR 未启用，图片文字不会进入简历解析",
+                        doc.image_count,
                     )
 
             resume_text = doc.text
