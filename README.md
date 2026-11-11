@@ -1,568 +1,194 @@
-# 写在前面
+<p align="center">
+  <img src="ai-interview-frontend/public/site-logo.png" alt="智面 AI-Interview" width="112" />
+</p>
 
-后端方面
-1. 自行安装好 VMware 虚拟机和 Ubuntu 系统（推荐 18.04+），Vm软件和Ubuntu以及安装教程可以联系作者免费领取，作者微信:asd2429803436
-2. VMware 网络设置：编辑 → 虚拟网络编辑器 → NAT 模式，确保 DHCP 分配正常
-3. Docker 需要联网拉取基础镜像（postgres、redis），国内需配置镜像加速
-4. 创建好数据表后，建议检查是否成功创建（命令见下方）
+<h1 align="center">AI-Interview · 智面</h1>
 
----
+<p align="center">
+  面向求职者的 AI 面试与成长平台：从简历解析、岗位面试，到反馈复盘与持续练习。
+</p>
 
-# AI-Interview（智面）— 部署文档
+<p align="center">
+  <a href="https://github.com/LeonZhang778/ai-interview-shangxian/actions/workflows/main.yml"><img src="https://img.shields.io/github/actions/workflow/status/LeonZhang778/ai-interview-shangxian/main.yml?branch=main&label=deploy" alt="Deploy workflow" /></a>
+  <a href="https://github.com/LeonZhang778/ai-interview-shangxian/stargazers"><img src="https://img.shields.io/github/stars/LeonZhang778/ai-interview-shangxian?style=flat&label=stars" alt="GitHub stars" /></a>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12" />
+  <img src="https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white" alt="Vue 3" />
+  <img src="https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
+</p>
 
-## 项目结构
+<p align="center">
+  <a href="#能力范围">产品能力</a> ·
+  <a href="#架构">架构</a> ·
+  <a href="#本地开发">本地开发</a> ·
+  <a href="#验证">验证</a> ·
+  <a href="#配置与安全">配置与安全</a>
+</p>
 
+<p align="center">
+  <img src="readme-assets/interview-flow.svg" alt="面试工作流：简历解析、AI 多轮面试、评估报告与学习复盘" width="820" />
+</p>
+
+AI-Interview（智面）把面试准备、模拟演练和复盘沉淀连接为一条完整流程。用户端与运营管理端由同一套 FastAPI 服务提供能力，面试会话、后台作业和媒体处理分别由 PostgreSQL、Redis 与 Celery 支撑。
+
+## 能力范围
+
+- **简历与面试**：上传并解析简历，基于目标岗位开展多轮模拟面试，流式接收提问与反馈，并查看面试评估报告。
+- **复盘与学习**：整理面经和学习笔记，使用闪卡、错题与薄弱项分析持续复习。
+- **求职协作**：支持面经浏览与投稿、收藏、通知、公告、反馈和报告分享等流程。
+- **媒体工具**：提供音视频转换、压缩、裁剪、音轨提取、GIF、合并及遮挡类工具；耗时处理由后台任务执行。
+- **运营管理**：管理用户、面试、面经、公告、反馈、系统设置和媒体任务，并查看统计及审计信息。
+
+## 架构
+
+```mermaid
+flowchart LR
+    web[用户端 Vue 3] --> api[FastAPI API]
+    admin[管理端 Vue 3] --> api
+    api --> db[(PostgreSQL)]
+    api --> redis[(Redis Stack)]
+    api --> model[OpenAI 兼容模型]
+    redis --> worker[Celery Worker / Beat]
+    worker --> db
+    worker --> ffmpeg[FFmpeg / FFprobe]
 ```
-ai-interview/
-├── ai-interview-backend/       # 后端（FastAPI + Docker 部署）
-├── ai-interview-frontend/      # 用户端前端（Vue 3）
-├── ai-interview-admin/         # 后台管理前端（Vue 3）
-└── 部署文档.md                  # 本文档
+
+后端按 API、Service、Model 分层。用户端和管理端拥有独立路由与认证入口，共用服务层能力。面试状态、媒体任务和异步作业分别由对应服务管理；配置通过环境变量注入。
+
+## 技术栈
+
+| 层 | 主要技术 |
+| --- | --- |
+| 用户端与管理端 | Vue 3、Vite、Pinia、Vue Router |
+| API 服务 | Python 3.12、FastAPI、Pydantic |
+| 数据访问 | SQLAlchemy 2、asyncpg、Alembic |
+| 持久化与缓存 | PostgreSQL 16、Redis Stack |
+| 异步任务 | Celery、Redis |
+| AI 与流程 | OpenAI 兼容模型接口、LangGraph |
+| 媒体处理 | FFmpeg / FFprobe |
+| 部署 | Docker、Docker Compose、Nginx |
+
+## 仓库结构
+
+```text
+ai-interview-backend/       FastAPI 服务、数据库迁移及后台任务
+ai-interview-frontend/      用户端 Vue 应用
+ai-interview-admin/         管理端 Vue 应用
+deploy/                     宿主机 Nginx 配置
+.github/workflows/          自动构建与部署流程
+readme-assets/              README 流程图素材
 ```
 
-## 项目简介
+## 本地开发
 
-基于大模型的 AI 面试模拟平台。用户上传 PDF 简历，AI 自动解析简历内容并生成针对性面试题目，通过多轮对话模拟真实面试场景，实时流式输出评语，最终生成综合评估报告。
+### 依赖
 
-### 功能特性
+- Docker Engine 与 Docker Compose V2
+- Node.js 18 或更高版本
+- 可用的 OpenAI 兼容模型 API 凭据
+- 媒体工具开发或运行需要 FFmpeg；后端镜像已安装 FFmpeg / FFprobe
 
-- 📄 简历上传与 AI 智能解析（PDF → 结构化数据）
-- 🎤 AI 模拟面试（多轮对话，逐题问答）
-- 📊 实时评分与综合评估报告
-- 🔄 SSE 流式输出（AI 回答逐字推送）
-- 🎯 根据目标岗位（实习/正式）自动调整面试难度
-- 👤 用户注册登录（JWT 认证）
-- 🛠 后台管理系统（用户管理、面试记录查看、数据统计）
+### 启动后端及依赖
 
-### 项目亮点
-
-**1. 架构设计**
-- 采用 Router → Service → Model 三层架构，职责分离，代码清晰易维护
-- 双端 API 设计：Client API（用户端）和 Backoffice API（管理端）共享 Service 层，互不干扰
-- 统一响应格式（ApiResponse）+ 分层异常体系（ValidationError / AuthenticationError / NotFoundError 等），所有接口返回结构一致
-- 路由注册中心（RouterRegistry）动态管理路由，避免主文件臃肿
-
-**2. 企业级开发方式**
-- Docker Compose 多服务编排（FastAPI + PostgreSQL + Redis + Celery），一条命令启动全部服务
-- 开发环境与生产环境配置分离（docker-compose.yml + docker-compose.dev.yml），通过 .env 文件管理环境变量
-- Alembic 数据库迁移管理，支持版本控制和回滚，团队协作不冲突
-- 代码结构规范：api / services / models / schemas / core 分层清晰，符合企业级项目标准
-
-**3. 完善的日志系统**
-- 集成 Python logging 模块，按模块分级记录日志（INFO / WARNING / ERROR）
-- API 请求异常自动记录请求方法和 URL，方便定位问题
-- AI 服务调用失败时记录详细错误信息，便于排查 API 调用问题
-- 通过 `docker logs` 实时查看容器日志，支持 `--tail` 和 `-f` 参数
-
-**4. AI 核心功能**
-- 封装 AIService 统一调用 DeepSeek API（兼容 OpenAI SDK），支持一键切换其他大模型
-- 通过 Prompt 工程严格控制 AI 输出为结构化 JSON，保证数据可解析
-- SSE（Server-Sent Events）流式传输，AI 评语逐字推送到前端，用户无需等待完整响应
-- 智能出题策略：根据目标岗位自动区分实习/正式，调整面试难度和提问方向
-- 面试会话状态机管理（in_progress → completed），支持断点续答
-
-**5. 性能调优**
-- 全链路异步：FastAPI + SQLAlchemy async + asyncpg + AsyncOpenAI，单线程即可处理高并发 I/O 请求
-- 数据库连接池优化：pool_size=20、pool_pre_ping 存活检测、pool_recycle=1800s 定期回收，避免连接泄漏
-- Celery + Redis 异步任务解耦，邮件发送等耗时操作不阻塞用户请求
-- JWT 无状态认证，Access Token 验证无需查库，减少数据库压力
-- AI 对话历史截断（保留最近 6 条），控制 Token 用量，降低 API 调用成本和响应时间
-- 关键查询字段建立数据库索引（user_id、interview_id），加速数据检索
-
-### 技术栈
-
-| 模块 | 技术 |
-|------|------|
-| 后端框架 | FastAPI（异步） |
-| 前端框架 | Vue 3 + Vite |
-| AI 模型 | DeepSeek API（兼容 OpenAI SDK） |
-| 数据库 | PostgreSQL 16 |
-| 缓存/消息队列 | Redis 7 |
-| 异步任务 | Celery（Worker + Beat） |
-| ORM | SQLAlchemy 2.0（异步 + asyncpg） |
-| 容器化 | Docker + Docker Compose |
-
-## 环境要求
-
-| 软件 | 说明 |
-|------|------|
-| VMware Workstation | 运行 Ubuntu 虚拟机 |
-| Ubuntu 18.04+ 虚拟机 | 部署后端服务 |
-| Docker + Docker Compose V2 | VM 中安装，运行后端容器 |
-| Node.js 18+ | Windows 本地，运行前端 |
-| DeepSeek API Key | [申请地址](https://platform.deepseek.com/)，充值 10 元即可 |
-
-## 默认账号
-
-| 角色 | 邮箱 | 密码 |
-|------|------|------|
-| 后台管理员 | admin@ai-interview.com | ai-interview&admin |
-
-> 普通用户通过前端注册页面自行注册（邮箱 + 密码，无需邮箱验证）
-
----
-
-## 第一步：VM 环境准备
-
-### 1.1 安装 SSH 服务（方便远程操作）
-
+在后端目录准备本地配置：
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y openssh-server curl
-sudo systemctl start ssh
-sudo systemctl enable ssh
-```
-
-> 安装完成后，可以在 Windows 上通过终端 SSH 连接 VM，方便复制粘贴命令
-建议使用编辑器打开项目，然后在编辑器里的终端通过SSH连接Vm，方便复制粘贴命令：
-
-> ```bash
-> ssh 用户名@VM的IP地址
-> ```
-
-### 1.2 安装 VMware Tools（共享文件夹必需）
-
-```bash
-sudo apt-get install -y open-vm-tools open-vm-tools-desktop
-sudo reboot
-```
-
-> 重启后 VMware Tools 生效，才能使用共享文件夹功能。
-
-### 1.3 配置 VMware 共享文件夹
-
-1. VMware → 虚拟机设置 → 选项 → 共享文件夹 → 添加后端项目目录（`ai-interview-backend`）
-2. 开启 VM，挂载共享文件夹：
-
-```bash
-sudo mkdir -p /mnt/hgfs
-sudo vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other,nonempty
-```
-
-> ⚠️ 每次 VM 开机都需要执行挂载命令，否则看不到共享文件夹，项目也就无法启动
-
-3. 验证：
-
-```bash
-ls /mnt/hgfs/
-# 应该能看到共享的 ai-interview-backend 文件夹
-```
-
-### 1.4 安装 Docker
-
-```bash
-sudo apt-get update
-sudo apt-get install -y docker.io
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker $USER
-```
-
-> 执行完 `usermod` 后需要重新登录 VM（退出 SSH 再重连）才能免 sudo 使用 docker。
-
-### 1.5 安装 Docker Compose V2
-
-Ubuntu 18.04 的 apt 源中 docker-compose 版本太旧（1.17），不支持本项目的配置语法。需要手动安装新版。
-
-**安装方法：从项目中复制（作者已提供二进制文件）**
-
-项目目录中已包含 `docker-compose-linux-x86_64` 文件，直接复制即可：
-
-```bash
-sudo cp /mnt/hgfs/ai-interview-backend/docker-compose-linux-x86_64  /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-```
-
-> 如果系统中已有旧版 docker-compose，先卸载：`sudo apt-get remove -y docker-compose`，然后执行 `hash -r` 刷新命令缓存。
-
-
-docker-compose --version
-# 应显示 Docker Compose version v2.24.0
-```
-
-### 1.6 配置 Docker 镜像加速（必须，否则无法拉取镜像）
-
-国内网络无法直接访问 Docker Hub，必须配置镜像加速：
-
-```bash
-sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json <<-'EOF'
-{
-  "registry-mirrors": [
-    "https://docker.1ms.run",
-    "https://docker.xuanyuan.me",
-    "https://docker.m.daocloud.io"
-  ]
-}
-EOF
-sudo systemctl daemon-reload
-sudo systemctl restart docker
-```
-
-### 1.7 解决 Docker 凭证存储问题（SSH 远程操作时可能遇到）
-
-如果执行 docker 命令时报错 `Cannot autolaunch D-Bus without X11 $DISPLAY`，执行：
-
-```bash
-sudo apt-get remove -y golang-docker-credential-helpers
-```
-
-### 1.8 设置 VM 静态 IP（推荐）
-
-固定 IP 后前端 `vite.config.js` 不用反复改。
-
-先查看当前 IP 和网卡名：
-
-```bash
-ip addr show
-```
-
-**如果系统使用 NetworkManager（Ubuntu 桌面版常见）：**
-
-```bash
-# 查看连接名称
-nmcli con show
-
-# 设置静态 IP（根据实际网段和连接名修改）
-sudo nmcli con mod "有线连接 1" ipv4.method manual ipv4.addresses 192.168.10.134/24 ipv4.gateway  192.168.10.2 ipv4.dns "8.8.8.8,114.114.114.114"
-sudo nmcli con up "有线连接 1"
-```
-
-**如果系统使用 netplan（Ubuntu Server 常见）：**
-
-```bash
-sudo nano /etc/netplan/01-netcfg.yaml
-```
-
-```yaml
-network:
-  version: 2
-  ethernets:
-    ens33:
-      dhcp4: no
-      addresses:
-        - 192.168.10.134/24
-      gateway4: 192.168.10.2
-      nameservers:
-        addresses: [8.8.8.8, 114.114.114.114]
-```
-
-```bash
-sudo netplan apply
-```
-
-> 网关地址一般是网段的 `.2`（VMware NAT 模式默认），可在 VMware 虚拟网络编辑器中确认。
-
-### 1.9 解决 apt-get update 报错（如遇到）
-
-如果 `sudo apt-get update` 报 `appstreamcli` 相关错误（GLib-CRITICAL、core dumped），执行：
-
-```bash
-sudo rm /etc/apt/apt.conf.d/50appstream
-sudo apt-get update
-```
-
----
-
-## 第二步：后端部署
-
-### 2.1 配置环境变量
-
-```bash
-cd /mnt/hgfs/ai-interview-backend
-
-# 复制环境配置文件
+cd ai-interview-backend
 cp .env.example .env
 ```
 
-> 因为使用了 VMware 共享文件夹，`.env` 文件在 Windows 和 VM 之间是实时同步的。
-> 所以可以直接在 Windows 上用编辑器（记事本、VS Code 等）打开 `.env` 进行编辑，保存后 VM 中立即生效，比在终端里用 nano 方便得多。
+编辑 `.env`，至少设置数据库与 Redis 凭据、`SECRET_KEY` 和 AI 模型 API 配置。不要将 `.env`、真实密钥或服务器凭据提交到仓库。
 
-在 `.env` 中需要修改的配置：
-
-| 配置项 | 说明 |
-|--------|------|
-| `DEEPSEEK_API_KEY` | 替换为你的真实 API Key（[申请地址](https://platform.deepseek.com/)） |
-
-其他配置保持默认即可。
-
-
-### 2.2 构建并启动服务
+在 ai-interview-backend 目录中运行：
 
 ```bash
-# 构建并启动所有服务（首次需要下载镜像和依赖，可能较慢）
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
-
-# 查看容器状态，确认所有服务都在运行
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
-
-### 2.3 初始化数据库
+服务就绪后执行数据库迁移：
 
 ```bash
-# 数据库迁移（建表）
-sudo docker exec -it ai-interview-app alembic upgrade head
-
-# 如果缺少面试相关的表（interviews、interview_messages、resumes），执行自动生成迁移：
-sudo docker exec -it ai-interview-app alembic revision --autogenerate -m "add_missing_tables"
-sudo docker exec -it ai-interview-app alembic upgrade head
-
-# 检查数据表是否创建成功
-sudo docker exec -it ai-interview-postgres psql -U demo -d ai_interview -c "\dt"
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec app alembic upgrade head
 ```
 
-应该看到以下 9 张表：
+API 根路径为 `http://localhost:8006/api/v1`，健康检查为 `/config/health`，开发环境 API 文档为 `http://localhost:8006/docs`。
 
-```
- admins              admin_tokens        alembic_version
- interviews          interview_messages  resumes
- tokens              users               waiting_list
-```
+### 启动前端
 
-### 2.4 创建管理员并验证
+分别在两个前端目录安装依赖并启动 Vite：
 
 ```bash
-# 创建管理员账号
-sudo docker exec -it ai-interview-app python scripts/create_first_admin.py
-
-
-   邮箱: admin@ai-interview.com
-   姓名: AI-Interview Admin
-   角色: superadmin
-   ID: 1
-
-
-# 验证后端是否正常运行
-curl http://localhost:8006/api/v1/config/health
-```
-
-期望返回：
-
-```json
-{"code":200,"message":"Success","data":{"status":"healthy"}}
-```
-
----
-
-## 第三步：前端部署（Windows 本地）
-
-### 3.1 修改后端地址
-
-两个前端项目的 `vite.config.js` 中需要配置 VM 的 IP 地址：
-
-`ai-interview-frontend/vite.config.js`：
-
-```js
-proxy: {
-  '/api': {
-    target: 'http://VM的IP地址:8006',
-    changeOrigin: true
-  },
-  '/uploads': {
-    target: 'http://VM的IP地址:8006',
-    changeOrigin: true
-  }
-}
-```
-
-`ai-interview-admin/vite.config.js`。
-
-### 3.2 启动前端
-
-```bash
-# 用户端（端口 3000）
 cd ai-interview-frontend
+npm ci
 npm run dev
+```
 
-# 后台管理（端口 3001）— 新开一个终端
+```bash
 cd ai-interview-admin
+npm ci
 npm run dev
 ```
 
+用户端默认运行在 `http://localhost:3000`，管理端默认运行在 `http://localhost:3001`。两个 Vite 配置默认将 `/api`（用户端还包括 `/uploads`）代理到 `http://127.0.0.1:8006`；后端不在本机时，按开发环境修改各自的 `vite.config.js`。
 
-### 3.3 访问系统
+<details>
+<summary>初始化首个管理员</summary>
 
-| 端 | 地址 |
-|----|------|
-| 用户端 | http://localhost:3000 |
-| 后台管理 | http://localhost:3001 |
-| 后端 API 文档 | http://VM的IP地址:8006/docs |
-
----
-
-## 端口说明
-
-| 服务 | 容器端口 | 宿主机端口 |
-|------|---------|-----------|
-| FastAPI 后端 | 8006 | 8006（host 网络模式） |
-| PostgreSQL | 5432 | 5434 |
-| Redis | 6379 | 6382 |
-| 用户端前端 | - | 3000（Windows） |
-| 后台管理前端 | - | 3001（Windows） |
-
-> 可通过 Navicat/DBeaver 连接 `VM_IP:5434` 管理数据库（用户名 demo，密码 demo123）
-
----
-
-## 日常启动与关闭
-
-部署完成后，每次使用项目只需以下操作：
-
-### 启动项目
-
-**1. VM 端（后端）**
+首次创建后台管理员时，在后端目录中通过当前终端的临时环境变量提供账号信息，再执行：
 
 ```bash
-# 挂载共享文件夹（每次 VM 开机后都要执行）
-sudo vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other,nonempty
-
-# 进入项目目录
-cd /mnt/hgfs/ai-interview-backend
-
-# 启动所有后端服务
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-
-# 确认服务正常
-curl http://localhost:8006/api/v1/config/health
+read -r -p "Admin email: " INITIAL_ADMIN_EMAIL
+read -r -s -p "Admin password: " INITIAL_ADMIN_PASSWORD
+echo
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec \
+  -e INITIAL_ADMIN_EMAIL="$INITIAL_ADMIN_EMAIL" \
+  -e INITIAL_ADMIN_PASSWORD="$INITIAL_ADMIN_PASSWORD" \
+  app python scripts/create_first_admin.py
+unset INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD
 ```
 
-**2. Windows 端（前端）**
+仓库不提供默认管理员账号或密码。初始化成功后，请通过管理端登录页面登录。
+
+</details>
+
+### 停止服务
 
 ```bash
-# 用户端（端口 3000）
-cd ai-interview-frontend
-npm run dev
-
-# 后台管理（端口 3001）— 新开一个终端
-cd ai-interview-admin
-npm run dev
+cd ai-interview-backend
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
-### 关闭项目
+此命令保留 Compose 数据卷。删除数据卷会清除本地数据库和 Redis 持久化数据，操作前请确认数据可丢弃。
 
-**1. Windows 端：** 在前端终端按 `Ctrl + C` 停止
+## 验证
 
-**2. VM 端：**
+在对应目录运行：
 
 ```bash
-cd /mnt/hgfs/ai-interview-backend
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+# 后端
+.venv/Scripts/python.exe -m pytest tests -q
+
+# 用户端构建与端到端测试
+npm run build
+npm test
+
+# 管理端构建
+npm run build
 ```
 
-> `down` 会停止并移除容器，但数据库数据不会丢失（存在 Docker Volume 中）。
-> 如果只是暂时不用，也可以不执行 `down`，容器配置了 `restart: unless-stopped`，VM 重启后会自动恢复。
+前端命令需分别在 `ai-interview-frontend` 和 `ai-interview-admin` 目录运行。Playwright 测试依赖可访问的应用环境；具体浏览器路径可通过 `PLAYWRIGHT_CHROME_PATH` 配置。
 
----
+## 配置与安全
 
-## 常用运维命令
+- 本地配置放在 `ai-interview-backend/.env`，示例模板为 `.env.example`。
+- 生产环境必须使用独立的强随机 `SECRET_KEY`、数据库/Redis 凭据及模型 API 密钥；不要复用示例值或提交密钥。
+- 生产部署由 `.github/workflows/main.yml` 和 Docker Compose 配置执行。部署凭据应保存在 CI Secret 或服务器的受限环境配置中。
+- 面试简历和媒体文件可能包含个人信息。部署时应限制存储访问、下载权限、备份保留时间和日志内容。
 
-```bash
-# 查看容器状态
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml ps
+## API
 
-# 查看后端日志
-sudo docker logs ai-interview-app --tail 50 -f
+<details>
+<summary>查看接口分区</summary>
 
-# 重启后端
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml restart app
+接口按 `/api/v1` 组织。用户端主要覆盖认证、简历、面试、面经、学习笔记、通知、分享和媒体工具；管理端位于 `/api/v1/backoffice`，覆盖用户、面试、内容、设置、统计、审计和任务管理。具体请求与响应以 FastAPI OpenAPI 文档和后端路由实现为准。
 
-# 停止所有服务
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
-
-# 停止并清空数据（慎用）
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v
-
-# 进入数据库
-sudo docker exec -it ai-interview-postgres psql -U demo -d ai_interview
-
-# 生成新的数据库迁移
-sudo docker exec -it ai-interview-app alembic revision --autogenerate -m "描述"
-sudo docker exec -it ai-interview-app alembic upgrade head
-```
-
----
-
-## 故障排查
-
-### 后端启动失败
-
-```bash
-sudo docker logs ai-interview-app --tail 30
-# 常见原因：PostgreSQL 还没 ready，等 healthy 后重启
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml restart app
-```
-
-### 数据表不存在
-
-```bash
-# 重新执行迁移
-sudo docker exec -it ai-interview-app alembic upgrade head
-
-# 如果 alembic 显示已在 head 但表不存在，生成新迁移
-sudo docker exec -it ai-interview-app alembic revision --autogenerate -m "create tables"
-sudo docker exec -it ai-interview-app alembic upgrade head
-
-# 检查表
-sudo docker exec -it ai-interview-postgres psql -U demo -d ai_interview -c "\dt"
-```
-
-### 前端请求后端失败
-
-- 检查 VM 容器是否运行：`sudo docker-compose ps`
-- 检查 `vite.config.js` 中的 IP 是否正确
-- 检查 VM 防火墙：`sudo ufw status`（如果开启了，放行 8006 端口）
-- 确认 `.env` 中 `HTTP_PROXY` 和 `HTTPS_PROXY` 为空
-
-### 共享文件夹看不到
-
-```bash
-# 确认 VMware Tools 已安装
-dpkg -l | grep open-vm-tools
-
-# 重新挂载
-sudo vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other,nonempty
-```
-
-### AI 功能报错
-
-- 检查 `.env` 中 `DEEPSEEK_API_KEY` 是否正确填写
-- 确认 VM 能访问外网：`curl https://api.deepseek.com`
-- `.env` 修改后需要 `down` + `up` 重新创建容器（`restart` 不会重新读取 `.env`）
-
-### Docker 拉取镜像超时
-
-- 确认已配置 Docker 镜像加速（见 1.6 节）
-- 配置后需要重启 Docker：`sudo systemctl restart docker`
-
-### 重置所有数据
-
-```bash
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-# 等待 PostgreSQL 启动后重新迁移
-sudo docker exec -it ai-interview-app alembic upgrade head
-sudo docker exec -it ai-interview-app python scripts/create_first_admin.py
-```
-
----
-
-## 扩展功能（已内置，按需启用）
-
-项目内置了以下通用功能模块，当前未启用，可按需开启：
-
-- 邮箱验证流程（验证码生成 + Redis 存储 + 邮件发送）
-- 密码重置（验证码验证 + 密码更新）
-- Waiting List（邀请制注册）
-- Celery 邮件异步发送（Brevo API 集成）
-- AWS S3 文件存储
-- Nginx 反向代理（生产环境）
-- CI/CD 流水线配置
-
-
-
-
-
-
-
+</details>
