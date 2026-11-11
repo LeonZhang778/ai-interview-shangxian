@@ -48,8 +48,7 @@
   - 主要依赖：axios、echarts、vue-echarts、marked。
   - 页面主要在 `src/views/`。
 - 媒体工具箱规格：`docs/spec/media-tools/`。
-- 项目交接文档：`AI-Interview-项目开发交接日志.md`。
-- 部署文档：`AI-Interview-服务器部署流程.md`、`AI-Interview-部署交接日志.md`。
+- 部署流程以 `.github/workflows/main.yml` 和 `ai-interview-backend/docker-compose.yml` 为准。
 
 ## 架构硬约束
 

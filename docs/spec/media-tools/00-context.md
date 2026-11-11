@@ -78,4 +78,4 @@ Python 文件和字段使用 `snake_case`，API 路径使用 `kebab-case`，前�
 
 ## 7. 部署约束
 
-生产部署沿用 `AI-Interview-服务器部署流程.md` 的 Docker Compose、Nginx 和现有域名入口。第一阶段不新增公网端口，媒体 API 通过主站反向代理进入 FastAPI。FFmpeg/FFprobe 必须在 app 和 celery-worker 镜像中可用，并在健康检查或启动探针中验证版本。媒体临时目录、结果文件和 S3 凭据必须使用环境变量或挂载目录配置。
+生产部署使用 `.github/workflows/main.yml` 和 `ai-interview-backend/docker-compose.yml` 中配置的 Docker Compose、Nginx 和现有域名入口。第一阶段不新增公网端口，媒体 API 通过主站反向代理进入 FastAPI。FFmpeg/FFprobe 必须在 app 和 celery-worker 镜像中可用，并在健康检查或启动探针中验证版本。媒体临时目录、结果文件和 S3 凭据必须使用环境变量或挂载目录配置。
